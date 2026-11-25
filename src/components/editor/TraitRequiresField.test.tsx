@@ -112,6 +112,16 @@ describe('TraitRequiresField owners', () => {
     expect(sentences()).toEqual(['Albus has Paladin and…']);
   });
 
+  it('names the entity whose page a trait is picked from, never the field’s own entity', async () => {
+    const user = userEvent.setup();
+    // Squire is Mira's own; the field sits on Brave, a Global Trait.
+    render(<Harness trait={traits[0]} />);
+    openPicker();
+    await user.click(await screen.findByRole('option', { name: /^Squire/ }));
+    expect(rows()).toEqual([{ all: [{ kind: 'trait', id: 'squire', owner: { kind: 'entity', id: 'mira', name: 'Mira' } }] }]);
+    expect(sentences()).toEqual(['Mira has Squire and…']);
+  });
+
   // A Global Trait's Condition on a Blueprint trait names no one (Q25), so it needs an owner from the target popover (Q31, Q37).
   it('marks a Blueprint target with no owner on a Global Trait, and takes the owner in the target popover', async () => {
     const user = userEvent.setup();

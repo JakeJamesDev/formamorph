@@ -87,8 +87,18 @@ export function RequirementRowsField({
   };
   const replaceCondition = (rowIndex: number, index: number, next: TraitRequirement) => onChange(rows.map((row, i) =>
     (i === rowIndex ? { all: row.all.map((req, j) => (j === index ? next : req)) } : row)));
-  // Every kind adds at once with no owner, a stat with the owner of its section.
+  // A pick adds at once: a stat with the owner of its section, a trait or group with the owner of its page.
   const pick = (option: RequirementOption) => add(option.requirement);
+  /** A trait or group on an entity's page names that entity; on the host's own page it names no owner. A
+   *  location's or an item's rule keeps no owner, which there reads the player or the item's owner. */
+  const paged = (option: RequirementOption): RequirementOption => {
+    const { home, requirement } = option;
+    const fixedHost = clauseHost.kind === 'entity' ? clauseHost.id !== undefined : clauseHost.kind === 'world' || clauseHost.kind === 'blueprint';
+    if (!home || offWorld || !fixedHost || (requirement.kind !== 'trait' && requirement.kind !== 'group')) return option;
+    const bare = { kind: requirement.kind, id: requirement.id };
+    const own = clauseHost.kind === 'entity' && clauseHost.id === home.id;
+    return { ...option, requirement: own ? bare : { ...bare, owner: { kind: 'entity' as const, id: home.id, name: home.name } } };
+  };
   /** Every way the row could be added is already listed, so the row has nothing left to add. */
   const exhausted = (option: RequirementOption) => {
     // One time Condition per row: its chip edits the dayparts.
@@ -139,8 +149,8 @@ export function RequirementRowsField({
   const category = (key: string, heading: string, children: BreadcrumbPickerNode<RequirementOption>[]): BreadcrumbPickerNode<RequirementOption>[] =>
     (children.length ? [{ kind: 'page', key, heading, children }] : []);
   const tree: BreadcrumbPickerNode<RequirementOption>[] = [
-    ...category('traits', 'Traits', ownerPages('traits', [...options.traits, ...linkedOf('traits')])),
-    ...category('groups', 'Any Trait in a Group', ownerPages('groups', [...options.groups, ...linkedOf('groups')])),
+    ...category('traits', 'Traits', ownerPages('traits', [...options.traits, ...linkedOf('traits')].map(paged))),
+    ...category('groups', 'Any Trait in a Group', ownerPages('groups', [...options.groups, ...linkedOf('groups')].map(paged))),
     ...category('stats', 'Stats', shownStats.map((s, i): BreadcrumbPickerNode<RequirementOption> => ({
       kind: 'page', key: `stats:${i}`, heading: s.owner, children: [{ kind: 'section', ...targets(s.heading, s.options, s.blueprint ? 'blueprint ' : '') }],
     }))),

@@ -105,20 +105,30 @@ describe('the Requires field as sentences', () => {
     expect(screen.queryByRole('button', { name: 'Open Albus' })).toBeNull();
   });
 
-  it('adds with "and…" to its row and with "or…" as a row, with no owner and no owner page', async () => {
+  it('adds with "and…" to its row and with "or…" as a row, naming the entity that holds the target, with no owner page', async () => {
     const user = userEvent.setup();
+    const mira = { kind: 'entity', id: 'mira', name: 'Mira' } as const;
     field();
     await user.click(button(ADD_FIRST));
     await user.click(screen.getByRole('option', { name: /^Knight/ }));
-    expect(writtenRows()).toEqual([{ all: [knight] }]);
+    expect(writtenRows()).toEqual([{ all: [{ ...knight, owner: mira }] }]);
+    expect(sentences()).toEqual(['Mira has Knight and…']);
     await user.click(button(ADD_TO_ROW));
     await user.click(screen.getByRole('option', { name: /^Arms/ }));
-    expect(writtenRows()).toEqual([{ all: [knight, arms] }]);
+    expect(writtenRows()).toEqual([{ all: [{ ...knight, owner: mira }, { ...arms, owner: mira }] }]);
     await user.click(button(ADD_ROW));
     await user.click(screen.getByRole('option', { name: /^Squire/ }));
     expect(screen.queryByRole('button', { name: 'Back to targets' })).toBeNull();
-    expect(writtenRows()).toEqual([{ all: [knight, arms] }, { all: [{ kind: 'trait', id: 'squire' }] }]);
+    expect(writtenRows()).toEqual([{ all: [{ ...knight, owner: mira }, { ...arms, owner: mira }] }, { all: [{ kind: 'trait', id: 'squire', owner: mira }] }]);
     expect(screen.getByText('or')).toBeInTheDocument();
+  });
+
+  it('adds a global trait with no owner', async () => {
+    const user = userEvent.setup();
+    field();
+    await user.click(button(ADD_FIRST));
+    await user.click(screen.getByRole('option', { name: /^Paladin/ }));
+    expect(writtenRows()).toEqual([{ all: [{ kind: 'trait', id: 'paladin' }] }]);
   });
 
   it('removes one Condition with ×, the row with its last one, and a whole row with its delete button', () => {
@@ -158,7 +168,7 @@ describe('the Requires field as sentences', () => {
 
     it('disables a picker row already in the row', async () => {
       const user = userEvent.setup();
-      field([{ all: [knight] }]);
+      field([{ all: [{ ...knight, owner: { kind: 'entity' as const, id: 'mira', name: 'Mira' } }] }]);
       await user.click(button(ADD_TO_ROW));
       expect(screen.getByRole('option', { name: /^Knight/ })).toHaveAttribute('aria-disabled', 'true');
     });
