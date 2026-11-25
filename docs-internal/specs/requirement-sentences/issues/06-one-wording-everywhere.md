@@ -12,6 +12,7 @@ Every remaining reader of rule text moves to the clause builder, and the old tex
 - Code cards, update notes, image rule summaries and the Test Bench read a rule in the same words as the Requires field.
 - The trait's requirement summary line in the editor uses the same words.
 - The Requires field's spoken labels (remove a Condition, delete a row) use the same words.
+- The add picker's row labels drop the old wording ("playing as Albus", "any Classes") and name the target alone, since the picker's category already says the kind. Ticket 02 left them.
 - The old rule text function and its helpers are deleted once nothing reads them.
 
 Read each surface before the change and list it in the landing notes, so a missed reader shows.
