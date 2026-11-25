@@ -184,7 +184,7 @@ function PickerCommand<V>({
       return <BreadcrumbTip key={r.key} breadcrumb={breadcrumb} plainText={plain}>{cmdItem}</BreadcrumbTip>;
     };
     return groups.map((g) => g.items.length > 0 && (
-      <CommandGroup key={g.key} heading={g.heading}>{g.items.map(item)}</CommandGroup>
+      <CommandGroup key={g.key} heading={g.heading === undefined ? undefined : render(g.heading)}>{g.items.map(item)}</CommandGroup>
     ));
   }, [groups, value, checks, render, plain, pickRow, openPage]);
 

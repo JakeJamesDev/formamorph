@@ -517,6 +517,26 @@ describe('BreadcrumbPicker drill-down', () => {
   });
 });
 
+describe('BreadcrumbPicker section headings', () => {
+  it('renders a section heading through renderText, as it renders a row', async () => {
+    const user = userEvent.setup();
+    const tree: BreadcrumbPickerNode<string>[] = [
+      { kind: 'section', heading: 'Ash Stats', rows: [rowOf('hunger', 'Hunger', []), rowOf('thirst', 'Thirst', [])] },
+      { kind: 'section', heading: 'Mira Stats', rows: [rowOf('mood', 'Mood', [])] },
+    ];
+    render(
+      <TooltipProvider>
+        <BreadcrumbPicker
+          tree={tree} onPick={() => {}} renderText={(text) => text.replace('Ash', 'ASH')}
+          searchPlaceholder="Search targets" ariaLabel="Target"
+        />
+      </TooltipProvider>,
+    );
+    await user.click(target());
+    expect([...document.querySelectorAll('[cmdk-group-heading]')].map((h) => h.textContent)).toEqual(['ASH Stats', 'Mira Stats']);
+  });
+});
+
 describe('BreadcrumbPicker search cost', () => {
   it('renders no row again while the search narrows, since the list filters rows it already holds', async () => {
     const user = userEvent.setup();
