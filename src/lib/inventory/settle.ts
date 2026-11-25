@@ -16,6 +16,7 @@ import {
   type GatedTraitResult, type TraitRuntimeState, type TraitWorld,
 } from '@/lib/traitRuntime';
 import type { RowState } from '@/lib/traitGates';
+import { ruleText } from '@/lib/traitGateLine';
 import type {
   Body, BodyRuntime, BodyTraitOn, Item, ItemInstance, ItemEffectLedger, PersonaRef, Slot, TimedItemEffect, Trait,
 } from '@/types';
@@ -174,9 +175,8 @@ function reader(world: InventorySettleWorld) {
   return { pass, requirementStates, remember, instanceName: instanceName };
 }
 
-/** The rows' text, as a refused equip names it: each row's Conditions joined by "and", rows by "or". */
-const rowsText = (rows: readonly RowState[]): string =>
-  rows.map((row) => row.conditions.map((c) => c.clause).join(' and ')).join(' or ');
+/** The rows' text, as a refused equip names it: the lock line's joining, "A and B, or C". */
+const rowsText = (rows: readonly RowState[]): string => ruleText(rows.map((row) => row.conditions.map((c) => c.clause)));
 
 /** Every trait an entry can name, active or not: the acquired ones, the world's and each owner's tree. */
 function traitLookup(world: TraitWorld, acquired: readonly Trait[]): (on: BodyTraitOn) => Trait | undefined {

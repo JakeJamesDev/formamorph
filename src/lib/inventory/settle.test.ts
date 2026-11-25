@@ -46,7 +46,12 @@ const band = item('band', 'Iron Band', { slotRule: { mode: 'either', slotIds: ['
 const signet = item('signet', 'Signet', { slotRule: { mode: 'either', slotIds: ['finger'] }, equipRequires: needs('strength', 5) });
 const gauntlet = item('gauntlet', 'Gauntlet', { slotRule: { mode: 'either', slotIds: ['body'] }, equipRequires: needs('luck', 1), statEffects: [statRow('strength', 2)] });
 const veil = item('veil', 'Hex Veil', { unidentifiedName: 'Lace Veil', traitEffects: [grant('cursed', 'owned')] });
-const items = [ring, idol, charm, halo, relic, fate, strongSword, weakSword, gauntlet, band, signet, veil];
+const stat2 = (id: string, value: number) => ({ kind: 'stat' as const, id, operator: '>=' as const, value, unit: 'raw' as const });
+const oathblade = item('oath', 'Oathblade', {
+  slotRule: { mode: 'either', slotIds: ['hand'] },
+  equipRequires: [{ all: [stat2('strength', 5), stat2('luck', 3)] }, { all: [stat2('luck', 9)] }],
+});
+const items = [ring, idol, charm, halo, relic, fate, strongSword, weakSword, gauntlet, band, signet, veil, oathblade];
 
 const hero = { kind: 'entity', id: 'hero' } as const;
 const you = { kind: 'you' } as const;
@@ -225,6 +230,12 @@ describe('equip requirements', () => {
     play = act(play, [equip(play, 'strong')]);
     expect(instanceOf(play, 'strong').equipped).toBeUndefined();
     expect(play.skipped).toEqual(['Inventory (script) skipped equip: Strong Sword requires that your Strength is at least 5']);
+  });
+
+  it('closes an "and" row with a comma before "or" in the refusal', () => {
+    let play = act(start([stat('strength', 1), stat('luck', 0)]), [gain('oath')]);
+    play = act(play, [equip(play, 'oath')]);
+    expect(play.skipped).toEqual(['Inventory (script) skipped equip: Oathblade requires that your Strength is at least 5 and your Luck is at least 3, or your Luck is at least 9']);
   });
 
   it('reads the requirement after the swap-out, so an item leaving the slot never counts', () => {

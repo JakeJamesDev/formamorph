@@ -82,7 +82,7 @@ const frameRule = () => within(framedSlot()).getByRole('button', { name: /^Visib
 const ruleOf = (name: string | RegExp) => { fireEvent.click(tile(name)); return frameRule(); };
 
 describe('Gallery Visibility rules on a location', () => {
-  it('names the persona as the owner of a Condition with no owner, once', async () => {
+  it('reads a no-owner world trait with no subject, and the target popover offers the owners (Q25, Q31)', async () => {
     render(<Harness initial={[{ data: A }, { data: B }]} host={LOCATION_RULE_HOST} />);
     fireEvent.click(ruleOf('Image 2'));
     fireEvent.click(await screen.findByRole('button', { name: 'Add a requirement…' }));
@@ -90,13 +90,16 @@ describe('Gallery Visibility rules on a location', () => {
 
     expect(screen.queryByRole('button', { name: 'Back to targets' })).toBeNull();
     expect(stored()[1].requires).toEqual([{ all: [{ kind: 'trait', id: 'healed' }] }]);
-    fireEvent.click(await screen.findByRole('button', { name: 'Owner: The player' }));
-    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['The player', 'Wren']);
+    expect(screen.queryByRole('button', { name: /^Owner:/ })).toBeNull();
+    fireEvent.click(await screen.findByRole('button', { name: 'Target: Healed' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Wren' }));
+    expect(stored()[1].requires).toEqual([{ all: [{ kind: 'trait', id: 'healed', owner: { kind: 'entity', id: 'wren', name: 'Wren' } }] }]);
+    expect(await screen.findByRole('button', { name: 'Owner: Wren' })).toBeInTheDocument();
   });
 
-  it("reads a Condition with no owner as the persona's on the rule button, and gives no cover warning", () => {
+  it('reads a no-owner stat on the rule button with no subject, and gives no cover warning', () => {
     render(<Harness initial={[{ data: A, requires: lowHealth }, { data: B }]} host={LOCATION_RULE_HOST} />);
-    expect(frameRule()).toHaveAccessibleName("Visibility Rule: Shown while the player's Health is below 20%");
+    expect(frameRule()).toHaveAccessibleName('Visibility Rule: Shown while Health is below 20%');
     expect(document.querySelector('[data-image-rule-cover-warning]')).toBeNull();
   });
 });

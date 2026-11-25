@@ -624,7 +624,8 @@ function buildClauseReader(idx: Index): ClauseReader {
   };
 
   const subjectOf = (req: Targeted, host: ClauseHost, from: GateScopeTree | null): ClauseSubject => {
-    const owner = req.owner ?? (host.kind === 'persona' || (host.kind === 'world' && req.kind === 'item') ? { kind: 'you' as const } : undefined);
+    // An owner-less item Condition on global scope reads the persona; a trait, group or stat reads the world (Q25).
+    const owner = req.owner ?? ((host.kind === 'persona' || host.kind === 'world') && req.kind === 'item' ? { kind: 'you' as const } : undefined);
     if (owner?.kind === 'you') return player ? { kind: 'you' } : { kind: 'named', text: 'the player', fixed: true, broken: false };
     // The player's view says "you" for any owner that is the played entity (Q18).
     if (owner && isPlayed(owner.id)) return { kind: 'you' };

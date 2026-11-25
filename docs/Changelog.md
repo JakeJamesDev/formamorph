@@ -69,6 +69,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A trait's or location's lock line now reads as full sentences.** It says "you have Knight and you don't have Paladin" where it said "Knight and not Paladin". Your persona reads as "you", and other entities keep their names.
     - **The World Editor's Requires field edits stat and World Option conditions one word at a time.** Change the owner, stat, comparison, number or unit in place. A World Option swaps for another Option.
     - **Code cards, library updates, image rules and the Test Bench read a requirement in the Requires field's words.** A rule has one wording everywhere. A broken on/off World Option value shows red with a warning.
+    - **An image rule's "Shown while" line ends with a period, and a refused equip joins its rows with a comma.** A world trait on a location's image rule reads "Paladin is active". A broken World Option value says why.
   - **Script entries now tell you what they are.** Every entity, location, item, stat, trait and other entry in a script reads a read-only `category`, such as "entity" or "itemInstance".
   - **Openings can set the time of day a story starts.** Each opening has a Time, and the world has a Default Time. The AI no longer reads the time when one is set.
   - **Edit your Avatar's look during play from the pencil on your Avatar.** Change sliders, colors and hair, or switch Avatars when the world allows it. The new look stays after a rollback or a regenerate.

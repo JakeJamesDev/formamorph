@@ -135,10 +135,13 @@ describe('the no-owner subject (Q11, Q25)', () => {
     expect(author({ kind: 'trait', id: 'Paladin' }, { host: { kind: 'entity', name: 'Mira' } })).toBe('Mira has Paladin');
   });
 
-  it('reads the persona for an item on the world and for any Condition on a persona host', () => {
+  it('reads the persona for an item on a world or persona host, and global scope with no subject for a world trait (Q25)', () => {
     expect(author({ kind: 'item', id: 'lantern', status: 'owned' }, { host: { kind: 'world' } })).toBe('the player owns Lantern');
-    expect(author({ kind: 'trait', id: 'Paladin' }, { host: { kind: 'persona' } })).toBe('the player has Paladin');
-    expect(player({ kind: 'trait', id: 'Paladin' }, { host: { kind: 'persona' } })).toBe('you have Paladin');
+    expect(author({ kind: 'item', id: 'lantern', status: 'owned' }, { host: { kind: 'persona' } })).toBe('the player owns Lantern');
+    expect(author({ kind: 'trait', id: 'Paladin' }, { host: { kind: 'persona' } })).toBe('Paladin is active');
+    expect(player({ kind: 'trait', id: 'Paladin' }, { host: { kind: 'persona' } })).toBe('Paladin is active');
+    expect(author({ kind: 'trait', id: 'Paladin', owner: YOU }, { host: { kind: 'persona' } })).toBe('the player has Paladin');
+    expect(player({ kind: 'trait', id: 'Paladin', owner: YOU }, { host: { kind: 'persona' } })).toBe('you have Paladin');
   });
 
   it("reads the item's owner on an item's image rule, a global target included", () => {

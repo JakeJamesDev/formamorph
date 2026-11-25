@@ -196,10 +196,10 @@ describe('Media tab image panel location rules', () => {
 
     const [first, second] = marsh(bench).images!;
     expect(first.requires).toBeUndefined();
-    // Stored with no owner: a location rule's owner-less Condition reads the played persona.
+    // Stored with no owner: a location rule's owner-less Condition reads global scope, with no subject (Q25).
     expect(second.requires).toEqual([{ all: [expect.objectContaining({ kind: 'stat', id: 'health' })] }]);
     expect(second.requires![0].all[0]).not.toHaveProperty('owner');
-    expect(within(framed()!).getByRole('button', { name: 'Owner: The player' })).toBeInTheDocument();
+    expect(within(framed()!).queryByRole('button', { name: /^Owner:/ })).toBeNull();
     expect(within(framed()!).getByRole('button', { name: 'Target: Health' })).toBeInTheDocument();
     expect(within(framed()!).getByRole('button', { name: 'Comparison: at least' })).toBeInTheDocument();
   });

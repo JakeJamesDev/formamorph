@@ -61,10 +61,16 @@ const TARGET_NOUN: Record<TraitRequirement['kind'], string> = {
   trait: 'trait', group: 'group', playingAs: 'persona', stat: 'stat', item: 'item', time: 'time of day', weather: 'weather', opening: 'opening', option: 'World Option',
 };
 
-/** Why `part` of `req` is broken, as its tooltip says it. */
-function brokenReason(req: TraitRequirement, part: ClausePart): string {
+const OPTION_VALUE_REASON: Record<'choice' | 'boolean' | 'number', string> = {
+  choice: 'This value is no longer a choice.',
+  boolean: 'This World Option is now on or off.',
+  number: 'This World Option now holds a number.',
+};
+
+/** Why `part` of `req` is broken, as its tooltip says it. `optionType` is a World Option's type now. */
+function brokenReason(req: TraitRequirement, part: ClausePart, optionType: keyof typeof OPTION_VALUE_REASON = 'choice'): string {
   if (part.role === 'subject') return 'This owner no longer exists.';
-  if (part.role === 'value') return 'This value is no longer a choice.';
+  if (part.role === 'value') return OPTION_VALUE_REASON[optionType];
   if (part.role === 'set') {
     if (req.kind === 'time') return 'No time of day is picked.';
     if (req.kind === 'weather') return 'No weather is picked.';
@@ -391,7 +397,7 @@ function OptionClause({ requirement: req, parts, edit, ctx }: {
   };
 
   const valueToken = (part: ClausePart) => {
-    const reason = part.broken ? brokenReason(req, part) : undefined;
+    const reason = part.broken ? brokenReason(req, part, type === 'preset' ? undefined : type) : undefined;
     if (type === 'number') {
       return (
         <NumberValueToken

@@ -57,8 +57,8 @@ describe('a weather Condition', () => {
 
   it('reads its kinds in words, in list order', () => {
     const line = (...kinds: WeatherKind[]) => shownWhileLine(rowClauses(ruleStates(input([]), null, [{ all: [weather(...kinds)] }])));
-    expect(line('storm', 'rain')).toBe('Shown while the weather is Rain or Storm');
-    expect(line('brightSun')).toBe('Shown while the weather is Bright Sun');
+    expect(line('storm', 'rain')).toBe('Shown while the weather is Rain or Storm.');
+    expect(line('brightSun')).toBe('Shown while the weather is Bright Sun.');
   });
 
   it('compares by its set, whatever the stored order', () => {
@@ -97,7 +97,7 @@ describe('a negated weather Condition', () => {
 
   it('reads the negated form in the Shown while and gate lines', () => {
     const line = (...kinds: WeatherKind[]) => shownWhileLine(rowClauses(ruleStates(input([]), null, [{ all: [not(...kinds)] }])));
-    expect(line('rain', 'storm')).toBe('Shown while the weather is not Rain or Storm');
+    expect(line('rain', 'storm')).toBe('Shown while the weather is not Rain or Storm.');
     const gate = gateStates(input([T('a', { requires: [{ all: [not('rain')] }] })], 'rain'));
     expect(gateLine(gateOf(gate, null, 'a'))).toBe('Requires: the weather is not Rain.');
   });

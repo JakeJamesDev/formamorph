@@ -14,10 +14,10 @@ export function ruleText(rows: readonly (readonly string[])[]): string {
   return `${texts.slice(0, -1).join(', ')}, or ${texts[texts.length - 1]}`;
 }
 
-/** "Shown while A and B, or C" for an image's Visibility rule, from each row's Condition clauses; null with no rows.
+/** "Shown while A and B, or C." for an image's Visibility rule, from each row's Condition clauses; null with no rows.
  *  Author tools, so nothing is left out. */
 export function shownWhileLine(rows: readonly (readonly string[])[]): string | null {
-  return rows.length ? `Shown while ${ruleText(rows)}` : null;
+  return rows.length ? `Shown while ${ruleText(rows)}.` : null;
 }
 
 /**

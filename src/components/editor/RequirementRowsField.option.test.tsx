@@ -57,8 +57,19 @@ describe('a World Option Condition in the rows editor', () => {
     mount([{ all: [{ ...perma(), valueId: 'easy', valueName: 'Easy' }] }]);
     const value = token('Change to “off”');
     expect(value).toHaveAttribute('data-broken');
-    expect(value).toHaveAttribute('aria-description', 'This value is no longer a choice.');
+    expect(value).toHaveAttribute('aria-description', 'This World Option is now on or off.');
     expect(value.querySelector('svg')).not.toBeNull();
+  });
+
+  it('gives a broken number value the reason for a number', () => {
+    // An Option that was a choice, now a number: the stored value id no longer matches.
+    mount([{ all: [{ ...party('>=', 2), valueId: 'easy', valueName: 'Easy' }] }]);
+    expect(token('Value: 2')).toHaveAttribute('aria-description', 'This World Option now holds a number.');
+  });
+
+  it('keeps the choice reason for a broken choice value', () => {
+    mount([{ all: [diff('gone', 'Gone')] }]);
+    expect(token('Value: Gone')).toHaveAttribute('aria-description', 'This value is no longer a choice.');
   });
 
   it('reads a number as "Party Size is at least 2", with a comparison and a number and no Not', () => {

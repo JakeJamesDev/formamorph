@@ -1,6 +1,6 @@
 # 07: Close Review Gaps
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None
 Recommended model: Claude Sonnet 5.5 (`claude-sonnet-5-5`)
 Reasoning effort: medium
@@ -35,10 +35,20 @@ The close review compared the landed code with the spec and found four places wh
 
 ## Acceptance criteria
 
-- [ ] On a location's image rule, a no-owner Condition on a world trait reads "Paladin is active" in the author's view and the player's view; a clause test covers it and goes red when the persona host wins again.
-- [ ] That row offers the Owner list in its target popover, and a pick gives the sentence its subject.
-- [ ] A persona-reading Condition on that host still reads "The player ..."; an item host still reads "The item's owner ...".
-- [ ] A refused equip with a row of two Conditions and a second row reads with a comma before "or".
-- [ ] A broken number Option value and a broken on/off Option value each give a reason that fits; a broken choice value keeps today's reason.
-- [ ] An image rule's summary ends with a period; its test is updated.
-- [ ] A changelog fragment only when a player or author can see the change in released text.
+- [x] On a location's image rule, a no-owner Condition on a world trait reads "Paladin is active" in the author's view and the player's view; a clause test covers it and goes red when the persona host wins again. (traitGates.clause.test.ts persona-host case and ImageTagsField.rules.test.tsx; red when the persona host wins again, proved by reinstating it)
+- [x] That row offers the Owner list in its target popover, and a pick gives the sentence its subject. (ImageTagsField.rules.test.tsx: the target popover lists No owner and Wren; picking Wren stores the owner and shows Owner: Wren)
+- [x] A persona-reading Condition on that host still reads "The player ..."; an item host still reads "The item's owner ...". (traitGates.clause.test.ts: explicit you owner still reads the player; the item host test is unchanged and green)
+- [x] A refused equip with a row of two Conditions and a second row reads with a comma before "or". (settle.test.ts: refusal text reads "...at least 3, or your Luck is at least 9")
+- [x] A broken number Option value and a broken on/off Option value each give a reason that fits; a broken choice value keeps today's reason. (RequirementRowsField.option.test.tsx: on/off and number reasons; the choice reason is kept)
+- [x] An image rule's summary ends with a period; its test is updated. (ruleStates, time and weather tests)
+- [x] A changelog fragment only when a player or author can see the change in released text. (fragment requirement-sentences-07.md)
+
+## Landed
+
+**Not verified**
+- None.
+
+**For you**
+- Gate flake: statCodeExecutor.preludeCost.test.ts ("reads no entry") failed twice under the gate run and passes alone; the diff does not touch stat code.
+- Location image rule: add a no-owner trait and read "Paladin is active" with the Owner list in the target popover.
+- Broken World Option value: change an Option's type under a stored Condition and read the new reason on hover.

@@ -46,10 +46,10 @@ describe('a time Condition', () => {
 
   it('reads its dayparts in words, each run from the daypart after a gap', () => {
     const line = (...dayparts: Daypart[]) => shownWhileLine(rowClauses(ruleStates(input([]), null, [{ all: [time(...dayparts)] }])));
-    expect(line('night', 'evening')).toBe('Shown while it is evening or night');
-    expect(line(...DAYPARTS)).toBe('Shown while it is night, dawn, morning, midday, afternoon, or evening');
-    expect(line('dawn', 'morning', 'midday')).toBe('Shown while it is dawn, morning, or midday');
-    expect(line('evening', 'dawn')).toBe('Shown while it is dawn or evening');
+    expect(line('night', 'evening')).toBe('Shown while it is evening or night.');
+    expect(line(...DAYPARTS)).toBe('Shown while it is night, dawn, morning, midday, afternoon, or evening.');
+    expect(line('dawn', 'morning', 'midday')).toBe('Shown while it is dawn, morning, or midday.');
+    expect(line('evening', 'dawn')).toBe('Shown while it is dawn or evening.');
     const gate = gateStates(input([T('a', { requires: [{ all: [time('midday')] }] })], 'night'));
     expect(gateLine(gateOf(gate, null, 'a'))).toBe('Requires: it is midday.');
   });
@@ -87,7 +87,7 @@ describe('a negated time Condition', () => {
   });
 
   it('reads the negated form in the Shown while and gate lines', () => {
-    expect(shownWhileLine(rowClauses(ruleStates(input([]), null, [{ all: [not('evening', 'night')] }])))).toBe('Shown while it is not evening or night');
+    expect(shownWhileLine(rowClauses(ruleStates(input([]), null, [{ all: [not('evening', 'night')] }])))).toBe('Shown while it is not evening or night.');
     const gate = gateStates(input([T('a', { requires: [{ all: [not('night')] }] })], 'night'));
     expect(gateLine(gateOf(gate, null, 'a'))).toBe('Requires: it is not night.');
   });
