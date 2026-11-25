@@ -52,6 +52,15 @@ describe('a World Option Condition in the rows editor', () => {
     expect(rows()[0].all[0]).toEqual(perma());
   });
 
+  it('shows a broken on/off value as a red token with a warning and its reason', () => {
+    // An Option that was a choice, now an on/off one: the stored value fits no longer.
+    mount([{ all: [{ ...perma(), valueId: 'easy', valueName: 'Easy' }] }]);
+    const value = token('Change to “off”');
+    expect(value).toHaveAttribute('data-broken');
+    expect(value).toHaveAttribute('aria-description', 'This value is no longer a choice.');
+    expect(value.querySelector('svg')).not.toBeNull();
+  });
+
   it('reads a number as "Party Size is at least 2", with a comparison and a number and no Not', () => {
     mount();
     addOption('Party Size');

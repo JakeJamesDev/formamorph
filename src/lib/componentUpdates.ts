@@ -7,8 +7,8 @@
  */
 
 import type { ContentLinkState } from '@/lib/contentLink';
-import { weatherText } from '@/lib/weather';
-import { openingCountText } from '@/lib/openingCondition';
+import { storedConditionText } from '@/lib/traitGates';
+import { ruleText } from '@/lib/traitGateLine';
 import {
   offeredRoutine, routinePlacesOf, sameStarts, withoutWorldFields, type LinkableContent,
 } from '@/lib/linkedContent';
@@ -25,7 +25,7 @@ import { galleryLinks } from '@/lib/entityImages';
 import { comparableGallery, comparableSound, type MediaLookup } from '@/lib/libraryMedia';
 import { PLAYER_START, PLAYER_START_LABEL } from '@/types';
 import type {
-  ContentLink, Dictionary, DictionaryEntry, EntityKind, EntityRoutine, EntityStart, GalleryLink, GameLocation, MediaAsset, MediaRef, ScheduleRow, TraitRequirement,
+  ContentLink, Dictionary, DictionaryEntry, EntityKind, EntityRoutine, EntityStart, GalleryLink, GameLocation, MediaAsset, MediaRef, ScheduleRow,
   TraitRequirementRow, Traversable, VrmPick,
 } from '@/types';
 
@@ -251,22 +251,9 @@ function startsText(starts: readonly EntityStart[] | undefined, kind: EntityKind
 const traversableText = (value: Traversable | undefined, nameOf: (id: string) => string): string =>
   (value === 'anywhere' ? 'Anywhere' : formatValue('traversable', value?.map(nameOf)));
 
-const capitalized = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
-
-/** One Condition as text, by the name it stores. */
-function conditionText(req: TraitRequirement): string {
-  if (req.kind === 'time') return `${req.not ? 'Not ' : ''}${req.dayparts.map(capitalized).join(' or ')}`;
-  if (req.kind === 'weather') return `${req.not ? 'Not ' : ''}${weatherText({ ...req, not: undefined })}`;
-  if (req.kind === 'opening') return `${req.not ? 'Not ' : ''}${openingCountText(req)}`;
-  const named = req.name || capitalized(req.kind);
-  const target = req.kind === 'stat' ? `${named} ${req.operator} ${req.value}`
-    : req.kind === 'option' && req.valueName ? `${named} is ${req.valueName}` : named;
-  return req.not ? `Not ${target}` : target;
-}
-
-/** A Routine's Requires as text: each row's Conditions joined by "and", the rows by "or". */
+/** A Routine's Requires as text, in the editor's words by the names the copy stores; "Always" with no rows. */
 const requiresText = (rows: readonly TraitRequirementRow[] | undefined): string =>
-  (rows?.length ? rows.map((row) => row.all.map(conditionText).join(' and ')).join(' or ') : 'Always');
+  (rows?.length ? ruleText(rows.map((row) => row.all.map((req) => storedConditionText(req)))) : 'Always');
 
 /**
  * The routine rows of an entity with a kind: what the copy holds against what an update would write, the source's

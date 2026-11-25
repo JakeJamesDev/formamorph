@@ -125,7 +125,7 @@ describe('bindOwnedTraits', () => {
       ...traitOwners({ traits: [], traitGroups: [], entities: [bound] }), active: NO_ACTIVE, entities: [], persona: { source: 'none' },
     }).owners[bound.id]!.get('t-oath')!;
     expect(gate.unlocked).toBe(false);
-    expect(gate.rows.flatMap((row) => row.conditions).map((c) => c.text).slice(0, 3)).toEqual(['Paladin', 'any Class', 'playing as Sir Aldric']);
+    expect(gate.rows.flatMap((row) => row.conditions).map((c) => c.clause).slice(0, 3)).toEqual(['Ash has Paladin', 'Ash has a trait in Class', 'the player is Sir Aldric']);
   });
 
   it('leaves a requirement whose name two targets carry unresolved', () => {

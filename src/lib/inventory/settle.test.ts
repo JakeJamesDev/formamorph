@@ -224,14 +224,14 @@ describe('equip requirements', () => {
     let play = act(start([stat('strength', 4)]), [gain('strong')]);
     play = act(play, [equip(play, 'strong')]);
     expect(instanceOf(play, 'strong').equipped).toBeUndefined();
-    expect(play.skipped).toEqual(['Inventory (script) skipped equip: Strong Sword needs Hero: Strength >= 5']);
+    expect(play.skipped).toEqual(['Inventory (script) skipped equip: Strong Sword requires that your Strength is at least 5']);
   });
 
   it('reads the requirement after the swap-out, so an item leaving the slot never counts', () => {
     let play = act(start([stat('strength', 3)]), [gain('band'), gain('signet')]);
     play = act(play, [equip(play, 'band')]);
     play = act(play, [equip(play, 'signet')]);
-    expect(play.skipped).toEqual(['Inventory (script) skipped equip: Signet needs Hero: Strength >= 5']);
+    expect(play.skipped).toEqual(['Inventory (script) skipped equip: Signet requires that your Strength is at least 5']);
     expect(instanceOf(play, 'band').equipped).toBeDefined();
     expect(instanceOf(play, 'signet').equipped).toBeUndefined();
   });

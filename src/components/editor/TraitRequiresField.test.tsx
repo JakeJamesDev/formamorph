@@ -131,7 +131,7 @@ describe('TraitRequiresField owners', () => {
     const user = userEvent.setup();
     render(<Harness trait={mira.traits![0]} />);
     openPicker();
-    fireEvent.click(await screen.findByRole('option', { name: /^any Classes/ }));
+    fireEvent.click(await screen.findByRole('option', { name: /^Classes/ }));
     expect(sentences()).toEqual(['Mira has a trait in Classes and…']);
     await user.click(button('Owner: Mira'));
     expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Mira', 'The player', 'Albus']);
@@ -142,7 +142,7 @@ describe('TraitRequiresField owners', () => {
   it('adds a playing-as target at once', async () => {
     render(<Harness trait={traits[3]} />);
     openPicker();
-    fireEvent.click(await screen.findByRole('option', { name: /^playing as Albus/ }));
+    fireEvent.click(await screen.findByRole('option', { name: /^Albus/ }));
     expect(sentences()).toEqual(['The player is Albus and…']);
     expect(screen.queryByRole('listbox')).toBeNull();
   });
@@ -173,9 +173,9 @@ describe('TraitRequiresField breadcrumbs', () => {
     const user = userEvent.setup();
     render(<Harness trait={traits[0]} extra={deep} />);
     await user.click(button(ADD_FIRST));
-    expect(option(/^Rune/).textContent).toBe('RuneLore › … › Deep');
+    expect(option(/^Rune(?!s)/).textContent).toBe('RuneLore › … › Deep');
     expect(option(/^Paladin/).textContent).toBe('PaladinBlueprints › Classes');
-    await user.hover(option(/^Rune/));
+    await user.hover(option(/^Rune(?!s)/));
     expect(await screen.findByText('Lore › Runes › Elder › Deep')).toBeVisible();
   });
 
@@ -185,7 +185,7 @@ describe('TraitRequiresField breadcrumbs', () => {
     await user.click(button(ADD_FIRST));
     await user.type(screen.getByPlaceholderText('Search traits, groups, time of day, and personas'), 'elder');
     expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual([
-      'RuneLore › … › Deep', 'any ElderLore › Runes', 'any DeepLore › … › Elder',
+      'RuneLore › … › Deep', 'ElderLore › Runes', 'DeepLore › … › Elder',
     ]);
   });
 });

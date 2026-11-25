@@ -113,8 +113,8 @@ describe('visibleLocationImages', () => {
     const high: StatRequirement = { kind: 'stat', id: 'danger', operator: '>', value: 80, unit: 'raw' };
     const [row] = locationRuleStates(input, when(high)!);
     expect(row.holds).toBe(true);
-    expect(row.conditions[0].text).toBe('Danger > 80');
-    expect(locationRuleStates(input, when(hurt)!)[0].conditions[0].text).toMatch(/^Persona: Health/);
+    expect(row.conditions[0].clause).toBe('Danger is above 80');
+    expect(locationRuleStates(input, when(hurt)!)[0].conditions[0].clause).toBe("the player's Health is below 20%");
   });
 
   it('never holds a persona Condition with no persona to read', () => {

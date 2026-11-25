@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Meta } from '@/components/ui/typography';
 import { TimeConditionControls } from '@/components/editor/TimeConditionControls';
-import { timeText } from '@/lib/traitGates';
+import { storedConditionText } from '@/lib/traitGates';
 import type { TimeRequirement } from '@/types';
 
 /** The segmented multi-select, through the time Condition chip's production controls, with local state. */
@@ -16,7 +16,7 @@ export function SegmentedMultiSelectReference() {
       </CardHeader>
       <CardContent className="space-y-2">
         <TimeConditionControls requirement={requirement} accepts={() => true} onChange={setRequirement} />
-        <Meta>Reads: {timeText(requirement)}</Meta>
+        <Meta>Reads: {storedConditionText(requirement)}</Meta>
       </CardContent>
     </Card>
   );

@@ -84,9 +84,9 @@ describe('stat Conditions', () => {
 
   it('reports an unresolved stat Condition by its stored name', () => {
     const state = gate(input([gated(stat('rage', '>=', 80, { name: 'Rage' }))], rage(90, { inert: true })));
-    expect(state?.rows[0].conditions[0]).toMatchObject({ text: 'Rage >= 80', unresolved: true });
+    expect(state?.rows[0].conditions[0]).toMatchObject({ clause: 'Rage is at least 80', unresolved: true });
     expect(gate(input([gated(stat('fury', '>', 5, { name: 'Fury' }))], scoped<GateStatSet>({})))?.rows[0].conditions[0])
-      .toMatchObject({ text: 'Fury > 5', unresolved: true });
+      .toMatchObject({ clause: 'Fury is above 5', unresolved: true });
   });
 
   describe('owners', () => {
@@ -100,7 +100,7 @@ describe('stat Conditions', () => {
       const req = stat('hunger', '>', 70, { owner: { kind: 'entity', id: 'ash' } });
       const i = input([gated(req)], stats, [], { ...owners([gated(req)]), entities });
       expect(gate(i)?.unlocked).toBe(true);
-      expect(gate(i)?.rows[0].conditions[0].text).toBe('Ash: Hunger > 70');
+      expect(gate(i)?.rows[0].conditions[0].clause).toBe("Ash's Hunger is above 70");
     });
 
     it('reads the played persona’s own stats through You', () => {

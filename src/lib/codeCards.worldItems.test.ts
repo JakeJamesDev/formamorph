@@ -103,7 +103,7 @@ describe('trait cards', () => {
     const card = cardAt('return traits.Br|ave.enabled;', worldBox);
     expect(card?.rows).toEqual([
       { label: 'Mode', value: 'Optional' },
-      { label: 'Requires', value: 'Courage >= 50 and not Shy\nor playing as Tom' },
+      { label: 'Requires', value: 'Courage is at least 50 and Shy is not active\nor the player is Tom' },
       { label: 'Changes', value: 'Stamina max +10, Fatigue regen −1%, Fatigue off' },
     ]);
     expect(card?.signature.scope).toBe('global');

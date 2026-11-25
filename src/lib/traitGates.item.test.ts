@@ -90,7 +90,7 @@ describe('item Conditions', () => {
 
   it('reads in the gate line and compares by status', () => {
     const state = gateOf(gateStates(input([gated(ring('equipped', { owner: { kind: 'entity', id: 'ash' } }))], [])), null, 'Curse');
-    expect(state?.rows[0].conditions[0]).toMatchObject({ text: 'Ash: equipping Cursed Ring', unresolved: false, holds: false });
+    expect(state?.rows[0].conditions[0]).toMatchObject({ clause: 'Ash has equipped Cursed Ring', unresolved: false, holds: false });
     expect(sameRequirement(ring('owned'), ring('equipped'))).toBe(false);
     expect(sameRequirement(ring('owned'), ring('owned'))).toBe(true);
   });
@@ -157,31 +157,31 @@ describe('item Condition State and identity (Q22, Q45)', () => {
   });
 
   it('reads the checks in parentheses after the name', () => {
-    const text = (req: ItemRequirement) => gateOf(gateStates(input([gated(req)], [])), null, 'Curse')?.rows[0].conditions[0].text;
-    expect(text(lantern('owned', { state: 'lit' }))).toBe('owning Cursed Ring (lit)');
-    expect(text(lantern('equipped', { identity: 'unidentified' }))).toBe('equipping Cursed Ring (unidentified)');
-    expect(text(lantern('owned', { state: 'lit', identity: 'unidentified', not: true }))).toBe('not owning Cursed Ring (lit, unidentified)');
+    const text = (req: ItemRequirement) => gateOf(gateStates(input([gated(req)], [])), null, 'Curse')?.rows[0].conditions[0].clause;
+    expect(text(lantern('owned', { state: 'lit' }))).toBe('the player owns Cursed Ring (lit)');
+    expect(text(lantern('equipped', { identity: 'unidentified' }))).toBe('the player has equipped Cursed Ring (unidentified)');
+    expect(text(lantern('owned', { state: 'lit', identity: 'unidentified', not: true }))).toBe("the player doesn't own Cursed Ring (lit, unidentified)");
   });
 
   describe('the unidentified face', () => {
     const masked = { reader: 'player' as const, worldItems: [{ id: 'ring', name: 'Cursed Ring', unidentifiedName: 'Plain Ring' }] };
     const text = (instances: ItemInstance[], extra: Partial<GateInput> = masked) =>
-      gateOf(gateStates(input([gated(ring())], instances, extra)), null, 'Curse')?.rows[0].conditions[0].text;
+      gateOf(gateStates(input([gated(ring())], instances, extra)), null, 'Curse')?.rows[0].conditions[0].clause;
 
     it('names the unidentified face while the owner holds no identified instance', () => {
-      expect(text([])).toBe('owning Plain Ring');
-      expect(text([held('a', { unidentified: true })])).toBe('owning Plain Ring');
-      expect(text([held('a', { unidentified: true }), held('b', undefined)])).toBe('owning Cursed Ring');
+      expect(text([])).toBe('you own Plain Ring');
+      expect(text([held('a', { unidentified: true })])).toBe('you own Plain Ring');
+      expect(text([held('a', { unidentified: true }), held('b', undefined)])).toBe('you own Cursed Ring');
     });
 
     it('ignores a hidden identified instance and another owner\'s identified instance', () => {
-      expect(text([held('a', undefined, { visibility: 'hidden' })])).toBe('owning Plain Ring');
-      expect(text([instance('a', { kind: 'entity', id: 'ash' })])).toBe('owning Plain Ring');
+      expect(text([held('a', undefined, { visibility: 'hidden' })])).toBe('you own Plain Ring');
+      expect(text([instance('a', { kind: 'entity', id: 'ash' })])).toBe('you own Plain Ring');
     });
 
     it('keeps the true name for the author and for an item with no unidentified face', () => {
-      expect(text([], { ...masked, reader: 'author' })).toBe('owning Cursed Ring');
-      expect(text([], { reader: 'player' })).toBe('owning Cursed Ring');
+      expect(text([], { ...masked, reader: 'author' })).toBe('the player owns Cursed Ring');
+      expect(text([], { reader: 'player' })).toBe('you own Cursed Ring');
     });
   });
 

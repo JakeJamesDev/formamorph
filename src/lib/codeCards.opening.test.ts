@@ -46,14 +46,14 @@ function requiresOf(name: string): string | undefined {
 
 describe('a code card’s Opening Condition line', () => {
   it('reads the picked Opening’s name', () => {
-    expect(requiresOf('Named')).toBe('Opening ambush');
+    expect(requiresOf('Named')).toBe('the opening is ambush');
   });
 
   it('reads an unnamed Opening’s derived label', () => {
-    expect(requiresOf('Unnamed')).toBe('Opening World · Opening 2');
+    expect(requiresOf('Unnamed')).toBe('the opening is World · Opening 2');
   });
 
   it('reads the negated form for a Not Condition', () => {
-    expect(requiresOf('Negated')).toBe('not Opening ambush');
+    expect(requiresOf('Negated')).toBe('the opening is not ambush');
   });
 });

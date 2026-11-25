@@ -110,12 +110,13 @@ const statOwnersOf = (id: string, sections: readonly RequirementStatSection[]): 
     .filter((owner) => !seen.has(requirementOwnerKey(owner)) && seen.add(requirementOwnerKey(owner)));
 };
 
-/** A stat swap keeps the owner, operator and Not; the number and unit are the new stat's own. This is the one place
- *  that decides which fields a stat swap carries. */
-const statSwapped = (req: StatRequirement, option: RequirementOption): TraitRequirement => {
+/** A stat swap keeps the owner, operator and Not. A % value stays, since it reads the same on any stat; a Raw value
+ *  is the new stat's own default (Q34). This is the one place that decides which fields a stat swap carries. */
+export const statSwapped = (req: StatRequirement, option: RequirementOption): TraitRequirement => {
   const next = option.requirement;
   if (next.kind !== 'stat') return next;
-  return { ...next, ...(req.owner && { owner: req.owner }), operator: req.operator, ...(req.not && { not: true as const }) };
+  const percent = req.unit === 'percent' ? { unit: 'percent' as const, value: req.value } : {};
+  return { ...next, ...percent, ...(req.owner && { owner: req.owner }), operator: req.operator, ...(req.not && { not: true as const }) };
 };
 
 /** One Condition as tokens: an owner list, a verb and a target swap list for a trait, a group, a persona or an item
@@ -403,7 +404,7 @@ function OptionClause({ requirement: req, parts, edit, ctx }: {
     if (type === 'boolean') {
       const next = flipped(req);
       return (
-        <SentenceFlipToken label={`Change to “${req.not ? 'on' : 'off'}”`} disabled={!edit.accepts(next)} onFlip={() => edit.replace(next)}>
+        <SentenceFlipToken label={`Change to “${req.not ? 'on' : 'off'}”`} disabled={!edit.accepts(next)} broken={reason} onFlip={() => edit.replace(next)}>
           {part.text}
         </SentenceFlipToken>
       );

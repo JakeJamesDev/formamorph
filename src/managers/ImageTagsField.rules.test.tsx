@@ -96,7 +96,7 @@ describe('Gallery Visibility rules on a location', () => {
 
   it("reads a Condition with no owner as the persona's on the rule button, and gives no cover warning", () => {
     render(<Harness initial={[{ data: A, requires: lowHealth }, { data: B }]} host={LOCATION_RULE_HOST} />);
-    expect(frameRule()).toHaveAccessibleName('Visibility Rule: Shown while Persona: Health < 20%');
+    expect(frameRule()).toHaveAccessibleName("Visibility Rule: Shown while the player's Health is below 20%");
     expect(document.querySelector('[data-image-rule-cover-warning]')).toBeNull();
   });
 });
@@ -119,7 +119,7 @@ describe('Gallery Visibility rules on an item', () => {
   it('names the framed image’s rule on its rule button', () => {
     render(<Harness initial={[{ data: A }, { data: B, requires: notHealed }]} host={LAMP_HOST} />);
     fireEvent.click(tile(/^Image 2/));
-    expect(frameRule()).toHaveAccessibleName('Visibility Rule: Shown while not Healed');
+    expect(frameRule()).toHaveAccessibleName("Visibility Rule: Shown while the item's owner doesn't have Healed");
   });
 });
 
@@ -157,7 +157,7 @@ describe('Gallery Visibility rules', () => {
     render(<Harness initial={[{ data: A }, { data: B, requires: lowHealth }]} />);
     expect(frameRule()).toHaveAccessibleName('Visibility Rule: Always shows');
     fireEvent.click(tile(/^Image 2/));
-    expect(frameRule()).toHaveAccessibleName('Visibility Rule: Shown while Health < 20%');
+    expect(frameRule()).toHaveAccessibleName("Visibility Rule: Shown while Wren's Health is below 20%");
   });
 
   it('draws no rule button over the open slot, and none on the strip’s tiles', () => {
@@ -179,7 +179,7 @@ describe('Gallery Visibility rules', () => {
   it('reads a trait Condition, and Not', () => {
     render(<Harness initial={[{ data: A }, { data: B, requires: notHealed }]} />);
     fireEvent.click(tile(/^Image 2/));
-    expect(frameRule()).toHaveAccessibleName('Visibility Rule: Shown while not Healed');
+    expect(frameRule()).toHaveAccessibleName("Visibility Rule: Shown while Wren doesn't have Healed");
   });
 
   it('warns only while the primary image carries a rule', () => {

@@ -28,7 +28,7 @@ const world = (
 
 const unlocked = (input: GateInput, id: string, owner: OwnerId = null) => gateOf(gateStates(input), owner, id)?.unlocked;
 const reason = (input: GateInput, id: string, owner: OwnerId = null) =>
-  gateOf(gateStates(input), owner, id)?.rows.flatMap((row) => row.conditions).map((c) => c.text);
+  gateOf(gateStates(input), owner, id)?.rows.flatMap((row) => row.conditions).map((c) => c.clause);
 
 describe('gate states', () => {
   const classes = [T('Paladin'), T('Knight'), T('Plate Armor', { requires: [{ all: [trait('Paladin')] }, { all: [trait('Knight')] }] })];
@@ -45,7 +45,7 @@ describe('gate states', () => {
   });
 
   it('names every requirement of a locked trait', () => {
-    expect(reason(world(classes), 'Plate Armor')).toEqual(['Paladin', 'Knight']);
+    expect(reason(world(classes), 'Plate Armor')).toEqual(['Paladin is active', 'Knight is active']);
   });
 
   it('reports each owner’s gates under that owner', () => {
@@ -60,8 +60,8 @@ describe('gate states', () => {
   it('flags a requirement on a Hidden trait, in the owner’s tree or only in the originals', () => {
     const traits = [T('Bond', { mode: 'hidden' }), T('Rite', { requires: [{ all: [trait('Bond')] }, { all: [trait('Omen')] }, { all: [trait('Knight')] }] }), T('Knight')];
     const input = world(traits, [], [], { originals: { traits: [T('Omen', { mode: 'hidden' })], groups: [] } });
-    expect(gateOf(gateStates(input), null, 'Rite')?.rows.flatMap((row) => row.conditions).map((c) => [c.text, c.hidden])).toEqual([
-      ['Bond', true], ['Omen', true], ['Knight', false],
+    expect(gateOf(gateStates(input), null, 'Rite')?.rows.flatMap((row) => row.conditions).map((c) => [c.clause, c.hidden])).toEqual([
+      ['Bond is active', true], ['Omen is active', true], ['Knight is active', false],
     ]);
   });
 
@@ -92,9 +92,9 @@ describe('requirement rows', () => {
 
   it('reports each row and each Condition in it, in authored order', () => {
     const state = gateOf(gateStates(world(traits, [], ['Knight', 'Merc'])), null, 'Banner')!;
-    expect(state.rows.map((row) => [row.holds, row.conditions.map((c) => [c.text, c.holds])])).toEqual([
-      [false, [['Knight', true], ['Heavy', false]]],
-      [true, [['Merc', true]]],
+    expect(state.rows.map((row) => [row.holds, row.conditions.map((c) => [c.clause, c.holds])])).toEqual([
+      [false, [['Knight is active', true], ['Heavy is active', false]]],
+      [true, [['Merc is active', true]]],
     ]);
     expect(gateOf(gateStates(world(traits)), null, 'Knight')).toEqual({ unlocked: true, rows: [] });
   });
@@ -161,7 +161,7 @@ describe('requirement kinds', () => {
     expect(unlocked(world(traits, groups, ['Loose']), 'Cant')).toBe(false);
     expect(unlocked(world(traits, groups, ['Mage']), 'Cant')).toBe(true);
     expect(unlocked(world(traits, groups, ['Spellblade']), 'Cant')).toBe(true);
-    expect(reason(world(traits, groups), 'Cant')).toEqual(['any Class']);
+    expect(reason(world(traits, groups), 'Cant')).toEqual(['a trait in Class is active']);
   });
 
   // Q6: a world group counts global items only, so a placed entity node never holds it up, played or not.
@@ -184,7 +184,7 @@ describe('requirement kinds', () => {
     expect(unlocked(as({ source: 'none' }), 'Royal Plate')).toBe(false);
     expect(unlocked(as({ source: 'library', entityId: 'aldric' }), 'Royal Plate')).toBe(false);
     expect(unlocked(as({ source: 'world', entityId: 'aldric' }), 'Royal Plate')).toBe(true);
-    expect(reason(as({ source: 'none' }), 'Royal Plate')).toEqual(['playing as Sir Aldric']);
+    expect(reason(as({ source: 'none' }), 'Royal Plate')).toEqual(['the player is Sir Aldric']);
   });
 
   it('never holds an unresolved requirement, and names it by its stored name or its kind', () => {
@@ -201,9 +201,9 @@ describe('requirement kinds', () => {
     const input = world(gated, [], ['gone', 'gone-2'], { persona: { source: 'world', entityId: 'gone-entity' } });
     const state = gateOf(gateStates(input), null, 'Guild Mark')!;
     expect(state.unlocked).toBe(false);
-    expect(state.rows.flatMap((row) => row.conditions).map((c) => c.text)).toEqual([
-      'Thief', 'any Guilds', 'playing as Mara',
-      'a missing trait', 'any trait in a missing group', 'playing as a missing persona',
+    expect(state.rows.flatMap((row) => row.conditions).map((c) => c.clause)).toEqual([
+      'Thief is active', 'a trait in Guilds is active', 'the player is Mara',
+      'a missing trait is active', 'a trait in a missing group is active', 'the player is a missing persona',
     ]);
     expect(state.rows.every((row) => row.conditions.every((c) => c.unresolved))).toBe(true);
   });
@@ -231,7 +231,7 @@ describe('requirements per owner', () => {
       owners: dormant.owners.map((o) => (o.id === 'albus' ? { ...o, traits: [...o.traits, lucky] } : o)),
       originals: { traits: [T('Halfling'), lucky], groups: [] },
     };
-    expect(reason(withLucky, 'Lucky Step', 'albus')).toEqual(['Halfling']);
+    expect(reason(withLucky, 'Lucky Step', 'albus')).toEqual(['Halfling is active']);
     expect(unlocked(withLucky, 'Lucky Step', 'albus')).toBe(false);
     expect(switchTrait(withLucky, 'albus', 'Lucky Step')).toBeNull();
   });
@@ -240,7 +240,7 @@ describe('requirements per owner', () => {
     const albusOnly = input(scoped([], { albus: ['Paladin'] }));
     expect(unlocked(albusOnly, 'Smite', 'albus')).toBe(true);
     expect(unlocked(albusOnly, 'Smite', null)).toBe(false);
-    expect(reason(albusOnly, 'Smite', null)).toEqual(['Paladin']);
+    expect(reason(albusOnly, 'Smite', null)).toEqual(['Paladin is active']);
     const globalOnly = input(scoped(['Paladin']));
     expect(unlocked(globalOnly, 'Smite', null)).toBe(true);
     expect(unlocked(globalOnly, 'Smite', 'albus')).toBe(false);
@@ -251,7 +251,7 @@ describe('requirements per owner', () => {
     const owners = [albus, gated];
     expect(unlocked({ ...input(scoped([], { albus: ['Paladin'] })), owners }, 'Squire', 'mira')).toBe(true);
     expect(unlocked({ ...input(scoped(['Paladin'], { mira: ['Paladin'] })), owners }, 'Squire', 'mira')).toBe(false);
-    expect(reason({ ...input(NO_ACTIVE), owners }, 'Squire', 'mira')).toEqual(['Albus: Paladin']);
+    expect(reason({ ...input(NO_ACTIVE), owners }, 'Squire', 'mira')).toEqual(['Albus has Paladin']);
   });
 
   it('holds a You requirement through the player’s set, which a persona switch changes', () => {
@@ -259,7 +259,7 @@ describe('requirements per owner', () => {
     expect(unlocked(input(scoped([], { albus: ['Paladin'] })), 'Squire', 'mira')).toBe(false);
     expect(unlocked(input(scoped(['Paladin'])), 'Squire', 'mira')).toBe(true);
     expect(unlocked(input(scoped([], { albus: ['Paladin'] }), { source: 'world', entityId: 'albus' }), 'Squire', 'mira')).toBe(true);
-    expect(reason(input(NO_ACTIVE), 'Squire', 'mira')).toEqual(['Persona: Paladin']);
+    expect(reason(input(NO_ACTIVE), 'Squire', 'mira')).toEqual(['the player has Paladin']);
   });
 
   // Q18: chip text reads the persona owner as Persona; the player's clause reads "you", whoever is played.
@@ -268,28 +268,28 @@ describe('requirements per owner', () => {
     const player = (persona: PersonaRef, extra: Partial<GateInput> = {}): GateInput => ({ ...input(NO_ACTIVE, persona), reader: 'player', ...extra });
 
     it('reads Persona to the author, whoever is played', () => {
-      expect(reason(input(NO_ACTIVE, { source: 'world', entityId: 'albus' }), 'Squire', 'mira')).toEqual(['Persona: Paladin']);
+      expect(reason(input(NO_ACTIVE, { source: 'world', entityId: 'albus' }), 'Squire', 'mira')).toEqual(['the player has Paladin']);
       expect(state(input(NO_ACTIVE, { source: 'world', entityId: 'albus' })).clause).toBe('the player has Paladin');
     });
 
     it('reads "you" to the player when a world persona is played', () => {
-      expect(state(player({ source: 'world', entityId: 'albus' }))).toEqual({ text: 'Persona: Paladin', clause: 'you have Paladin', holds: false, unresolved: false, hidden: false });
+      expect(state(player({ source: 'world', entityId: 'albus' }))).toEqual({ clause: 'you have Paladin', holds: false, unresolved: false, hidden: false });
     });
 
     it('reads "you" to the player when no one is played', () => {
-      expect(state(player({ source: 'none' }))).toEqual({ text: 'Persona: Paladin', clause: 'you have Paladin', holds: false, unresolved: false, hidden: false });
+      expect(state(player({ source: 'none' }))).toEqual({ clause: 'you have Paladin', holds: false, unresolved: false, hidden: false });
     });
 
     it('reads "you" for the Custom Persona entity under None', () => {
       const custom: GateOwner = { id: 'cp', name: 'Ash Vale', groups: [], traits: [] };
       const gate = player({ source: 'none' }, { owners: [albus, mira, custom], entities: [...entities, { id: 'cp', name: 'Wanderer', customPersona: true }] });
-      expect(state(gate)).toMatchObject({ text: 'Persona: Paladin', clause: 'you have Paladin' });
+      expect(state(gate)).toMatchObject({ clause: 'you have Paladin' });
     });
 
     it('reads "you" for a library persona when the Custom Persona entity is also played', () => {
       const lib: GateOwner = { id: 'lib', name: 'Kate', groups: [], traits: [] };
       const gate = player({ source: 'library', entityId: 'lib' }, { owners: [albus, mira, lib], entities: [...entities, { id: 'cp', name: 'Wanderer', customPersona: true }] });
-      expect(state(gate)).toMatchObject({ text: 'Persona: Paladin', clause: 'you have Paladin' });
+      expect(state(gate)).toMatchObject({ clause: 'you have Paladin' });
     });
   });
 
@@ -313,10 +313,10 @@ describe('requirements per owner', () => {
     const owners = [{ ...mira, traits: [squire] }];
     const state = gateOf(gateStates({ ...input(NO_ACTIVE), owners, originals: { traits: [T('Cleric')], groups: [] } }), 'mira', 'Squire')!;
     expect(state.rows).toEqual([
-      { holds: false, conditions: [{ text: 'Persona: Cleric', clause: 'the player has Cleric', holds: false, unresolved: false, hidden: false }] },
-      { holds: false, conditions: [{ text: 'Old Albus: Paladin', clause: 'Old Albus has Paladin', holds: false, unresolved: true, hidden: false }] },
+      { holds: false, conditions: [{ clause: 'the player has Cleric', holds: false, unresolved: false, hidden: false }] },
+      { holds: false, conditions: [{ clause: 'Old Albus has Paladin', holds: false, unresolved: true, hidden: false }] },
     ]);
-    expect(reason({ ...input(NO_ACTIVE), owners }, 'Squire', 'mira')?.[0]).toBe('Persona: a missing trait');
+    expect(reason({ ...input(NO_ACTIVE), owners }, 'Squire', 'mira')?.[0]).toBe('the player has a missing trait');
   });
 
   it('holds a named group requirement through that owner’s traits below the group', () => {
@@ -330,7 +330,7 @@ describe('requirements per owner', () => {
     const at = (active: GateInput['active']) => ({ ...input(active), global, owners });
     expect(unlocked(at(scoped([], { albus: ['Knight'] })), 'Squire', 'mira')).toBe(true);
     expect(unlocked(at(scoped([], { mira: ['Knight'] })), 'Squire', 'mira')).toBe(false);
-    expect(reason(at(NO_ACTIVE), 'Squire', 'mira')).toEqual(['Albus: any Classes']);
+    expect(reason(at(NO_ACTIVE), 'Squire', 'mira')).toEqual(['Albus has a trait in Classes']);
   });
 });
 
@@ -860,13 +860,13 @@ describe('requirement options', () => {
     expect(owners('Tamed')).toEqual(['Persona', 'Ash']);
     expect(owners('Oath')).toEqual(['Persona', 'Albus']);
     expect(options.traits.find((o) => o.label === 'Oath')?.owners[1].owner).toEqual({ kind: 'entity', id: 'albus', name: 'Albus' });
-    expect(options.groups.find((o) => o.label === 'any Class')?.owners).toEqual([]);
+    expect(options.groups.find((o) => o.label === 'Class')?.owners).toEqual([]);
   });
 
   it('leaves out a group that holds only the trait and its exclusive siblings, and keeps one with another way in', () => {
     const labels = requirementOptions(input, 'Paladin').groups.map((o) => o.label);
-    expect(labels).not.toContain('any Class');
-    expect(labels).toContain('any Gear');
+    expect(labels).not.toContain('Class');
+    expect(labels).toContain('Gear');
     // A parent group holds the exclusive one plus a trait of its own, so it can still unlock Paladin.
     const nested = {
       ...input,
@@ -876,21 +876,21 @@ describe('requirement options', () => {
       },
       owners: [wolf],
     };
-    expect(requirementOptions(nested, 'Paladin').groups.map((o) => o.label)).toContain('any Martial');
+    expect(requirementOptions(nested, 'Paladin').groups.map((o) => o.label)).toContain('Martial');
     // An empty group is offered: it can open the trait once the author fills it.
     const empty = { ...input, global: { ...input.global, groups: [...groups, G('Oaths')] }, owners: [wolf] };
-    expect(requirementOptions(empty, 'Paladin').groups.map((o) => o.label)).toContain('any Oaths');
+    expect(requirementOptions(empty, 'Paladin').groups.map((o) => o.label)).toContain('Oaths');
   });
 
   it('lists every group as "any" with its parent path', () => {
     expect(rows(requirementOptions(input, 'Loose').groups)).toEqual([
-      'any Class @ World', 'any Gear @ World', 'any Heavy @ Gear', 'any Bond @ Ash',
+      'Class @ World', 'Gear @ World', 'Heavy @ Gear', 'Bond @ Ash',
     ]);
   });
 
   it('lists only the world personas under playing as', () => {
     expect(requirementOptions(input, 'Loose').personas).toEqual([
-      { requirement: { kind: 'playingAs', id: 'aldric' }, label: 'playing as Sir Aldric', breadcrumb: ['Persona'], owners: [] },
+      { requirement: { kind: 'playingAs', id: 'aldric' }, label: 'Sir Aldric', breadcrumb: ['Persona'], owners: [] },
     ]);
   });
 
@@ -1109,7 +1109,7 @@ describe('Not Conditions', () => {
       const traits = [T('Paladin'), T('Street Smarts', { requires: only(not(trait('Paladin'))) })];
       expect(unlocked(world(traits), 'Street Smarts')).toBe(true);
       expect(unlocked(world(traits, [], ['Paladin']), 'Street Smarts')).toBe(false);
-      expect(reason(world(traits), 'Street Smarts')).toEqual(['not Paladin']);
+      expect(reason(world(traits), 'Street Smarts')).toEqual(['Paladin is not active']);
     });
 
     it('holds a Not group Condition only while no trait below the group is active', () => {
@@ -1118,7 +1118,7 @@ describe('Not Conditions', () => {
         T('Drifter', { requires: only(not({ kind: 'group', id: 'Class' })) })];
       expect(unlocked(world(traits, groups, ['Loose']), 'Drifter')).toBe(true);
       expect(unlocked(world(traits, groups, ['Spellblade']), 'Drifter')).toBe(false);
-      expect(reason(world(traits, groups), 'Drifter')).toEqual(['not any Class']);
+      expect(reason(world(traits, groups), 'Drifter')).toEqual(['no trait in Class is active']);
     });
 
     it('holds a Not playing-as Condition under every persona but that one', () => {
@@ -1128,7 +1128,7 @@ describe('Not Conditions', () => {
       expect(unlocked(as({ source: 'none' }), 'Commoner')).toBe(true);
       expect(unlocked(as({ source: 'world', entityId: 'mara' }), 'Commoner')).toBe(true);
       expect(unlocked(as({ source: 'world', entityId: 'aldric' }), 'Commoner')).toBe(false);
-      expect(reason(as({ source: 'none' }), 'Commoner')).toEqual(['not playing as Sir Aldric']);
+      expect(reason(as({ source: 'none' }), 'Commoner')).toEqual(['the player is not Sir Aldric']);
     });
 
     it('holds a Not Condition with an owner through that owner’s set alone', () => {
@@ -1141,8 +1141,8 @@ describe('Not Conditions', () => {
       expect(unlocked(at(scoped([], { wolf: ['Tamed'] })), 'Hunt')).toBe(false);
       expect(unlocked(at(scoped([], { wolf: ['Paladin'] })), 'Rebel')).toBe(true);
       expect(unlocked(at(scoped(['Paladin'])), 'Rebel')).toBe(false);
-      expect(reason(at(NO_ACTIVE), 'Hunt')).toEqual(['Ash: not Tamed']);
-      expect(reason(at(NO_ACTIVE), 'Rebel')).toEqual(['Persona: not Paladin']);
+      expect(reason(at(NO_ACTIVE), 'Hunt')).toEqual(["Ash doesn't have Tamed"]);
+      expect(reason(at(NO_ACTIVE), 'Rebel')).toEqual(["the player doesn't have Paladin"]);
     });
 
     it('counts an exclusive sibling as off for a Not Condition', () => {
@@ -1181,7 +1181,7 @@ describe('Not Conditions', () => {
       const traits = [T('Rogue', { requires: only(not({ kind: 'trait', id: 'gone', name: 'Paladin' })) })];
       const state = gateOf(gateStates(world(traits)), null, 'Rogue')!;
       expect(state.unlocked).toBe(false);
-      expect(state.rows[0].conditions[0]).toMatchObject({ text: 'not Paladin', unresolved: true, holds: false });
+      expect(state.rows[0].conditions[0]).toMatchObject({ clause: 'Paladin is not active', unresolved: true, holds: false });
       expect(settle(world(traits, [], ['Rogue'])).active.global).toEqual([]);
     });
 

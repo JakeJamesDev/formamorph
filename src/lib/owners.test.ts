@@ -442,7 +442,7 @@ describe('resolveOwners: the gate input', () => {
     const gated = { ...mira, traits: [trait('vow', { name: 'Vow', requires: [{ all: [{ kind: 'trait', id: 'smite', owner: { kind: 'you' } }] }] })] };
     const r = resolveOwners(world({ entities: [albus, gated] }), AS_ALBUS);
     expect(gateOf(gateStates({ ...r.gate, active: NO_ACTIVE }), 'mira', 'vow')?.rows).toEqual([
-      { holds: false, conditions: [{ text: 'Persona: Smite', clause: 'the player has Smite', holds: false, unresolved: false, hidden: false }] },
+      { holds: false, conditions: [{ clause: 'the player has Smite', holds: false, unresolved: false, hidden: false }] },
     ]);
   });
 
@@ -466,7 +466,7 @@ describe('editorGateInput', () => {
     expect(input.active).toEqual(NO_ACTIVE);
     expect(input.persona).toEqual(NONE);
     expect(gateOf(gateStates(input), null, 'smite')?.rows).toEqual([
-      { holds: false, conditions: [{ text: 'Paladin', clause: 'Paladin is active', holds: false, unresolved: false, hidden: false }] },
+      { holds: false, conditions: [{ clause: 'Paladin is active', holds: false, unresolved: false, hidden: false }] },
     ]);
   });
 

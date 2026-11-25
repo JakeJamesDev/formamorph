@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { openingFold, type OpeningFoldWorld } from './openingState';
-import { conditionTexts, gateOf, gateStates, requirementOptions, ruleStates, type GateInput } from './traitGates';
+import { clauseText, conditionClauses, gateOf, gateStates, requirementOptions, ruleStates, type GateInput } from './traitGates';
 import { libraryGateInput } from './libraryGateInput';
 import { traitGateInput } from './traitRuntime';
 import { editorGateInput } from './owners';
@@ -105,11 +105,11 @@ describe('the Opening Condition outside play', () => {
 
   it('reads the picked names or derived labels, and a deleted key as unresolved', () => {
     const input = editorGateInput({ traits, traitGroups: [], entities: [aki], openings: groups });
-    const text = conditionTexts(input);
-    expect(text(onOpening([AMBUSH, { ownerId: 'aki', openingId: 'a1' }]))).toBe('Opening ambush or Aki · Opening 1');
-    expect(text(onOpening([QUIET], true))).toBe('not Opening World · Opening 2');
+    const text = (req: OpeningRequirement) => clauseText(conditionClauses(input)(req));
+    expect(text(onOpening([AMBUSH, { ownerId: 'aki', openingId: 'a1' }]))).toBe('the opening is ambush or Aki · Opening 1');
+    expect(text(onOpening([QUIET], true))).toBe('the opening is not World · Opening 2');
     const dead = ruleStates(input, null, [{ all: [onOpening([{ ownerId: null, openingId: 'gone' }])] }])[0].conditions[0];
-    expect(dead).toMatchObject({ text: 'Opening a missing Opening', unresolved: true, holds: false });
+    expect(dead).toMatchObject({ clause: 'the opening is a missing Opening', unresolved: true, holds: false });
   });
 
   it('offers a library entity its own Openings, and reads none drawn there', () => {

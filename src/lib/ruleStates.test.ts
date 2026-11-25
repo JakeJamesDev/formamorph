@@ -1,3 +1,4 @@
+import { rowClauses } from '@/test/ruleClauses';
 import { describe, expect, it } from 'vitest';
 import { shownWhileLine } from './traitGateLine';
 import { NO_ACTIVE, ruleStates, type GateInput, type GateStat, type GateStatSet } from './traitGates';
@@ -24,7 +25,7 @@ describe('ruleStates', () => {
   it('reads a stat Condition from an entity that owns no traits', () => {
     const [state] = ruleStates(input(), 'wren', [row(lowHealth)]);
     expect(state.holds).toBe(true);
-    expect(state.conditions[0]).toMatchObject({ text: 'Health < 20%', unresolved: false });
+    expect(state.conditions[0]).toMatchObject({ clause: "Wren's Health is below 20%", unresolved: false });
   });
 
   it('does not hold while the stat is above the threshold', () => {
@@ -59,7 +60,7 @@ describe('shownWhileLine', () => {
 
   it('reads a stat Condition and a Not trait Condition with the "Shown while" lead', () => {
     const states = ruleStates(input(), 'wren', [row(lowHealth, { kind: 'trait', id: 'healed', owner: { kind: 'you' }, not: true })]);
-    expect(shownWhileLine(states)).toBe('Shown while Health < 20% and Persona: not Healed');
+    expect(shownWhileLine(rowClauses(states))).toBe("Shown while Wren's Health is below 20% and the player doesn't have Healed");
   });
 
   it('closes an "and" row with a comma before "or"', () => {
@@ -67,6 +68,6 @@ describe('shownWhileLine', () => {
       row(lowHealth, { kind: 'trait', id: 'knight', owner: { kind: 'you' } }),
       row({ kind: 'trait', id: 'healed', owner: { kind: 'you' } }),
     ]);
-    expect(shownWhileLine(states)).toBe('Shown while Health < 20% and Persona: Knight, or Persona: Healed');
+    expect(shownWhileLine(rowClauses(states))).toBe("Shown while Wren's Health is below 20% and the player has Knight, or the player has Healed");
   });
 });

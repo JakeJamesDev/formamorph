@@ -30,7 +30,7 @@ describe('the update review of an entity with several Routines', () => {
     expect(diff.changed).toEqual([
       { field: 'routines/night/name', label: 'Night Life: Name', current: 'Not set', incoming: 'Night Life' },
       { field: 'routines/night/starts', label: 'Night Life: Starts', current: 'Not set', incoming: 'Start 1 at Tavern' },
-      { field: 'routines/night/requires', label: 'Night Life: Requires', current: 'Always', incoming: 'Futanari' },
+      { field: 'routines/night/requires', label: 'Night Life: Requires', current: 'Always', incoming: 'this entity has Futanari' },
       { field: 'routines/night/traversable', label: 'Night Life: Can Also Go', current: 'Not set', incoming: 'Tavern' },
     ]);
     expect(diff.unchanged.map((row) => row.label)).toEqual(expect.arrayContaining(['Day Job: Starts', 'Day Job: Requires', 'Day Job: Can Also Go']));
@@ -40,7 +40,7 @@ describe('the update review of an entity with several Routines', () => {
     const changed = { ...night, requires: [{ all: [{ kind: 'trait' as const, id: 'w-futa', name: 'Futanari', not: true as const }] }] };
     const diff = diffContent(copy([day, night]), wren([day, changed]), undefined, LOCATIONS);
     expect(diff.changed).toEqual([
-      { field: 'routines/night/requires', label: 'Night Life: Requires', current: 'Futanari', incoming: 'Not Futanari' },
+      { field: 'routines/night/requires', label: 'Night Life: Requires', current: 'this entity has Futanari', incoming: "this entity doesn't have Futanari" },
     ]);
   });
 

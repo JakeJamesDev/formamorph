@@ -55,12 +55,23 @@ export function SentenceToken({ children, editor, label, wide, modal, broken, fl
 }
 
 /** A token that flips its part on one click, with no popover. */
-export function SentenceFlipToken({ children, label, disabled, onFlip }: { children: ReactNode; label: string; disabled?: boolean; onFlip: () => void }) {
-  return (
-    <button type="button" aria-label={label} disabled={disabled} className={cn(SENTENCE_TOKEN_CLASS, 'disabled:pointer-events-none disabled:opacity-50')} onClick={onFlip}>
+export function SentenceFlipToken({ children, label, disabled, broken, onFlip }: {
+  children: ReactNode;
+  label: string;
+  disabled?: boolean;
+  /** Why the part is broken: the token reads red with a warning icon, and its tooltip gives this. */
+  broken?: string;
+  onFlip: () => void;
+}) {
+  return withReason(broken, (
+    <button
+      type="button" aria-label={label} aria-description={broken} disabled={disabled} data-broken={broken ? '' : undefined}
+      className={cn(SENTENCE_TOKEN_CLASS, 'disabled:pointer-events-none disabled:opacity-50', broken && BROKEN_CLASS)} onClick={onFlip}
+    >
       {children}
+      {broken && brokenMark}
     </button>
-  );
+  ));
 }
 
 /** A token that opens a searchable pick list; a pick closes it. `header` sits above the list. */

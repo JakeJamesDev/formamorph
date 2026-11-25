@@ -2344,7 +2344,7 @@ const gateReportOf = (world: RuleWorld): GateReport => {
   if (report) return report;
   const traits = world.traits ?? [];
   const rowsOf = (gate: GateState | undefined): string[][] =>
-    (gate?.rows ?? []).map((row) => row.conditions.map((c) => labelOf(c.text, world)));
+    (gate?.rows ?? []).map((row) => row.conditions.map((c) => labelOf(c.clause, world)));
   const quotedRules = (rows: string[][]) => ruleText(rows.map((row) => row.map(quote)));
 
   // Stat Conditions read each stat's authored start, as the editor's authoring readers do (Q31).
@@ -2844,13 +2844,13 @@ const imageReportOf = (world: RuleWorld): ImageRuleReport => {
       if (req.kind === 'stat' && req.unit === 'percent' && !state?.unresolved) {
         const read = readFrom(entity, req).flatMap((id) => statSetOf(stats, id)?.[req.id] ?? []);
         if (read.length > 0 && read.every((s) => s.min === s.max)) {
-          zeroSpans.push({ entity, position: i + 1, condition: quote(labelOf(state!.text, world)), stat: labelOf(read[0].name, world) });
+          zeroSpans.push({ entity, position: i + 1, condition: quote(labelOf(state!.clause, world)), stat: labelOf(read[0].name, world) });
         }
       }
       if (!state?.unresolved) return;
       // A switched-off stat is not missing: the stats rules judge it.
       if (req.kind === 'stat' && readFrom(entity, req).some((id) => statSetOf(stats, id)?.[req.id]?.inert)) return;
-      const texts = stateOf(i)!.rows[r].conditions.map((cond) => labelOf(cond.text, world));
+      const texts = stateOf(i)!.rows[r].conditions.map((cond) => labelOf(cond.clause, world));
       missing.push({
         entity, position: i + 1, condition: quote(texts[c]), row: row.all.length > 1 ? quote(rowText(texts)) : null, stat: req.kind === 'stat',
       });
@@ -2986,7 +2986,7 @@ const rigReportOf = (world: RuleWorld): RigReport => {
           if (!state?.unresolved || seen.has(key)) return;
           if (req.kind === 'stat' && inertFor(subject, req)) return;
           seen.add(key);
-          const texts = states[r].conditions.map((cond) => labelOf(cond.text, world));
+          const texts = states[r].conditions.map((cond) => labelOf(cond.clause, world));
           report!.missing.push({
             rig, layer, variant, condition: quote(texts[c]), row: row.all.length > 1 ? quote(rowText(texts)) : null,
             whose: subject.name ? quote(subject.name) : 'this world', stat: req.kind === 'stat',

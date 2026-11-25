@@ -25,7 +25,7 @@ import { codeDictionaries } from './statCodePlaceholders';
 import type { StatOwner, TraitOwner } from './statCodeResolver';
 import { blueprintTraitRunners, overridesScripts, statCodeOwners, type CodeOwner, type CodeOwners, type WorldScriptsSource, type WorldToolsSource } from './statCodeTargets';
 import { entityTraitNames, worldTraitPlaces } from './statCodeTraits';
-import { conditionTexts, gateTrees } from './traitGates';
+import { clauseText, conditionClauses, gateTrees } from './traitGates';
 import { openingPickGroups } from './testBench/openingPick';
 import type { LensWorld } from './testBench/lens';
 
@@ -232,7 +232,7 @@ function cardIndex(owners: CodeOwners, world: CodeCardWorld) {
     statGroups: world.statGroups && [...world.statGroups], options: world.options && [...world.options], worldOverview: world.worldOverview,
   });
   const gate = editorGateInput({ ...ownerWorld, openings }, startingGateStats({ stats: world.stats, statGroups: world.statGroups, entities: world.entities }));
-  const textOf = conditionTexts(gate);
+  const clausesOf = conditionClauses(gate);
   // Later names win, as the sandbox's map keys them.
   const worldTraits = new Map(worldTraitPlaces(ownerWorld, placeholders).map((place) => [place.name, place.id]));
   const map = placeholderPathMap({ list: placeholders, owners: world.placeholderOwners });
@@ -254,7 +254,7 @@ function cardIndex(owners: CodeOwners, world: CodeCardWorld) {
   const traitRecord = (trait: Trait, entityId?: string): CodeTraitRecord => ({
     trait,
     ...(entityId ? { entityId } : {}),
-    requires: (trait.requires ?? []).map((row) => row.all.map(textOf)),
+    requires: (trait.requires ?? []).map((row) => row.all.map((req) => clauseText(clausesOf(req, { host: entityId ? { kind: 'entity', id: entityId, name: nameOf(entityId) } : { kind: 'world' } })))),
     changes: changesOf(trait),
     // Entity owners only: global scope holds a Blueprint trait too, and is never an owner (Q8).
     owners: gateTrees(gate).flatMap((owner) => (owner.id !== null && owner.traits.some((held) => held.id === trait.id) ? [nameOf(owner.id)] : [])),

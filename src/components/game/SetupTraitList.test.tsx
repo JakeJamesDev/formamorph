@@ -132,7 +132,7 @@ describe('SetupTraitList outside the setup dialog', () => {
 });
 
 describe('SetupTraitList gates', () => {
-  const req = (clause: string, holds: boolean, hidden = false): ConditionState => ({ text: clause, clause, holds, unresolved: false, hidden });
+  const req = (clause: string, holds: boolean, hidden = false): ConditionState => ({ clause, holds, unresolved: false, hidden });
   /** Each Condition as a row of its own. */
   const oneEach = (...conditions: ReturnType<typeof req>[]) => conditions.map((c) => ({ holds: c.holds, conditions: [c] }));
   const gates = scoped(new Map([

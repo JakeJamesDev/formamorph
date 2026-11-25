@@ -132,8 +132,8 @@ describe('owned trait picks in the draft', () => {
     const knight: Entity = { id: 'knight', name: 'Knight', traits: [trait('squire', { requires: [{ all: [{ kind: 'trait', id: 'tamed', owner: { kind: 'you' } }] }] })] };
     const condition = (persona: PersonaRef) =>
       gateOf(gateStates(entryGateInput(castWorld([knight]), { ...emptyEntryDraft(), persona })), 'knight', 'squire')!.rows[0].conditions[0];
-    expect(condition(world('ash'))).toMatchObject({ text: 'Persona: tamed', clause: 'you have tamed' });
-    expect(condition({ source: 'none' })).toMatchObject({ text: 'Persona: tamed', clause: 'you have tamed' });
+    expect(condition(world('ash'))).toMatchObject({ clause: 'you have tamed' });
+    expect(condition({ source: 'none' })).toMatchObject({ clause: 'you have tamed' });
   });
 
   it("preselects every owner's defaults, the world's and each entity's, settled under the persona", () => {

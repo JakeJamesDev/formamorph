@@ -112,7 +112,7 @@ describe('the Requires field as sentences', () => {
     await user.click(screen.getByRole('option', { name: /^Knight/ }));
     expect(writtenRows()).toEqual([{ all: [knight] }]);
     await user.click(button(ADD_TO_ROW));
-    await user.click(screen.getByRole('option', { name: /^any Arms/ }));
+    await user.click(screen.getByRole('option', { name: /^Arms/ }));
     expect(writtenRows()).toEqual([{ all: [knight, arms] }]);
     await user.click(button(ADD_ROW));
     await user.click(screen.getByRole('option', { name: /^Squire/ }));

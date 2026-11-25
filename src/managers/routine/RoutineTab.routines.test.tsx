@@ -65,7 +65,7 @@ describe('the Routine list', () => {
   it('reads each gate as a muted line beside the name', () => {
     mount(mira([day, night]));
     expect(routineButton('Day Job')).toHaveAccessibleName('Day Job, Always applies');
-    expect(routineButton('Night Life')).toHaveAccessibleName('Night Life, Applies while Futanari');
+    expect(routineButton('Night Life')).toHaveAccessibleName('Night Life, Applies while this entity has Futanari');
   });
 
   it('moves focus between rows with the arrow keys', async () => {

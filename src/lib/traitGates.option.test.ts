@@ -74,10 +74,10 @@ describe('a World Option Condition', () => {
   it('never holds and reads unresolved when its Option, its value or its type is gone', () => {
     const missing = gateFor({ kind: 'option', id: 'nope', name: 'Old Switch' });
     expect(missing.unlocked).toBe(false);
-    expect(missing.rows[0].conditions[0]).toMatchObject({ unresolved: true, text: 'Old Switch is on' });
+    expect(missing.rows[0].conditions[0]).toMatchObject({ unresolved: true, clause: 'Old Switch is on' });
     const value = gateFor({ kind: 'option', id: 'len', valueId: 'gone', valueName: 'Medium', not: true });
     expect(value.unlocked).toBe(false);
-    expect(value.rows[0].conditions[0]).toMatchObject({ unresolved: true, text: 'Reply Length is not Medium' });
+    expect(value.rows[0].conditions[0]).toMatchObject({ unresolved: true, clause: 'Reply Length is not Medium' });
     // A choice Condition on an Option the author turned into a number.
     const retyped = gateFor(choice('short'), undefined, [{ ...HEAT, id: 'len' }]);
     expect(retyped.unlocked).toBe(false);
@@ -85,12 +85,12 @@ describe('a World Option Condition', () => {
   });
 
   it('reads as words', () => {
-    const text = (req: OptionRequirement) => gateFor(req).rows[0].conditions[0].text;
+    const text = (req: OptionRequirement) => gateFor(req).rows[0].conditions[0].clause;
     expect(text(choice('short'))).toBe('Reply Length is Short');
     expect(text(choice('long', true))).toBe('Reply Length is not Long');
     expect(text(lit())).toBe('Lanterns Lit is on');
     expect(text(lit(true))).toBe('Lanterns Lit is off');
-    expect(text(heat('>=', 3))).toBe('Heat >= 3');
+    expect(text(heat('>=', 3))).toBe('Heat is at least 3');
   });
 
   it('compares by Option, value and comparison, and pairs with its complement', () => {

@@ -176,7 +176,7 @@ function reader(world: InventorySettleWorld) {
 
 /** The rows' text, as a refused equip names it: each row's Conditions joined by "and", rows by "or". */
 const rowsText = (rows: readonly RowState[]): string =>
-  rows.map((row) => row.conditions.map((c) => c.text).join(' and ')).join(' or ');
+  rows.map((row) => row.conditions.map((c) => c.clause).join(' and ')).join(' or ');
 
 /** Every trait an entry can name, active or not: the acquired ones, the world's and each owner's tree. */
 function traitLookup(world: TraitWorld, acquired: readonly Trait[]): (on: BodyTraitOn) => Trait | undefined {
@@ -316,7 +316,7 @@ export function equipRequirement(state: Omit<InventorySettleState, 'instances'>,
   return (instance: ItemInstance, instances: readonly ItemInstance[]): string | null => {
     const rows = read.requirementStates(state, instance, instances);
     if (!rows || rows.some((row) => row.holds)) return null;
-    return `${read.instanceName(instance)} needs ${rowsText(rows)}`;
+    return `${read.instanceName(instance)} requires that ${rowsText(rows)}`;
   };
 }
 

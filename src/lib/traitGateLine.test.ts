@@ -4,7 +4,7 @@ import { gateOf, gateStates, type ConditionState, type GateInput, type GateOwner
 import { scoped } from './scope';
 import type { Trait, TraitRequirement } from '@/types';
 
-const c = (clause: string, holds = false, hidden = false): ConditionState => ({ text: clause, clause, holds, unresolved: false, hidden });
+const c = (clause: string, holds = false, hidden = false): ConditionState => ({ clause, holds, unresolved: false, hidden });
 /** A gate of `rows`, each row holding when every Condition in it holds. */
 const gate = (...rows: ConditionState[][]): GateState => {
   const states = rows.map((conditions) => ({ holds: conditions.every((x) => x.holds), conditions }));

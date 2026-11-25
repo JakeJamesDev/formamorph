@@ -1,4 +1,4 @@
-import type { AllowedWeatherKind, GameLocation, Opening, WeatherKind, WeatherRequirement, WorldOverview, WorldWeather } from '@/types';
+import type { AllowedWeatherKind, GameLocation, Opening, WeatherKind, WorldOverview, WorldWeather } from '@/types';
 import { daypartAt, type WorldCalendar } from '@/lib/gameClock';
 
 /** True after `elapsed` story hours in any daypart but night: when Bright Sun can show. */
@@ -25,13 +25,6 @@ const KINDS_OR = new Intl.ListFormat('en', { type: 'disjunction' });
 /** Weather kinds in words, in list order: "Rain or Storm". */
 export const weatherKindsText = (kinds: readonly WeatherKind[]): string =>
   KINDS_OR.format(weatherKindSet(kinds).map((kind) => WEATHER_LABELS[kind]));
-
-/** A weather Condition's kinds in words: "Rain or Storm", "not Rain or Storm" under Not. */
-export const weatherText = (req: WeatherRequirement): string => {
-  if (!req.kinds.length) return 'no weather';
-  const text = weatherKindsText(req.kinds);
-  return req.not ? `not ${text}` : text;
-};
 
 /** The kinds the world allows, in list order. Empty or absent = Clear alone. */
 export const allowedWeatherKinds = (weather: WorldWeather | null | undefined): WeatherKind[] => {

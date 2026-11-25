@@ -71,7 +71,7 @@ describe('the Requires field', () => {
     expect(within(list).getByText('Playing As')).toBeInTheDocument();
     const paladin = within(list).getByRole('option', { name: /^Paladin/ });
     expect(paladin).toHaveTextContent('PaladinClass');
-    expect(within(list).getByRole('option', { name: /^playing as Sir Aldric/ })).toBeInTheDocument();
+    expect(within(list).getByRole('option', { name: /^Sir Aldric/ })).toBeInTheDocument();
     expect(within(list).queryByRole('option', { name: /Odd Wick/ })).toBeNull();
 
     // Only You can hold a world trait, so the plain requirement is added with no owner page.
@@ -92,9 +92,9 @@ describe('the Requires field', () => {
     // The search reads what a row shows, never the requirement key behind it.
     fireEvent.change(search, { target: { value: 'trait' } });
     expect(screen.queryAllByRole('option')).toEqual([]);
-    fireEvent.change(search, { target: { value: 'any cl' } });
-    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['any ClassWorld']);
-    fireEvent.click(screen.getByRole('option', { name: /any Class/ }));
+    fireEvent.change(search, { target: { value: 'cl' } });
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['PaladinClass', 'RogueClass', 'ClassWorld']);
+    fireEvent.click(screen.getByRole('option', { name: /^Class/ }));
 
     expect(traitRequires(ctx, 't-plate')).toEqual([{ all: [{ kind: 'trait', id: 't-paladin' }] }, { all: [{ kind: 'group', id: 'g-class' }] }]);
     expect(within(requiresField()).getByText('or')).toBeInTheDocument();

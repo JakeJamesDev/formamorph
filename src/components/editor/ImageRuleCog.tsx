@@ -10,9 +10,8 @@ import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { RuleSourceContext, useRuleSource } from '@/contexts/RuleSourceContext';
 import { TraitStoreContext } from '@/contexts/TraitStoreContext';
 import { labelPlaceholders } from '@/lib/placementLetters';
-import { locationRuleStates } from '@/lib/imageVisibility';
 import { itemHostStatSections, personaHostStatSections, requirementStatSections } from '@/lib/requirementStatOptions';
-import { conditionClauses, requirementOptions, ruleStates, type ClauseHost, type GateInput, type RequirementOptions } from '@/lib/traitGates';
+import { clauseText, conditionClauses, requirementOptions, type ClauseHost, type GateInput, type RequirementOptions } from '@/lib/traitGates';
 import { ruleText, shownWhileLine } from '@/lib/traitGateLine';
 import { cn } from '@/lib/utils';
 import type { TraitRequirementRow } from '@/types';
@@ -31,14 +30,20 @@ export const useEntityRuleHost = (id: string | undefined): RuleHost | undefined 
 /** An item's rule host, the same object while the id holds. */
 export const useItemRuleHost = (id: string): RuleHost => useMemo(() => ({ kind: 'item', id }), [id]);
 
-/** Each row's state of an image rule on `host`. The editor has no Item Instance, so an item's rows resolve their text
- *  against the global scope and hold for no one. */
-const hostRuleStates = (input: GateInput, host: RuleHost, rows: readonly TraitRequirementRow[]) => {
-  if (host.kind === 'location') return locationRuleStates(input, rows);
-  if (host.kind === 'entity') return ruleStates(input, host.id, rows);
-  return ruleStates(input, null, rows).map((row) => ({
-    holds: false, conditions: row.conditions.map((c) => ({ ...c, holds: false })),
-  }));
+const ITEM_CLAUSE_HOST: ClauseHost = { kind: 'item' };
+const PERSONA_CLAUSE_HOST: ClauseHost = { kind: 'persona' };
+
+/** The host a rule's Conditions sit on, as its clauses read them. */
+const clauseHostOf = (input: GateInput, host: RuleHost): ClauseHost => {
+  if (host.kind === 'entity') return { kind: 'entity', id: host.id, name: input.owners.find((o) => o.id === host.id)?.name };
+  return host.kind === 'item' ? ITEM_CLAUSE_HOST : PERSONA_CLAUSE_HOST;
+};
+
+/** Each row of an image rule on `host` as its Conditions' clauses, in the Requires field's words. */
+const hostRuleClauses = (input: GateInput, host: RuleHost, rows: readonly TraitRequirementRow[]): string[][] => {
+  const clausesOf = conditionClauses(input);
+  const clauseHost = clauseHostOf(input, host);
+  return rows.map((row) => row.all.map((req) => clauseText(clausesOf(req, { host: clauseHost }))));
 };
 
 /** `rows` on `host` as "A and B, or C", placeholders labeled; null with no rows or nothing to read targets from. */
@@ -46,8 +51,7 @@ export function useHostRuleText(host: RuleHost | undefined, rows: readonly Trait
   const source = useRuleSource();
   return useMemo(() => {
     if (!source || !host || !rows.length) return null;
-    const states = hostRuleStates(source.gateInput, host, rows);
-    return labelPlaceholders(ruleText(states.map((row) => row.conditions.map((c) => c.text))), source.placeholders);
+    return labelPlaceholders(ruleText(hostRuleClauses(source.gateInput, host, rows)), source.placeholders);
   }, [source, host, rows]);
 }
 
@@ -57,9 +61,6 @@ const withoutPersonaOwner = (options: RequirementOptions): RequirementOptions =>
     targets.map((target) => ({ ...target, owners: target.owners.filter((choice) => choice.owner.kind !== 'you') }));
   return { ...options, traits: dropPersona(options.traits), groups: dropPersona(options.groups) };
 };
-
-const ITEM_CLAUSE_HOST: ClauseHost = { kind: 'item' };
-const PERSONA_CLAUSE_HOST: ClauseHost = { kind: 'persona' };
 
 /** A rule target has nowhere to open in the gallery. */
 const noop = () => {};
@@ -87,13 +88,10 @@ export function HostRuleRows({ host, rows, onChange, label = 'Visibility Rule', 
     // No trait is the host, so nothing is left out of the targets.
     const options = requirementOptions(source.gateInput, '');
     const clausesOf = conditionClauses(source.gateInput);
-    if (host.kind === 'entity') {
-      const name = source.gateInput.owners.find((o) => o.id === host.id)?.name;
-      const clauseHost: ClauseHost = { kind: 'entity', id: host.id, name };
-      return { options, clausesOf, clauseHost, statSections: requirementStatSections(source.gateInput, host.id) };
-    }
-    if (host.kind === 'item') return { options, clausesOf, clauseHost: ITEM_CLAUSE_HOST, statSections: itemHostStatSections(source.gateInput) };
-    return { options: withoutPersonaOwner(options), clausesOf, clauseHost: PERSONA_CLAUSE_HOST, statSections: personaHostStatSections(source.gateInput) };
+    const clauseHost = clauseHostOf(source.gateInput, host);
+    if (host.kind === 'entity') return { options, clausesOf, clauseHost, statSections: requirementStatSections(source.gateInput, host.id) };
+    if (host.kind === 'item') return { options, clausesOf, clauseHost, statSections: itemHostStatSections(source.gateInput) };
+    return { options: withoutPersonaOwner(options), clausesOf, clauseHost, statSections: personaHostStatSections(source.gateInput) };
   }, [source, host]);
   if (!source || !read) return null;
   return (
@@ -132,7 +130,7 @@ export function ImageRuleEditor(props: {
 export function ImageRuleSummary({ host, rows, className }: { host: RuleHost; rows: TraitRequirementRow[]; className?: string }) {
   const source = useRuleSource();
   const line = useMemo(
-    () => source && shownWhileLine(hostRuleStates(source.gateInput, host, rows)),
+    () => source && shownWhileLine(hostRuleClauses(source.gateInput, host, rows)),
     [source, host, rows],
   );
   if (!source || !line) return null;

@@ -7,8 +7,8 @@ import type {
   SlotRule, ValuedWorldOption, WorldOption, WorldOptionValues,
 } from '@/types';
 import { DAYPARTS, OPENING_DAYPART } from './gameClock';
-import { ALL_WEATHER_KINDS, weatherKindsText, weatherText } from './weather';
-import { isDrawnOpening, openingKeyId, openingLabelMap, openingNames, openingText } from './openingCondition';
+import { ALL_WEATHER_KINDS, weatherKindsText } from './weather';
+import { isDrawnOpening, openingKeyId, openingLabelMap, openingNames } from './openingCondition';
 import type { OpeningKey } from './drawnOpening';
 import type { OpeningPickGroup } from './testBench/openingPick';
 import { defaultPicks, exclusiveSiblings, isAlwaysOn, isHidden, traitOrderIndex } from './traitEffects';
@@ -147,8 +147,6 @@ export interface GateInput {
 
 /** One Condition's state against the active sets. */
 export interface ConditionState {
-  /** The chip text, for author tools. */
-  text: string;
   /** The Condition as a clause in the reader's view, which the gate line joins (Q18). */
   clause: string;
   holds: boolean;
@@ -510,95 +508,38 @@ function resolves(req: Switched, idx: Index): boolean {
   return target && (!req.owner || idx.isGlobal(req) || ownerName(req.owner, idx) !== null);
 }
 
-/** What follows the stat's name in a stat Condition's text: the operator, then the number, with `%` under percent. */
-export const statTail = (req: StatRequirement): string => `${req.operator} ${statValue(req)}`;
-
 /** A stat Condition's number, with `%` under percent. */
 const statValue = (req: StatRequirement): string => `${req.value}${req.unit === 'percent' ? '%' : ''}`;
 
 const DAYPARTS_OR = new Intl.ListFormat('en', { type: 'disjunction' });
 
-/** A time Condition's dayparts in words, from the first one after a daypart it leaves out, so a stretch across
- *  midnight reads in order: "evening or night", "not night" under Not. */
-export function timeText(req: TimeRequirement): string {
-  if (!req.dayparts.length) return 'no time of day';
-  const text = daypartsInOrder(req);
-  return req.not ? `not ${text}` : text;
-}
-
-/** A time Condition's dayparts joined by "or", starting after a daypart it leaves out. */
+/** A time Condition's dayparts joined by "or", starting after a daypart it leaves out, so a stretch across
+ *  midnight reads in order: "evening or night". */
 function daypartsInOrder(req: TimeRequirement): string {
   const on = (i: number) => req.dayparts.includes(DAYPARTS[(i + DAYPARTS.length) % DAYPARTS.length]);
   const start = Math.max(0, DAYPARTS.findIndex((_, i) => on(i) && !on(i - 1)));
   return DAYPARTS_OR.format([...DAYPARTS.slice(start), ...DAYPARTS.slice(0, start)].filter((d) => req.dayparts.includes(d)));
 }
 
-/** An item Condition's State and identity checks, in parentheses after the name: " (lit, unidentified)" (Q46). */
-export const itemChecks = (req: ItemRequirement): string => {
-  const parts = [req.state?.trim(), req.identity].filter(Boolean);
-  return parts.length ? ` (${parts.join(', ')})` : '';
-};
-
-/** What follows a number Option's name: the operator, then the number. */
-export const optionNumberTail = (req: OptionRequirement): string => `${req.operator ?? '='} ${req.value ?? 0}`;
-
-/** "Reply Length is Short", "Reply Length is not Short", "Lanterns Lit is on", "Heat >= 3". Names come from
- *  the world, else the stored ones. */
-function optionText(req: OptionRequirement, idx: Index): { text: string; unresolved: boolean } {
-  const option = idx.options.get(req.id);
-  const name = option?.name ?? req.name ?? 'a missing World Option';
-  const unresolved = !fittedOption(req, idx);
-  const type = option?.type ?? (req.operator !== undefined ? 'number' : req.valueId !== undefined ? 'choice' : 'boolean');
-  if (type === 'number') return { text: `${name} ${optionNumberTail(req)}`, unresolved };
-  if (type === 'boolean') return { text: `${name} is ${req.not ? 'off' : 'on'}`, unresolved };
-  const valueName = (option?.type === 'choice' ? option.values.find((v) => v.id === req.valueId)?.name : undefined) ?? req.valueName ?? 'a missing value';
-  return { text: `${name} is ${req.not ? 'not ' : ''}${valueName}`, unresolved };
-}
-
-/** "Paladin", "not any Class", "Ash: not Tamed" (Q11). */
-function requirementText(req: TraitRequirement, idx: Index, from?: GateScopeTree): { text: string; unresolved: boolean } {
-  if (req.kind === 'time') return { text: timeText(req), unresolved: !req.dayparts.length };
-  if (req.kind === 'weather') return { text: weatherText(req), unresolved: !req.kinds.length };
-  if (req.kind === 'opening') return openingText(req, idx.openingLabels);
-  if (req.kind === 'option') return optionText(req, idx);
-  const not = req.not ? 'not ' : '';
-  if (req.kind === 'playingAs') {
-    const entity = idx.entities.get(req.id);
-    return entity
-      ? { text: `${not}playing as ${entity.name}`, unresolved: false }
-      : { text: `${not}playing as ${req.name ?? 'a missing persona'}`, unresolved: true };
+/** Whether a Condition names something the world lacks, or leaves a part unpicked. */
+function isUnresolved(req: TraitRequirement, idx: Index): boolean {
+  switch (req.kind) {
+    case 'time': return !req.dayparts.length;
+    case 'weather': return !req.kinds.length;
+    case 'opening': {
+      const labels = idx.openingLabels;
+      return !req.openings.length || (!!labels && req.openings.some((key) => !labels.has(openingKeyId(key))));
+    }
+    case 'option': return !fittedOption(req, idx);
+    case 'playingAs': return !idx.entities.has(req.id);
+    default: {
+      const missing = req.kind === 'item' ? !idx.itemNames.has(req.id)
+        : req.kind === 'trait' ? !idx.traitNames.has(req.id)
+          : req.kind === 'group' ? !idx.groupNames.has(req.id)
+            : !idx.statNames.has(req.id);
+      return missing || (!!req.owner && ownerName(req.owner, idx) === null && !idx.isGlobal(req));
+    }
   }
-  const named = req.kind === 'item'
-    ? (idx.itemNames.has(req.id)
-      ? { text: `${req.status === 'owned' ? 'owning' : 'equipping'} ${idx.itemNameFor(req, from)!}${itemChecks(req)}`, unresolved: false }
-      : { text: `${req.status === 'owned' ? 'owning' : 'equipping'} ${req.name ?? 'a missing item'}${itemChecks(req)}`, unresolved: true })
-    : req.kind === 'trait'
-    ? (idx.traitNames.has(req.id)
-      ? { text: idx.traitNames.get(req.id)!, unresolved: false }
-      : { text: req.name ?? 'a missing trait', unresolved: true })
-    : req.kind === 'group'
-      ? (idx.groupNames.has(req.id)
-        ? { text: `any ${idx.groupNames.get(req.id)}`, unresolved: false }
-        : { text: req.name ? `any ${req.name}` : 'any trait in a missing group', unresolved: true })
-      : {
-        text: `${idx.statNames.get(req.id) ?? req.name ?? 'a missing stat'} ${statTail(req)}`,
-        unresolved: !idx.statNames.has(req.id),
-      };
-  const target = { ...named, text: `${not}${named.text}` };
-  if (!req.owner) return target;
-  const owner = ownerName(req.owner, idx);
-  return owner
-    ? { text: `${owner.name}: ${target.text}`, unresolved: target.unresolved }
-    : {
-      text: `${req.owner.kind === 'entity' && req.owner.name ? req.owner.name : 'a missing entity'}: ${target.text}`,
-      unresolved: target.unresolved || !idx.isGlobal(req),
-    };
-}
-
-/** A reader for any Condition's text against the input's names, as the gate line reads it. */
-export function conditionTexts(input: Omit<GateInput, 'active' | 'persona'>): (req: TraitRequirement) => string {
-  const idx = index({ ...input, active: NO_ACTIVE, persona: { source: 'none' } });
-  return (req) => requirementText(req, idx).text;
 }
 
 /** What a clause part is. `subject` is an owner; `word` is fixed text, such as "It" or "is active". */
@@ -793,6 +734,15 @@ function buildClauseReader(idx: Index): ClauseReader {
 export const clauseText = (parts: readonly ClausePart[]): string =>
   parts.map((part, i) => (i === 0 || part.attach ? part.text : ` ${part.text}`)).join('');
 
+let storedReader: ClauseReader | undefined;
+
+/** A Condition's plain clause against no world: names come from what the Condition stores. For a copy compared
+ *  with another copy, such as an update note. */
+export function storedConditionText(req: TraitRequirement): string {
+  storedReader ??= conditionClauses({ global: { traits: [], groups: [] }, owners: [], entities: [] });
+  return clauseText(storedReader(req));
+}
+
 /** `req` with its Not flag flipped. */
 export const flipped = (req: TraitRequirement): TraitRequirement => {
   // A number Option Condition has no Not: its complement is the opposite comparison.
@@ -849,9 +799,8 @@ function rowStatesOf(
 ): RowState[] {
   return rows.map((row): RowState => {
     const conditions = row.all.map((req): ConditionState => {
-      const named = requirementText(req, idx, host.owner);
       const stat = req.kind === 'stat' ? idx.statOf(req, host.owner, read) : null;
-      const unresolved = named.unresolved || (req.kind === 'stat' && (!stat || !!stat.inert));
+      const unresolved = isUnresolved(req, idx) || (req.kind === 'stat' && (!stat || !!stat.inert));
       // An item held only as a hidden Item Instance stays out of the player's line (Q63, Q115).
       const hidden = req.kind === 'trait' ? idx.hiddenTraits.has(req.id)
         : req.kind === 'item' ? !req.not && idx.itemHeld(req, host.owner) && !idx.itemHeld(req, host.owner, true)
@@ -860,7 +809,7 @@ function rowStatesOf(
             : req.kind === 'opening' ? true
             : !!stat && (!!stat.hidden || !!stat.inert);
       const clause = clauseText(clausesOf(idx)(req, { host: hostOf(host.owner) }));
-      return { text: named.text, clause, unresolved, hidden, holds: !unresolved && requirementHolds(req, host, activeIn, idx, read) };
+      return { clause, unresolved, hidden, holds: !unresolved && requirementHolds(req, host, activeIn, idx, read) };
     });
     return { holds: conditions.every((c) => c.holds), conditions };
   });
@@ -1543,9 +1492,18 @@ export function requirementOptions(input: Omit<GateInput, 'active' | 'persona'>,
       .filter((o) => (kind === 'trait' ? o.traits : o.groups).some((item) => item.id === id))
       .map((o): RequirementOwnerOption => ({ owner: { kind: 'entity', id: o.id, name: o.name }, name: o.name })),
   ]);
+  // The picker's category already says the kind, so a row names its target alone.
+  const targetName = (requirement: TraitRequirement): string => {
+    switch (requirement.kind) {
+      case 'trait': return idx.traitNames.get(requirement.id) ?? '';
+      case 'group': return idx.groupNames.get(requirement.id) ?? '';
+      case 'playingAs': return idx.entities.get(requirement.id)?.name ?? '';
+      default: return '';
+    }
+  };
   const option = (requirement: TraitRequirement, breadcrumb: string[], owners: RequirementOwnerOption[] = [], owner?: GateScopeTree): RequirementOption =>
     ({
-      requirement, label: requirementText(requirement, idx).text, breadcrumb, owners,
+      requirement, label: targetName(requirement), breadcrumb, owners,
       ...(owner?.id != null ? { home: { id: owner.id, name: owner.name } } : {}),
     });
 
