@@ -70,6 +70,7 @@ Every place that reads a rule as text uses the same wording: the editor, the pla
 | Q36 | An image rule's "Shown while" summary takes a final period and no colon: "Shown while Paladin is active." |
 | Q37 | A Blueprint trait, group and stat follow one rule, in the editor and in play. Under Blueprints is not global scope: Q25 does not apply. On a Blueprint's own field, a Condition with no owner on a Blueprint target takes the Q11 subject, "This entity". On a Link it reads the linking entity, and "you" for the played one. An item Condition with no owner on a Blueprint's own field reads "This entity" too, because a Link reads the linking entity's items. (Ruled 2026-11-25.) |
 | Q38 | On a Global Trait's field, a Condition with no owner on a Blueprint target keeps the Q25 sentence, and its target is a broken token: "This trait needs an owner." The Owner list in the target popover (Q31) fixes it. A Blueprint stat that no entity has is a broken token when the Condition names an owner: "No entity has this stat." (Ruled 2026-11-25, at the second close review.) |
+| Q39 | The add menu lists Blueprint traits, groups and stats on a **Blueprints** page, on every host. **World** holds only global ones. A pick from Blueprints adds the Condition with no owner. An entity's page keeps its own traits and its stats, linked ones included. (Ruled 2026-11-25, after the close; built in the commit that adds this line.) |
 
 ### Grammar (Q20)
 

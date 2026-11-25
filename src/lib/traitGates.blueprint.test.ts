@@ -4,7 +4,7 @@ import { editorGateInput, resolveOwners } from './owners';
 import { requirementStatSections } from './requirementStatOptions';
 import { scoped } from './scope';
 import {
-  NO_ACTIVE, clauseText, conditionClauses, gateOf, gateStates, isBlueprintTrait, ruleStates, type ClauseHost, type GateInput, type GateStat, type GateStatSet,
+  NO_ACTIVE, clauseText, conditionClauses, gateOf, gateStates, isBlueprintTrait, requirementOptions, ruleStates, type ClauseHost, type GateInput, type GateStat, type GateStatSet,
 } from './traitGates';
 
 // Blueprints holds the trait Bold, the group Virtues and the stat Courage. Brave, the group Combat and the stat
@@ -167,7 +167,33 @@ describe('the stat sections on a Blueprint’s own field', () => {
     expect(rest[2].owner[0]).toMatchObject({ kind: 'entity', id: 'mira' });
   });
 
-  it('offers no Blueprint section on any other host', () => {
-    expect(sectionRows(false).map((s) => s.heading)).toEqual(['Global Stats', 'Persona Stats', 'Mira Stats']);
+  it('offers the Blueprint stats on every other host too, after the global stats, with no owner', () => {
+    const rows = sectionRows(false);
+    expect(rows.map((s) => s.heading)).toEqual(['Global Stats', 'Blueprint Stats', 'Persona Stats', 'Mira Stats']);
+    expect(rows[1]).toEqual({ heading: 'Blueprint Stats', labels: ['Courage', 'Lonely'], owner: [undefined, undefined] });
+    expect(requirementStatSections(input(), 'wren').map((s) => s.heading)).toEqual(['Global Stats', 'Blueprint Stats', 'Persona Stats', 'Mira Stats']);
+  });
+
+  it('counts the Blueprint section as the host’s own only on a Blueprint’s own field', () => {
+    const own = (blueprintHost: boolean) => requirementStatSections(input(), null, blueprintHost).filter((s) => s.own).map((s) => s.heading);
+    expect(own(true)).toEqual(['Blueprint Stats', 'Global Stats']);
+    expect(own(false)).toEqual(['Global Stats']);
+  });
+});
+
+describe('the trait and group options of a Blueprint', () => {
+  const pick = (list: { label: string; blueprint?: true; breadcrumb: string[]; home?: { id: string } }[]) =>
+    list.map((o) => [o.label, o.blueprint ?? false, o.breadcrumb, o.home?.id ?? null]);
+
+  it('marks a Blueprint trait and group, and no global one', () => {
+    const options = requirementOptions(editor(), 'oath');
+    expect(new Set(pick(options.traits))).toEqual(new Set([
+      ['Brave', false, ['Combat'], null],
+      ['Gate', true, ['Blueprints'], null],
+      ['Bold', true, ['Blueprints', 'Virtues'], null],
+    ]));
+    expect(new Set(pick(options.groups))).toEqual(new Set([
+      ['Combat', false, ['World'], null], ['Blueprints', true, ['World'], null], ['Virtues', true, ['Blueprints'], null],
+    ]));
   });
 });

@@ -86,6 +86,19 @@ describe('TraitRequiresField owners', () => {
     expect(option(/^This entity/)).toHaveAttribute('aria-selected', 'true');
   });
 
+  it('lists Blueprint traits on their own page of the add menu, never under World', async () => {
+    const user = userEvent.setup();
+    // Enough rows that the menu opens on its pages.
+    const calm = Array.from({ length: 12 }, (_, i) => trait(`calm${i}`, { name: `Calm ${i}`, groupId: null, order: 2 + i }));
+    render(<Harness trait={traits[0]} extra={{ traits: calm, traitGroups: [] }} />);
+    openPicker();
+    const names = () => screen.getAllByRole('option').map((o) => o.getAttribute('aria-label') ?? o.textContent);
+    await user.click(await screen.findByRole('option', { name: /^Traits, / }));
+    expect(names()).toEqual(['World, 12 available, opens a page', 'Blueprints, 3 available, opens a page', 'SquireMira']);
+    await user.click(screen.getByRole('option', { name: /^Blueprints, / }));
+    expect(names()).toEqual(['PaladinClasses', 'WizardClasses', 'Smite']);
+  });
+
   // A Global Trait's Condition on a Blueprint trait names no one (Q25), so it needs an owner from the target popover (Q31, Q37).
   it('marks a Blueprint target with no owner on a Global Trait, and takes the owner in the target popover', async () => {
     const user = userEvent.setup();

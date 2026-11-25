@@ -19,6 +19,9 @@ import type { RequirementStatSection } from '@/lib/requirementStatOptions';
 import type { Placeholder, TraitRequirement, TraitRequirementRow } from '@/types';
 import { Hint } from '@/components/ui/typography';
 
+const WORLD_PAGE = 'world page';
+const BLUEPRINTS_PAGE = 'blueprints page';
+
 /** The picker's one time row: a time Condition starts with no daypart, unresolved until one is on. */
 const TIME_OPTION: RequirementOption = { requirement: { kind: 'time', dayparts: [] }, label: 'Time of Day', breadcrumb: [], owners: [] };
 
@@ -97,11 +100,11 @@ export function RequirementRowsField({
 
   const renderText = (text: string) => <PlaceholderText text={text} placeholders={placeholders} />;
   const plainText = (text: string) => labelPlaceholders(text, placeholders);
-  const targets = (heading: string, list: RequirementOption[]): BreadcrumbPickerSection<RequirementOption> => ({
+  const targets = (heading: string, list: RequirementOption[], tag = ''): BreadcrumbPickerSection<RequirementOption> => ({
     heading,
     rows: list.map((option) => ({
       // One stat can belong to several owners.
-      key: `${option.requirement.kind}:${option.requirement.id}${option.requirement.kind === 'stat' ? `:${requirementOwnerKey(requirementOwnerOf(option.requirement))}` : ''}${option.requirement.kind === 'item' ? `:${option.requirement.status}` : ''}`,
+      key: `${tag}${option.requirement.kind}:${option.requirement.id}${option.requirement.kind === 'stat' ? `:${requirementOwnerKey(requirementOwnerOf(option.requirement))}` : ''}${option.requirement.kind === 'item' ? `:${option.requirement.status}` : ''}`,
       value: option,
       name: option.label,
       breadcrumb: option.breadcrumb,
@@ -116,16 +119,18 @@ export function RequirementRowsField({
     'traits', 'groups', ...(shownStats.length ? ['stats'] : []), ...(shownItems.length ? ['items'] : []), 'time of day', ...(options.weather ? ['weather'] : []), ...(options.opening ? ['openings'] : []),
     ...(worldOptions.length ? ['World Options'] : []), ...(offWorld ? [] : ['personas']),
   ]);
-  // One owner page per home, the world first and then in tree order; pages key on the owner's id, not its name.
+  // One owner page per home: the world, then Blueprints, then each owner in tree order. Pages key on the owner's
+  // id, not its name; the two fixed keys hold a space, which no id does.
   const ownerPages = (prefix: string, list: RequirementOption[]): BreadcrumbPickerNode<RequirementOption>[] => {
     const homes = new Map<string, { heading: string; list: RequirementOption[] }>();
     for (const option of list) {
-      const id = option.home?.id ?? '';
-      const home = homes.get(id) ?? { heading: option.home?.name ?? 'World', list: [] };
+      const id = option.home?.id ?? (option.blueprint ? BLUEPRINTS_PAGE : WORLD_PAGE);
+      const home = homes.get(id) ?? { heading: option.home?.name ?? (option.blueprint ? 'Blueprints' : 'World'), list: [] };
       home.list.push(option);
       homes.set(id, home);
     }
-    return [...homes].sort(([a], [b]) => (a === '' ? -1 : b === '' ? 1 : 0)).map(([id, home]): BreadcrumbPickerNode<RequirementOption> => ({
+    const rank = (id: string) => (id === WORLD_PAGE ? 0 : id === BLUEPRINTS_PAGE ? 1 : 2);
+    return [...homes].sort(([a], [b]) => rank(a) - rank(b)).map(([id, home]): BreadcrumbPickerNode<RequirementOption> => ({
       kind: 'page', key: `${prefix}:${id}`, heading: home.heading, children: [{ kind: 'section', rows: targets('', home.list).rows }],
     }));
   };
@@ -135,7 +140,7 @@ export function RequirementRowsField({
     ...category('traits', 'Traits', ownerPages('traits', options.traits)),
     ...category('groups', 'Any Trait in a Group', ownerPages('groups', options.groups)),
     ...category('stats', 'Stats', shownStats.map((s, i): BreadcrumbPickerNode<RequirementOption> => ({
-      kind: 'page', key: `stats:${i}`, heading: s.owner, children: [{ kind: 'section', ...targets(s.heading, s.options) }],
+      kind: 'page', key: `stats:${i}`, heading: s.owner, children: [{ kind: 'section', ...targets(s.heading, s.options, s.blueprint ? 'blueprint ' : '') }],
     }))),
     ...category('items', 'Items', (['owned', 'equipped'] as const).flatMap((status) => {
       const list = shownItems.filter((o) => o.requirement.kind === 'item' && o.requirement.status === status);

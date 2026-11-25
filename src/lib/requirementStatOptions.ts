@@ -12,6 +12,8 @@ export interface RequirementStatSection {
   owner: string;
   /** The host's own owner, whose Conditions name no owner. Offered off-world, where nothing else is. */
   own?: true;
+  /** The Blueprint stats, which the host's own section can list too. */
+  blueprint?: true;
   options: RequirementOption[];
 }
 
@@ -30,6 +32,7 @@ export function requirementStatSections(
     ...(blueprintHost ? [{ ...blueprintSection(), own: true as const }] : []),
     { ...(hostId === null ? section('Global', [null]) : section(name(hostId), [hostId])), own: true as const },
     ...(hostId === null ? [] : [section('Global', [null])]),
+    ...(blueprintHost ? [] : [blueprintSection()]),
     section('Persona', playable, { kind: 'you' }),
     ...input.entities
       .filter((e) => e.id !== hostId)
@@ -91,6 +94,6 @@ function sectionsOf(input: Pick<GateInput, 'owners' | 'entities' | 'stats' | 'bl
     return { heading: `${owner} Stats`, owner, options };
   };
   const section = (owner: string, ids: readonly OwnerId[], named?: RequirementOwner) => sectionOf(owner, ids.map(statsOf), named);
-  const blueprintSection = () => sectionOf('Blueprint', [input.blueprintStats ?? {}]);
+  const blueprintSection = () => ({ ...sectionOf('Blueprint', [input.blueprintStats ?? {}]), owner: 'Blueprints', blueprint: true as const });
   return { section, blueprintSection, playable, name };
 }

@@ -1447,6 +1447,8 @@ export interface RequirementOption {
   owners: RequirementOwnerOption[];
   /** The entity whose tree holds the target; absent for the world. */
   home?: { id: string; name: string };
+  /** A Blueprint trait or group, which the picker lists apart from the world's own. */
+  blueprint?: true;
   /** The World Option a World Option row names, whose values the chip's controls offer. */
   worldOption?: WorldOption;
 }
@@ -1532,11 +1534,14 @@ export function requirementOptions(input: Omit<GateInput, 'active' | 'persona'>,
       default: return '';
     }
   };
-  const option = (requirement: TraitRequirement, breadcrumb: string[], owners: RequirementOwnerOption[] = [], owner?: GateScopeTree): RequirementOption =>
-    ({
+  const option = (requirement: TraitRequirement, breadcrumb: string[], owners: RequirementOwnerOption[] = [], owner?: GateScopeTree): RequirementOption => {
+    const blueprint = owner?.id === null && (requirement.kind === 'trait' || requirement.kind === 'group') && idx.isBlueprint(requirement);
+    return {
       requirement, label: targetName(requirement), breadcrumb, owners,
       ...(owner?.id != null ? { home: { id: owner.id, name: owner.name } } : {}),
-    });
+      ...(blueprint ? { blueprint: true as const } : {}),
+    };
+  };
 
   const seen = new Set<string>();
   const traits: RequirementOption[] = [];
