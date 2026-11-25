@@ -15,6 +15,11 @@ Every remaining reader of rule text moves to the clause builder, and the old tex
 - The add picker's row labels drop the old wording ("playing as Albus", "any Classes") and name the target alone, since the picker's category already says the kind. Ticket 02 left them.
 - The old rule text function and its helpers are deleted once nothing reads them.
 
+Two leftovers from ticket 03 ride along:
+
+- A stat target swap keeps a % value and resets a Raw value (Q34). Ticket 03 resets both, in one function.
+- A broken on/off World Option value shows as a red token with a warning icon and a tooltip (Q14). Ticket 03 marked only the choice and number values.
+
 Read each surface before the change and list it in the landing notes, so a missed reader shows.
 
 ## Acceptance criteria
@@ -25,4 +30,6 @@ Read each surface before the change and list it in the landing notes, so a misse
 - [ ] An image rule's summary and the Test Bench read the rule in the new wording.
 - [ ] The Requires field's "Remove …" and "Delete row …" labels read the new wording.
 - [ ] The old gate text tests are moved to the builder or removed where ticket 01's tests already cover the case; the landing notes list which.
+- [ ] A stat target swap from "at least 50%" keeps 50%; from a Raw number it takes the new stat's default. The test goes red when the swap resets both.
+- [ ] A broken on/off World Option value is a red token with a warning icon and a tooltip.
 - [ ] A changelog fragment, folded into ticket 02's entry when that entry is still unreleased.

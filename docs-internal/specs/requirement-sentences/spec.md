@@ -64,6 +64,7 @@ Every place that reads a rule as text uses the same wording: the editor, the pla
 | Q31 | On a row with no subject (Q25), the target token's popover holds an Owner list above the swap list. A pick writes the owner, and the sentence gains its subject token. |
 | Q32 | On an item's image rule, a Condition with no owner reads "The item's owner". |
 | Q33 | Token popovers in the Requires field are modal in every host. |
+| Q34 | A stat target swap keeps the comparison and Not. A % value stays; a Raw value resets to the new stat's default. A stat owner swap keeps the whole Condition. |
 
 ### Grammar (Q20)
 
@@ -154,7 +155,7 @@ Brackets mark tokens.
 - The existing per-kind controls for time, weather, Opening, item checks and World Option values move into popovers. They are not rewritten.
 - The duplicate guard stays: an edit that would repeat a Condition in its row, or copy a one-Condition row, is refused, and such list rows are disabled.
 - Owner choices come from the picker's existing owner options for the target. A stat's owners are the owners that hold a stat with that id.
-- A target swap keeps the owner when the new target allows it, else clears it. A World Option swap starts on the new Option's default value.
+- A target swap keeps the owner when the new target allows it, else clears it. A World Option swap starts on the new Option's default value. A stat swap follows Q34.
 - The add picker stays, minus the owner page.
 
 **Layout** (from the prototype)
