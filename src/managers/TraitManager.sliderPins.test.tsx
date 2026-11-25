@@ -97,7 +97,7 @@ describe("the trait's Sliders", () => {
   });
 
   it('lists only the playable persona’s Avatar on a world trait, not the library’s', async () => {
-    world.overview = { allowedPersonas: 'world', vrmStore: { aki: { name: 'Aki', file: { data: 'data:aki' } } } };
+    world.overview = { vrmStore: { aki: { name: 'Aki', file: { data: 'data:aki' } } } };
     world.entities = [{ id: 'p1', name: 'P', persona: true, locations: [], vrmPick: { kind: 'world', id: 'aki' } }];
     renderTrait();
     const field = screen.getByText('Sliders').parentElement!.parentElement!;
@@ -107,7 +107,7 @@ describe("the trait's Sliders", () => {
   });
 
   it('shows the world-row hint, not the Profile tab hint, when no playable persona has an Avatar', async () => {
-    world.overview = { allowedPersonas: 'world' };
+    world.overview = {};
     world.entities = [{ id: 'p1', name: 'P', persona: true, locations: [] }];
     renderTrait();
     expect(await screen.findByText(WORLD_NO_MODEL_HINT)).toBeInTheDocument();
@@ -117,7 +117,7 @@ describe("the trait's Sliders", () => {
 
   it("shows the world-row hint when the personas use User's Default and the library is empty", async () => {
     loads.library = [];
-    world.overview = { allowedPersonas: 'world' };
+    world.overview = {};
     world.entities = [{ id: 'p1', name: 'P', persona: true, locations: [], vrmPick: { kind: 'default' } }];
     renderTrait();
     expect(await screen.findByText(WORLD_NO_MODEL_HINT)).toBeInTheDocument();

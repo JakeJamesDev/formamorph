@@ -38,7 +38,7 @@ import { useDictionaryStoreState, DictionaryStoreProvider } from '@/contexts/Dic
 import { PlaceholderStoreProvider } from '@/contexts/PlaceholderStoreContext';
 import { PlacementLettersProvider, useStablePlacementLetters } from '@/contexts/PlacementLettersContext';
 import { EMPTY_LETTERS, worldPlacementLetters } from '@/lib/placementLetters';
-import { worldAllowedPersonas, worldStartPersona } from '@/lib/personaPick';
+import { worldStartPersona } from '@/lib/personaPick';
 import { CodeRenameContext } from '@/lib/useCodeRename';
 import { CodeCardNavigationContext } from '@/lib/codeCardNavigation';
 import { parseWorldTools } from '@/lib/tools/worldTools';
@@ -519,7 +519,6 @@ function useProvideGameData() {
 
     // Handle world overview with validation (migrateWorld already moved any legacy VRM into the store).
     const overview = worldData.worldOverview || defaultOverview;
-    const allowedPersonas = worldAllowedPersonas(overview);
     const startPersona = worldStartPersona(overview);
     const normalizedOverview: WorldOverview = withoutSpentFallback({
       name: overview.name || defaultOverview.name,
@@ -543,8 +542,7 @@ function useProvideGameData() {
       ...(overview.legacyVrmFallback ? { legacyVrmFallback: overview.legacyVrmFallback } : {}),
       mediaList: overview.mediaList ?? {},
       ...(mapImages(overview).length && overview.mapBackground ? { mapBackground: overview.mapBackground } : {}),
-      // Any and the player's default are the absent values.
-      ...(allowedPersonas !== 'any' ? { allowedPersonas } : {}),
+      // The player's default is the absent value.
       ...(startPersona ? { startPersona } : {})
     }, Array.isArray(worldData.entities) ? worldData.entities : []);
     // Replace, never merge: a merge lets a field the normalizer doesn't set survive from the previously

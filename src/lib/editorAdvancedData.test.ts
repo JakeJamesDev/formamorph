@@ -89,10 +89,9 @@ describe('worldUsesAdvancedFeatures', () => {
     expect(worldUsesAdvancedFeatures(plain({ entities: [{ ...entity, pronouns: 'she/her' }] }))).toBe(false);
   });
 
-  it('says yes about a player setting other than Open, and no about Open', () => {
+  it("says yes about a Starting Persona, and no about the player's default", () => {
     expect(worldUsesAdvancedFeatures(plain({ worldOverview: overview({ startPersona: { source: 'none' } }) }))).toBe(true);
-    expect(worldUsesAdvancedFeatures(plain({ worldOverview: overview({ allowedPersonas: 'world' }) }))).toBe(true);
-    expect(worldUsesAdvancedFeatures(plain({ worldOverview: overview({ allowedPersonas: 'any' }) }))).toBe(false);
+    expect(worldUsesAdvancedFeatures(plain({ worldOverview: overview({}) }))).toBe(false);
   });
 
   it('says yes about a written opening', () => {

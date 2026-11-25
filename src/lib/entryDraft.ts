@@ -1,6 +1,6 @@
 import type { DictionarySelectionItem } from './dictionarySelection';
 import {
-  locationForPersonaPick, offeredPersonas, offeredStartLocations, samePersonaRef, withoutPersona, type PersonaPickContext,
+  locationForPersonaPick, offeredStartLocations, samePersonaRef, withoutPersona, type PersonaPickContext,
 } from './personaPick';
 import { customPersonaEntity } from './blueprints';
 import { resolveOwners } from './owners';
@@ -16,7 +16,7 @@ import { startingInstances } from './inventory';
 import { acceptsValue, optionValue, valuedOptions } from './worldOptions';
 import { startRead } from './openings';
 import type {
-  AllowedPersonas, Body, CascadeOffTraitIds, Entity, GameLocation, Item, OwnedTraitPicks, PersonaRef, Placement, PresetRow, PresetValue,
+  Body, CascadeOffTraitIds, Entity, GameLocation, Item, OwnedTraitPicks, PersonaRef, Placement, PresetRow, PresetValue,
   PresetWorldOption, Slot, Stat, StatGroup, Trait, TraitGroup, WorldOption, WorldOptionValues, WorldOverview,
 } from '@/types';
 
@@ -244,7 +244,6 @@ export interface PresetNotice {
 
 /** What persona and location rows read. Without it, apply skips those rows. */
 export interface PresetPlaces {
-  allowed: AllowedPersonas;
   /** The world's entities as authored: persona marks and start places. */
   worldEntities: readonly Entity[];
   locations: readonly GameLocation[];
@@ -264,9 +263,8 @@ export function presetPersonaTargets<E extends Entity>(entities: readonly E[]): 
  *  Persona is picked as None, keeping a name the player entered. */
 function personaRowRef(row: PersonaRow, places: PresetPlaces, current: PersonaRef): PersonaRef | null {
   const targets = presetPersonaTargets(places.worldEntities);
-  const offer = offeredPersonas(places.allowed, { world: targets.world.map((e) => e.id), library: [], custom: targets.custom?.id });
-  if (row.entityId === targets.custom?.id) return offer.none && offer.custom ? (current.source === 'none' ? current : { source: 'none' }) : null;
-  return offer.world.includes(row.entityId) ? { source: 'world', entityId: row.entityId } : null;
+  if (targets.custom && row.entityId === targets.custom.id) return current.source === 'none' ? current : { source: 'none' };
+  return targets.world.some((e) => e.id === row.entityId) ? { source: 'world', entityId: row.entityId } : null;
 }
 
 /** What a persona pick reads under `draft`: the authored entities and the locations open at its start. */

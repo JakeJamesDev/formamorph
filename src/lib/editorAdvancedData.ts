@@ -8,7 +8,7 @@ import { resolveSound } from './mediaSounds';
 import { memoByRecord } from './memoByRecord';
 import { allPlaceholders } from './placeholderHomes';
 import { openingTexts } from './openings';
-import { worldAllowedPersonas, worldStartPersona } from './personaPick';
+import { worldStartPersona } from './personaPick';
 import { storedWorldPrompt, WORLD_PROMPT_KINDS } from './worldPrompt';
 import type { Dictionary, Entity, GameLocation, Placeholder, Stat, Tool, Trait, WorldOverview } from '@/types';
 
@@ -32,7 +32,7 @@ const bookIsAdvanced = memoByRecord((d: Dictionary) => d.enabled === false || (d
 const overviewIsAdvanced = memoByRecord((ov: WorldOverview) =>
   WORLD_PROMPT_KINDS.some((kind) => hasValue(storedWorldPrompt(ov, kind))) ||
   openingTexts(ov).length > 0 ||
-  worldAllowedPersonas(ov) !== 'any' || !!worldStartPersona(ov));
+  !!worldStartPersona(ov));
 const statIsAdvanced = memoByRecord((s: Stat) =>
   hasValue(s.scripts) || hasValue(s.descriptors) ||
   !!(s.noIncrease || s.noIncreaseMax || s.noDecrease || s.noDecreaseMax));

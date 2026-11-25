@@ -128,8 +128,8 @@ const NO_SELECTION = '__none__';
 const LensSelect = ({ icon: Icon, label, none, value, options, onChange }: {
   icon: LucideIcon;
   label: string;
-  /** What the no-selection row reads as — also what the trigger shows while nothing is picked. Null drops the row. */
-  none: string | null;
+  /** What the no-selection row reads as — also what the trigger shows while nothing is picked. */
+  none: string;
   value: string | null;
   options: LensOption[];
   onChange: (id: string | null) => void;
@@ -141,10 +141,10 @@ const LensSelect = ({ icon: Icon, label, none, value, options, onChange }: {
   >
     <SelectTrigger size="sm" aria-label={label} className="min-w-0 flex-grow gap-1">
       <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
-      <SelectValue placeholder={none ?? undefined} />
+      <SelectValue placeholder={none} />
     </SelectTrigger>
     <SelectContent>
-      {none !== null && <SelectItem value={NO_SELECTION}>{none}</SelectItem>}
+      <SelectItem value={NO_SELECTION}>{none}</SelectItem>
       {options.map((option) => (
         <SelectItem key={option.id} value={option.id}>{option.name}</SelectItem>
       ))}

@@ -12,88 +12,53 @@ import { targetAttribute } from '@/lib/surface/surfaceTargets';
 import { IMAGE_CAPS } from '../lib/imageOptim';
 import { GenerateImageButton } from '../components/GenerateImageButton';
 import { useEditorMode } from '@/lib/editorMode';
-import { ALLOWED_PERSONAS, limitsToWorld, worldPersonaRules } from '@/lib/personaPick';
+import { worldStartPersona } from '@/lib/personaPick';
 import { customPersonaEntity } from '@/lib/blueprints';
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import PlaceholderText from '@/components/prompt/PlaceholderText';
-import type { AllowedPersonas } from '@/types';
 import { WorldInput } from '@/components/editor/WorldField';
 import { fieldFrame } from '@/lib/historyField';
 import { WorldWeatherFields } from './WorldWeatherFields';
 
-const ALLOWED_PERSONAS_LABELS: Record<AllowedPersonas, string> = { any: 'Any', world: 'World Only' };
-
-export const ALLOWED_PERSONAS_HINTS: Record<AllowedPersonas, string> = {
-  any: 'Lets players pick any persona, their own included',
-  world: 'Limits players to the personas this world defines',
-};
-
-export const WORLD_ONLY_WITHOUT_PERSONAS_HINT = 'Works like Any until you give an entity a Persona role';
-
-export const START_PERSONA_HINT = 'Sets the persona new players start on. Returning players start on their last pick.';
+export const START_PERSONA_HINT = 'New players start on this persona and can pick another. Returning players start on their last pick.';
 
 const PLAYER_DEFAULT = 'default';
 const NONE = 'none';
 
-/** Which personas the player can pick, and which one a new player starts on. Advanced only; Any and the
- *  player's default write no field. */
-const PersonaRulesFields = () => {
+/** The persona a new player starts on. Advanced only; the player's default writes no field. */
+const StartPersonaField = () => {
   const { worldOverview, updateWorldOverview, entities, placeholders } = useGameData();
-  const { allowed, start } = worldPersonaRules(worldOverview);
+  const start = worldStartPersona(worldOverview);
   const personas = useMemo(() => entities.filter((entity) => entity.persona === true), [entities]);
   const custom = useMemo(() => customPersonaEntity(entities), [entities]);
-  const limited = limitsToWorld(allowed, { world: personas, custom });
-  const hint = allowed === 'world' && !limited ? WORLD_ONLY_WITHOUT_PERSONAS_HINT : ALLOWED_PERSONAS_HINTS[allowed];
 
   const options = useMemo(() => [
-    ...(limited ? [] : [{ value: PLAYER_DEFAULT, label: "Player's Default" }]),
-    ...(limited && !custom ? [] : [{ value: NONE, label: custom ? custom.name || 'Custom Persona' : 'None' }]),
+    { value: PLAYER_DEFAULT, label: "Player's Default" },
+    { value: NONE, label: custom ? custom.name || 'Custom Persona' : 'None' },
     ...personas.map((entity) => ({ value: entity.id, label: entity.name || 'Unnamed' })),
-  ], [limited, custom, personas]);
-  // Under World Only the absent pick is the first offered persona; a stale pick reads as the absent one.
+  ], [custom, personas]);
+  // A stale pick reads as the player's default.
   const stored = start?.source === 'world' ? start.entityId : start ? NONE : PLAYER_DEFAULT;
-  const selected = options.some((o) => o.value === stored) ? stored : options[0]?.value;
+  const selected = options.some((o) => o.value === stored) ? stored : PLAYER_DEFAULT;
   const writeStart = (v: string) => updateWorldOverview({
     startPersona: v === PLAYER_DEFAULT ? undefined : v === NONE ? { source: 'none' } : { source: 'world', entityId: v },
   });
 
   return (
-    <>
-      <div className="space-y-2" {...fieldFrame('allowedPersonas')}>
-        <Label id="allowed-personas-label">Allowed Personas</Label>
-        <ToggleGroup
-          type="single"
-          aria-labelledby="allowed-personas-label"
-          value={allowed}
-          // A single ToggleGroup clears on a second click of the active item; the setting always has a value.
-          onValueChange={(v) => {
-            const next = ALLOWED_PERSONAS.find((s) => s === v);
-            if (next) updateWorldOverview({ allowedPersonas: next === 'any' ? undefined : next });
-          }}
-          className="flex w-fit"
-        >
-          {ALLOWED_PERSONAS.map((value) => (
-            <ToggleGroupItem key={value} value={value} className="px-3">{ALLOWED_PERSONAS_LABELS[value]}</ToggleGroupItem>
+    <div className="space-y-2" {...fieldFrame('startPersona')}>
+      <Label htmlFor="start-persona">Starting Persona</Label>
+      <Hint>{START_PERSONA_HINT}</Hint>
+      <Select value={selected} onValueChange={writeStart}>
+        <SelectTrigger id="start-persona" className="w-64 max-w-full">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((o) => (
+            <SelectItem key={o.value} value={o.value}><PlaceholderText text={o.label} placeholders={placeholders} /></SelectItem>
           ))}
-        </ToggleGroup>
-        <Hint>{hint}</Hint>
-      </div>
-      <div className="space-y-2" {...fieldFrame('startPersona')}>
-        <Label htmlFor="start-persona">Starts On</Label>
-        <Hint>{START_PERSONA_HINT}</Hint>
-        <Select value={selected} onValueChange={writeStart}>
-          <SelectTrigger id="start-persona" className="w-64 max-w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {options.map((o) => (
-              <SelectItem key={o.value} value={o.value}><PlaceholderText text={o.label} placeholders={placeholders} /></SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-    </>
+        </SelectContent>
+      </Select>
+    </div>
   );
 };
 
@@ -156,7 +121,7 @@ const WorldOverviewManager = () => {
           />
         </div>
       </div>
-      {advanced && <PersonaRulesFields />}
+      {advanced && <StartPersonaField />}
       <WorldWeatherFields />
       <div className="space-y-2" {...targetAttribute('worldEditor.overview', 'background-music')}>
         <Label htmlFor="sound-import-world-bgm">Background Music</Label>

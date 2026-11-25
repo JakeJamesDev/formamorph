@@ -92,8 +92,8 @@ Enter World opens on a **Persona** category when at least one persona is availab
 The category starts on a pick in this order:
 
 1. The persona you last used in this world
-2. The world's **Starts On** rule, when its author set one
-3. Your default persona. When the world allows **World Only**, its first own persona instead.
+2. The world's **Starting Persona**, when its author set one
+3. Your default persona
 4. **None**
 
 A pick the world doesn't offer is skipped. **Quick Start** uses the same order and shows no picker.
@@ -185,4 +185,4 @@ A report then lists:
 ## Related
 
 - [🎭 Entities in Game](Entities): the entities you meet, and how a game opens
-- [🪪 Personas for Authors](Persona-Authoring): playable entities, **Allowed Personas** and **Starts On**, and the prompt chips
+- [🪪 Personas for Authors](Persona-Authoring): playable entities, **Starting Persona**, and the prompt chips

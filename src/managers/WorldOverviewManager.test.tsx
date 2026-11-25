@@ -55,9 +55,8 @@ describe('the World Editor Overview columns', () => {
 
 });
 
-describe('the Overview persona rules', () => {
-  const allowed = () => screen.getByRole('radiogroup', { name: 'Allowed Personas' });
-  const startsOn = () => screen.getByRole('combobox', { name: 'Starts On' });
+describe('the Overview Starting Persona', () => {
+  const startsOn = () => screen.getByRole('combobox', { name: 'Starting Persona' });
   // The Select's pointer open does not fire inside the bench; the keyboard open does.
   const openStartsOn = async (user: ReturnType<typeof userEvent.setup>) => { startsOn().focus(); await user.keyboard('{Enter}'); };
   const withPersonas = (overview: Partial<World['worldOverview']> = {}, extra: object[] = []) => panelWorld({
@@ -70,35 +69,14 @@ describe('the Overview persona rules', () => {
     ],
   } as unknown as Partial<World>);
 
-  it('reads absent rules as Any on the player default, and Any writes no field', async () => {
-    const { ctx } = renderOverviewTab(WORLD, 'advanced');
+  it("reads an absent pick as the player's default, with no Allowed Personas control", async () => {
+    renderOverviewTab(withPersonas(), 'advanced');
     await screen.findByLabelText('World Name');
-    expect(within(allowed()).getByRole('radio', { name: 'Any' })).toHaveAttribute('data-state', 'on');
-    expect(screen.getByText('Lets players pick any persona, their own included')).toBeInTheDocument();
     expect(startsOn()).toHaveTextContent("Player's Default");
-
-    fireEvent.click(within(allowed()).getByRole('radio', { name: 'World Only' }));
-    await waitFor(() => expect(ctx().worldOverview.allowedPersonas).toBe('world'));
-    fireEvent.click(within(allowed()).getByRole('radio', { name: 'Any' }));
-    await waitFor(() => expect(ctx().worldOverview.allowedPersonas).toBeUndefined());
+    expect(screen.queryByRole('radiogroup', { name: 'Allowed Personas' })).toBeNull();
   });
 
-  it('keeps its value when the active item is clicked again', async () => {
-    const { ctx } = renderOverviewTab(WORLD, 'advanced');
-    await screen.findByLabelText('World Name');
-    fireEvent.click(within(allowed()).getByRole('radio', { name: 'World Only' }));
-    fireEvent.click(within(allowed()).getByRole('radio', { name: 'World Only' }));
-    expect(ctx().worldOverview.allowedPersonas).toBe('world');
-  });
-
-  it('says World Only works like Any while no entity has a Persona role', async () => {
-    renderOverviewTab(WORLD, 'advanced');
-    await screen.findByLabelText('World Name');
-    fireEvent.click(within(allowed()).getByRole('radio', { name: 'World Only' }));
-    expect(await screen.findByText('Works like Any until you give an entity a Persona role')).toBeInTheDocument();
-  });
-
-  it('writes each Starts On pick, and the player default writes no field', async () => {
+  it('writes each Starting Persona pick, and the player default writes no field', async () => {
     const user = userEvent.setup();
     const { ctx } = renderOverviewTab(withPersonas(), 'advanced');
     await screen.findByLabelText('World Name');
@@ -113,21 +91,9 @@ describe('the Overview persona rules', () => {
     await waitFor(() => expect(ctx().worldOverview.startPersona).toBeUndefined());
   });
 
-  it("offers only the world's personas under World Only, on the first by default", async () => {
-    const user = userEvent.setup();
-    renderOverviewTab(withPersonas({ allowedPersonas: 'world' }), 'advanced');
-    await screen.findByLabelText('World Name');
-    expect(screen.getByText('Limits players to the personas this world defines')).toBeInTheDocument();
-    expect(startsOn()).toHaveTextContent('Maren');
-    await openStartsOn(user);
-    await screen.findByRole('option', { name: 'Tobin' });
-    expect(screen.queryByRole('option', { name: "Player's Default" })).toBeNull();
-    expect(screen.queryByRole('option', { name: 'None' })).toBeNull();
-  });
-
   it('names the Custom Persona entity in place of None', async () => {
     const user = userEvent.setup();
-    renderOverviewTab(withPersonas({ allowedPersonas: 'world' }, [
+    renderOverviewTab(withPersonas({}, [
       { id: 'cp', name: 'Wanderer', playerDescription: '', aiDescription: '', customPersona: true },
     ]), 'advanced');
     await screen.findByLabelText('World Name');
@@ -139,7 +105,7 @@ describe('the Overview persona rules', () => {
     const user = userEvent.setup();
     const token = encodePlaceholderToken({ id: 'p-hero', mode: 'world', placementId: 'v-hero' });
     renderOverviewTab(panelWorld({
-      ...withPersonas({ allowedPersonas: 'world' }, [
+      ...withPersonas({}, [
         { id: 'e3', name: token, playerDescription: '', aiDescription: '', persona: true },
       ]),
       placeholders: [{ id: 'p-hero', name: 'Hero Name', values: phValues(['Ash']) }],

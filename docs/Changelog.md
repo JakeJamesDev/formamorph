@@ -80,6 +80,11 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The Mention Reading now records how each quote speaker was found.** Each quote keeps its rule, rule mention and first-person spans, with a reading version.
     - **A sent correction now carries the player, the cast and every quote's speaker.** It adds each quote's rule and mentions, and the client and reading versions. A save keeps the quote records, the reading version and the cast ids.
 
+#### ➖ Removed
+
+- **👤 User-facing**
+  - **The World Editor's Overview tab no longer has Allowed Personas, so players can always pick any persona.** Starts On is now Starting Persona. A World Only world starts on its first persona when its old start was one World Only hid.
+
 #### 🔧 Fixed
 
 - **👤 User-facing**

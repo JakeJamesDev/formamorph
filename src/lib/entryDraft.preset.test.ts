@@ -285,7 +285,7 @@ describe('applyPreset persona and location rows', () => {
   ];
   // The walls are open only while the lanterns are lit.
   const places: PresetPlaces = {
-    allowed: 'any', worldEntities: [knight, rogue, hermit, npc], locations,
+    worldEntities: [knight, rogue, hermit, npc], locations,
     openLocationIds: (draft) => new Set(locations.filter((l) => l.id !== 'walls' || draft.optionValues.lit !== false).map((l) => l.id)),
   };
   const persona = (entityId: string): PresetRow => ({ kind: 'persona', entityId });

@@ -10,7 +10,7 @@ export interface BenchLensHandle {
   lens: BenchLens;
   personaOptions: LensOption[];
   /** What the None row reads as. Null when the world does not offer it. */
-  noneLabel: string | null;
+  noneLabel: string;
   locationOptions: LensOption[];
   setPersona: (personaId: string | null) => void;
   setLocation: (locationId: string | null) => void;

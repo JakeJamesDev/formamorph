@@ -77,8 +77,6 @@ export interface EnterWorldWorkspaceProps {
   worldPersonas?: PersonaOption[];
   /** The library personas on offer. The category hides when neither list has one. */
   personas?: PersonaOption[];
-  /** The picker offers None. Absent = yes. */
-  personaNone?: boolean;
   /** The Custom Persona entity, which replaces None. */
   personaCustom?: PersonaOption;
   persona?: PersonaRef;
@@ -173,7 +171,7 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
     [props.stats, props.statGroups, props.traitEntities, props.items, props.allLocations, props.persona],
   );
   const hasPersonas = hasPersonaChoice({
-    world: props.worldPersonas ?? [], library: props.personas ?? [], none: props.personaNone !== false, custom: props.personaCustom,
+    world: props.worldPersonas ?? [], library: props.personas ?? [], custom: props.personaCustom,
   });
   const categories = useMemo(
     () => [
@@ -602,7 +600,6 @@ export default function EnterWorldWorkspace(props: EnterWorldWorkspaceProps) {
               <PersonaPicker
                 world={props.worldPersonas}
                 library={personaOptions}
-                none={props.personaNone}
                 custom={props.personaCustom}
                 value={props.persona}
                 onChange={props.onPersonaChange}

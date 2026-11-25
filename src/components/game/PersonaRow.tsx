@@ -17,7 +17,7 @@ import { pickedAtStart } from '@/lib/runtimeCharacters';
 import { useEntityGallery } from '@/lib/useEntityGallery';
 import { thumbFit } from '@/lib/thumbAspect';
 import { cn } from '@/lib/utils';
-import { offeredPersonas, rememberWorldPersona, samePersonaRef, worldAllowedPersonas } from '@/lib/personaPick';
+import { rememberWorldPersona, samePersonaRef } from '@/lib/personaPick';
 import EntityStorageService from '@/services/EntityStorageService';
 import type { PersonaRef } from '@/types';
 
@@ -64,10 +64,10 @@ export function PersonaRow({ onChange, disabled = false }: {
 
   const showPicker = (next: boolean) => { setDraft(null); setOpen(next); };
 
-  const offer = offeredPersonas(worldAllowedPersonas(worldOverview), {
+  const offer = {
     world: worldPersonas.map(personaOption(resolveEntityText, worldOverview.mediaList)), library: options,
     custom: customPersona ? personaOption(resolveEntityText, worldOverview.mediaList)(customPersona) : undefined,
-  });
+  };
 
   const apply = () => {
     setPersonaRef(choice);
@@ -102,7 +102,6 @@ export function PersonaRow({ onChange, disabled = false }: {
             <PersonaPicker
               world={offer.world}
               library={offer.library}
-              none={offer.none}
               custom={offer.custom}
               value={choice}
               onChange={setDraft}

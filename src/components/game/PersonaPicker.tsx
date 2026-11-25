@@ -71,11 +71,9 @@ const groupHeading = (label: string) => (
 /** The persona choice: None when offered, then the world's own personas, then the library personas, each group under its
  *  own heading and each persona with its portrait and name. With a Custom Persona entity, its row stands in None's place
  *  and, once picked, takes the player's name and description; the ref carries both. */
-export function PersonaPicker({ world = [], library, none = true, custom, value, onChange }: {
+export function PersonaPicker({ world = [], library, custom, value, onChange }: {
   world?: PersonaOption[];
   library: PersonaOption[];
-  /** Offer None. A Cast world does not. */
-  none?: boolean;
   /** The Custom Persona entity, which stands in None's place. */
   custom?: PersonaOption;
   value: PersonaRef;
@@ -157,8 +155,8 @@ export function PersonaPicker({ world = [], library, none = true, custom, value,
       onValueChange={(key) => onChange(refOf(key, custom ? lastEntry.current : {}))}
       className="grid min-w-0 gap-3 xl:grid-cols-2"
     >
-      {none && custom && customRow(custom)}
-      {none && !custom && row('none', 'None', (
+      {custom && customRow(custom)}
+      {!custom && row('none', 'None', (
         <span className="min-w-0">
           <strong className="block text-label font-semibold">None</strong>
           <Hint as="span" className="mt-1 block">Play as the world describes the player</Hint>

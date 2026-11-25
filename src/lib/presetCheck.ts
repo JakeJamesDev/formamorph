@@ -1,6 +1,6 @@
 import { applyPreset, emptyEntryDraft, entryDefaults, presetPersonaTargets, withPersonaPick, type EntryTraitWorld, type PresetPlaces } from './entryDraft';
 import { playedEntityIdOf, startLocationIdsOpen } from './inPlayWorld';
-import { preselectPersona, worldPersonaRules } from './personaPick';
+import { preselectPersona, worldStartPersona } from './personaPick';
 import { scoped } from './scope';
 import { resolveOwners, type Owner, type OwnerWorld } from './owners';
 import type { WorldSlices } from './editorHistory';
@@ -62,9 +62,7 @@ function targetExists(row: PresetRow, world: PresetCheckWorld, trees: PresetTrai
  */
 export function checkPreset(preset: PresetWorldOption, world: PresetCheckWorld): Map<string, PresetRowIssue[]> {
   const entryWorld: EntryTraitWorld = { ...world, library: [] };
-  const rules = worldPersonaRules(world.worldOverview);
   const places: PresetPlaces = {
-    allowed: rules.allowed,
     worldEntities: world.entities,
     locations: world.locations,
     openLocationIds: (draft) => startLocationIdsOpen(
@@ -73,7 +71,7 @@ export function checkPreset(preset: PresetWorldOption, world: PresetCheckWorld):
   };
   const targets = presetPersonaTargets(world.entities);
   const persona = preselectPersona({
-    rules, remembered: undefined, globalDefault: undefined,
+    start: worldStartPersona(world.worldOverview), remembered: undefined, globalDefault: undefined,
     available: { world: targets.world.map((e) => e.id), library: [], custom: !!targets.custom },
   });
   const defaults = { ...emptyEntryDraft(), ...entryDefaults(entryWorld, persona) };

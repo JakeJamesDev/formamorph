@@ -8,7 +8,7 @@
  * Pure and world-shaped: nothing here reads storage or React, and nothing writes the world.
  */
 import { customPersonaEntity } from '@/lib/blueprints';
-import { offeredPersonas, personaStartLocation, preselectPersona, startingPersona, worldPersonaRules } from '@/lib/personaPick';
+import { personaStartLocation, preselectPersona, startingPersona, worldStartPersona } from '@/lib/personaPick';
 import { describePlaceholders } from '@/lib/placeholders';
 import { allPlaceholders, placeholderOwners } from '@/lib/placeholderHomes';
 import { labelPlaceholders, worldPlacementLetters } from '@/lib/placementLetters';
@@ -200,7 +200,7 @@ export interface BenchLens {
 const worldPersonas = (world: LensWorld): Entity[] => (world.entities ?? []).filter((e) => e.persona && !e.customPersona);
 
 /** Which personas the world lets a player pick, as Enter World offers them. The Bench has no library. */
-const lensOffer = (world: LensWorld) => offeredPersonas(worldPersonaRules(world.worldOverview).allowed, {
+const lensOffer = (world: LensWorld) => ({
   world: worldPersonas(world), library: [], custom: customPersonaEntity(world.entities ?? []),
 });
 
@@ -215,11 +215,9 @@ export function lensPersonaOptions(world: LensWorld): LensOption[] {
   }));
 }
 
-/** What the None row reads as: the Custom Persona entity standing in its place, else None. Null when the world
- *  does not offer it. */
-export function lensNoneLabel(world: LensWorld): string | null {
+/** What the None row reads as: the Custom Persona entity standing in its place, else None. */
+export function lensNoneLabel(world: LensWorld): string {
   const offer = lensOffer(world);
-  if (!offer.none) return null;
   if (!offer.custom) return 'None';
   return labelPlaceholders(offer.custom.name, allPlaceholders(world), { letters: worldPlacementLetters(world) }) || 'Unnamed';
 }
@@ -255,7 +253,7 @@ export function seedLens(
 ): LensState {
   const offer = lensOffer(world);
   const persona = preselectPersona({
-    rules: worldPersonaRules(world.worldOverview),
+    start: worldStartPersona(world.worldOverview),
     remembered: stored ? lensPersonaRef(stored.personaId) : undefined,
     globalDefault: undefined,
     available: { world: offer.world.map((e) => e.id), library: [], custom: !!offer.custom },

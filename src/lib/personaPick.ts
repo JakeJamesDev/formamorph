@@ -1,19 +1,10 @@
 import { createKeyedRecordStore, createStoredString } from './keyedStorage';
 import { customPersonaEntity } from './blueprints';
 import { startPlacesOf } from './entityPlaces';
-import { PLAYER_START, type AllowedPersonas, type Entity, type GameLocation, type PersonaRef, type StartPersona, type WorldOverview } from '@/types';
+import { PLAYER_START, type Entity, type GameLocation, type PersonaRef, type StartPersona, type WorldOverview } from '@/types';
 import { startsOf, withFirstStarts } from '@/lib/entityKind';
 
-/** Every Allowed Personas value, in the order the World Editor shows them. */
-export const ALLOWED_PERSONAS: readonly AllowedPersonas[] = ['any', 'world'];
-
-/** The world's Allowed Personas. An absent or unknown value is Any. */
-export function worldAllowedPersonas(overview: Pick<WorldOverview, 'allowedPersonas'> | undefined): AllowedPersonas {
-  const value = overview?.allowedPersonas;
-  return value && ALLOWED_PERSONAS.includes(value) ? value : 'any';
-}
-
-/** The world's Starts On pick. An absent or malformed value is the player's default. */
+/** The world's Starting Persona. An absent or malformed value is the player's default. */
 export function worldStartPersona(overview: Pick<WorldOverview, 'startPersona'> | undefined): StartPersona | undefined {
   const value = overview?.startPersona;
   if (value?.source === 'none') return { source: 'none' };
@@ -21,40 +12,17 @@ export function worldStartPersona(overview: Pick<WorldOverview, 'startPersona'> 
   return undefined;
 }
 
-/** The world's persona rules, as the pickers read them. */
-export interface PersonaRules {
-  allowed: AllowedPersonas;
-  start: StartPersona | undefined;
-}
-
-export const worldPersonaRules = (overview: WorldOverview | undefined): PersonaRules =>
-  ({ allowed: worldAllowedPersonas(overview), start: worldStartPersona(overview) });
-
-/** World Only applies once the world has a persona or a Custom Persona; before that it works like Any. */
-export const limitsToWorld = (allowed: AllowedPersonas, available: { world: readonly unknown[]; custom?: unknown }): boolean =>
-  allowed === 'world' && (available.world.length > 0 || available.custom !== undefined);
-
-/** What a picker lists under the world's Allowed Personas. */
+/** The personas a picker lists, beside None. */
 export interface PersonaOffer<T> {
-  world: T[];
-  library: T[];
-  /** The picker offers None. */
-  none: boolean;
-  /** The Custom Persona entity, which stands in None's place while None is offered. */
+  world: readonly T[];
+  library: readonly T[];
+  /** The Custom Persona entity, which stands in None's place. */
   custom?: T;
-}
-
-/** The personas a picker lists. World Only drops the library personas, and drops None unless the Custom
- *  Persona stands in its place. */
-export function offeredPersonas<T>(allowed: AllowedPersonas, available: { world: T[]; library: T[]; custom?: T }): PersonaOffer<T> {
-  const custom = available.custom ? { custom: available.custom } : {};
-  if (limitsToWorld(allowed, available)) return { world: available.world, library: [], none: !!available.custom, ...custom };
-  return { world: available.world, library: available.library, none: true, ...custom };
 }
 
 /** A picker has something to pick: None alone is no choice, but the Custom Persona entity's row is one. */
 export function hasPersonaChoice(offer: PersonaOffer<unknown>): boolean {
-  return offer.world.length + offer.library.length > 0 || (offer.none && offer.custom !== undefined);
+  return offer.world.length + offer.library.length > 0 || offer.custom !== undefined;
 }
 
 /** Whether two refs name the same pick, an entered name or description included. */
@@ -70,7 +38,8 @@ export const personaKey = (ref: PersonaRef): string =>
 
 /** The inputs of the preselect rule, shared by the enter-world step and Quick Start. */
 export interface PersonaChoices {
-  rules: PersonaRules;
+  /** The world's Starting Persona. */
+  start: StartPersona | undefined;
   /** This world's last pick on this device. */
   remembered: PersonaRef | undefined;
   /** The global default: a library entity id. */
@@ -82,17 +51,14 @@ export interface PersonaChoices {
 
 const NONE: PersonaRef = { source: 'none' };
 
-/** The persona the picker starts on: the world's remembered pick, then the world's Starts On, then the default
- *  (the global default under Any, the first world persona under World Only), then None. A pick the picker does
- *  not offer falls through to the next rule. */
-export function preselectPersona({ rules, remembered, globalDefault, available }: PersonaChoices): PersonaRef {
-  const offer = offeredPersonas(rules.allowed, { ...available, custom: available.custom ? 'custom' : undefined });
-  if (!hasPersonaChoice(offer)) return NONE;
-  const offered = (ref: PersonaRef) => (ref.source === 'none' ? offer.none : offer[ref.source].includes(ref.entityId));
+/** The persona the picker starts on: the world's remembered pick, then the world's Starting Persona, then the
+ *  global default, then None. A pick the picker does not offer falls through to the next rule. */
+export function preselectPersona({ start, remembered, globalDefault, available }: PersonaChoices): PersonaRef {
+  if (!hasPersonaChoice({ ...available, custom: available.custom || undefined })) return NONE;
+  const offered = (ref: PersonaRef) => ref.source === 'none' || available[ref.source].includes(ref.entityId);
   if (remembered && offered(remembered)) return remembered;
-  if (rules.start && offered(rules.start)) return rules.start;
-  if (limitsToWorld(rules.allowed, offer)) return offer.world.length ? { source: 'world', entityId: offer.world[0] } : NONE;
-  if (globalDefault && offer.library.includes(globalDefault)) return { source: 'library', entityId: globalDefault };
+  if (start && offered(start)) return start;
+  if (globalDefault && available.library.includes(globalDefault)) return { source: 'library', entityId: globalDefault };
   return NONE;
 }
 

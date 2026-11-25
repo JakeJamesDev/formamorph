@@ -1,10 +1,9 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
 import {
-  clearDefaultPersona, hasPersonaChoice, locationForPersonaPick, offeredPersonas, samePersonaRef,
+  clearDefaultPersona, hasPersonaChoice, locationForPersonaPick, samePersonaRef,
   offeredStartLocations, personaStartLocation, preselectPersona, readDefaultPersona, readWorldPersona,
-  rememberWorldPersona, setDefaultPersona, withoutPersona, worldAllowedPersonas, worldStartPersona, type PersonaChoices,
-  type PersonaRules,
+  rememberWorldPersona, setDefaultPersona, withoutPersona, worldStartPersona, type PersonaChoices,
 } from './personaPick';
 import { PLAYER_START, type Entity, type EntityStart, type GameLocation, type PersonaRef } from '@/types';
 import { startWithRow } from '@/test/entityKindFixture';
@@ -17,11 +16,8 @@ const lib = (entityId: string): PersonaRef => ({ source: 'library', entityId });
 const world = (entityId: string): PersonaRef => ({ source: 'world', entityId });
 const NONE: PersonaRef = { source: 'none' };
 
-const ANY: PersonaRules = { allowed: 'any', start: undefined };
-const WORLD_ONLY: PersonaRules = { allowed: 'world', start: undefined };
-
 const choices = (over: Partial<PersonaChoices> = {}): PersonaChoices => ({
-  rules: ANY,
+  start: undefined,
   remembered: undefined,
   globalDefault: undefined,
   available: { world: [], library: ['a', 'b'] },
@@ -47,67 +43,39 @@ describe('preselectPersona (step and Quick Start)', () => {
     ['world personas alone: None when nothing is remembered', { available: { world: ['w'], library: [] }, globalDefault: 'a' }, NONE],
     ['world personas alone: the remembered world pick', { available: { world: ['w'], library: [] }, remembered: world('w') }, world('w')],
     ['a Custom Persona entity alone: the remembered entry', { available: { world: [], library: [], custom: true }, remembered: { source: 'none', name: 'Ash' } }, { source: 'none', name: 'Ash' }],
-    ['a Custom Persona entity under World Only: the remembered entry stays offered', { available: { world: ['w'], library: [], custom: true }, rules: WORLD_ONLY, remembered: { source: 'none', name: 'Ash' } }, { source: 'none', name: 'Ash' }],
+    ['a Custom Persona entity beside world personas: the remembered entry', { available: { world: ['w'], library: [], custom: true }, remembered: { source: 'none', name: 'Ash' } }, { source: 'none', name: 'Ash' }],
   ])('%s', (_label, over, expected) => {
     expect(preselectPersona(choices(over))).toEqual(expected);
   });
 });
 
-// The world's rules, for the step and Quick Start, with the remembered pick and the global default.
-describe('preselectPersona under the world persona rules', () => {
+// The world's Starting Persona, for the step and Quick Start, with the remembered pick and the global default.
+describe('preselectPersona under the Starting Persona', () => {
   const both = { world: ['w1', 'w2'], library: ['a', 'b'] };
-  const startNone: PersonaRules = { allowed: 'any', start: { source: 'none' } };
-  const startW2 = (allowed: PersonaRules['allowed']): PersonaRules => ({ allowed, start: { source: 'world', entityId: 'w2' } });
+  const startNone: PersonaChoices['start'] = { source: 'none' };
+  const startW2: PersonaChoices['start'] = { source: 'world', entityId: 'w2' };
   it.each<[string, Partial<PersonaChoices>, PersonaRef]>([
-    ['any: the global default applies', { available: both, globalDefault: 'a' }, lib('a')],
-    ['any: the remembered pick wins', { available: both, remembered: world('w2'), globalDefault: 'a' }, world('w2')],
-    ['starts on None: None over the global default', { rules: startNone, available: both, globalDefault: 'a' }, NONE],
-    ['starts on None: a remembered library pick wins', { rules: startNone, available: both, remembered: lib('b'), globalDefault: 'a' }, lib('b')],
-    ['starts on None: a remembered pick of a deleted entity falls to None', { rules: startNone, available: both, remembered: lib('gone'), globalDefault: 'a' }, NONE],
-    ['starts on None: the Custom Persona row', { rules: startNone, available: { ...both, custom: true }, globalDefault: 'a' }, NONE],
-    ['starts on a world persona under Any, over the global default', { rules: startW2('any'), available: both, globalDefault: 'a' }, world('w2')],
-    ['starts on a world persona under World Only', { rules: startW2('world'), available: both }, world('w2')],
-    ['a start persona no longer playable falls to the default', { rules: startW2('any'), available: { world: ['w1'], library: ['a'] }, globalDefault: 'a' }, lib('a')],
-    ['a remembered pick beats the start persona', { rules: startW2('any'), available: both, remembered: lib('b') }, lib('b')],
-    ['world only: the first world persona over the global default', { rules: WORLD_ONLY, available: both, globalDefault: 'a' }, world('w1')],
-    ['world only: a remembered library pick is not offered', { rules: WORLD_ONLY, available: both, remembered: lib('a') }, world('w1')],
-    ['world only: a remembered None is not offered without a Custom Persona', { rules: WORLD_ONLY, available: both, remembered: NONE }, world('w1')],
-    ['world only: starts on None falls to the first persona without a Custom Persona', { rules: { allowed: 'world', start: { source: 'none' } }, available: both }, world('w1')],
-    ['world only: starts on the Custom Persona', { rules: { allowed: 'world', start: { source: 'none' } }, available: { ...both, custom: true } }, NONE],
-    ['world only with a Custom Persona alone: its row', { rules: WORLD_ONLY, available: { world: [], library: ['a'], custom: true }, globalDefault: 'a' }, NONE],
-    ['world only with nothing playable works like Any', { rules: WORLD_ONLY, available: { world: [], library: ['a'] }, globalDefault: 'a' }, lib('a')],
+    ['no start: the global default applies', { available: both, globalDefault: 'a' }, lib('a')],
+    ['no start: the remembered pick wins', { available: both, remembered: world('w2'), globalDefault: 'a' }, world('w2')],
+    ['starts on None: None over the global default', { start: startNone, available: both, globalDefault: 'a' }, NONE],
+    ['starts on None: a remembered library pick wins', { start: startNone, available: both, remembered: lib('b'), globalDefault: 'a' }, lib('b')],
+    ['starts on None: a remembered pick of a deleted entity falls to None', { start: startNone, available: both, remembered: lib('gone'), globalDefault: 'a' }, NONE],
+    ['starts on None: the Custom Persona row', { start: startNone, available: { ...both, custom: true }, globalDefault: 'a' }, NONE],
+    ['starts on a world persona, over the global default', { start: startW2, available: both, globalDefault: 'a' }, world('w2')],
+    ['a start persona no longer playable falls to the default', { start: startW2, available: { world: ['w1'], library: ['a'] }, globalDefault: 'a' }, lib('a')],
+    ['a remembered pick beats the start persona', { start: startW2, available: both, remembered: lib('b') }, lib('b')],
+    ['a remembered library pick stays offered beside world personas', { start: startW2, available: both, remembered: lib('a') }, lib('a')],
   ])('%s', (_label, over, expected) => {
     expect(preselectPersona(choices(over))).toEqual(expected);
   });
 });
 
-// The step's category and the in-game Change dialog list what this offers.
-describe('offeredPersonas', () => {
-  const both = { world: ['w'], library: ['a'] };
-  it('any offers every persona and None', () => {
-    expect(offeredPersonas('any', both)).toEqual({ ...both, none: true });
-  });
-
-  it("world only offers only the world's personas, with no None", () => {
-    expect(offeredPersonas('world', both)).toEqual({ world: ['w'], library: [], none: false });
-  });
-
-  it('world only with no playable entity offers what Any offers', () => {
-    expect(offeredPersonas('world', { world: [], library: ['a'] })).toEqual({ world: [], library: ['a'], none: true });
-  });
-
-  it('leaves nothing to pick when no persona is on offer, whatever the rule', () => {
-    for (const allowed of ['any', 'world'] as const) {
-      expect(hasPersonaChoice(offeredPersonas(allowed, { world: [], library: [] }))).toBe(false);
-    }
-    expect(hasPersonaChoice(offeredPersonas('world', both))).toBe(true);
-  });
-
-  it('offers the Custom Persona entity in None’s place under either rule', () => {
-    expect(offeredPersonas('any', { world: [], library: [], custom: 'cp' })).toEqual({ world: [], library: [], none: true, custom: 'cp' });
-    expect(hasPersonaChoice(offeredPersonas('any', { world: [], library: [], custom: 'cp' }))).toBe(true);
-    expect(offeredPersonas('world', { ...both, custom: 'cp' })).toEqual({ world: ['w'], library: [], none: true, custom: 'cp' });
-    expect(offeredPersonas('world', { world: [], library: ['a'], custom: 'cp' })).toEqual({ world: [], library: [], none: true, custom: 'cp' });
+describe('hasPersonaChoice', () => {
+  it('needs a persona or the Custom Persona entity: None alone is no choice', () => {
+    expect(hasPersonaChoice({ world: [], library: [] })).toBe(false);
+    expect(hasPersonaChoice({ world: ['w'], library: [] })).toBe(true);
+    expect(hasPersonaChoice({ world: [], library: ['a'] })).toBe(true);
+    expect(hasPersonaChoice({ world: [], library: [], custom: 'cp' })).toBe(true);
   });
 });
 
@@ -122,18 +90,14 @@ describe('samePersonaRef', () => {
   });
 });
 
-describe('worldAllowedPersonas and worldStartPersona', () => {
+describe('worldStartPersona', () => {
   it('reads an absent or unknown value as the default', () => {
-    expect(worldAllowedPersonas({})).toBe('any');
-    expect(worldAllowedPersonas({ allowedPersonas: 'bogus' as never })).toBe('any');
-    expect(worldAllowedPersonas(undefined)).toBe('any');
     expect(worldStartPersona({})).toBeUndefined();
     expect(worldStartPersona({ startPersona: { source: 'world' } as never })).toBeUndefined();
     expect(worldStartPersona({ startPersona: 'none' as never })).toBeUndefined();
   });
 
   it('reads each value', () => {
-    expect(worldAllowedPersonas({ allowedPersonas: 'world' })).toBe('world');
     expect(worldStartPersona({ startPersona: { source: 'none' } })).toEqual({ source: 'none' });
     expect(worldStartPersona({ startPersona: { source: 'world', entityId: 'w' } })).toEqual({ source: 'world', entityId: 'w' });
   });

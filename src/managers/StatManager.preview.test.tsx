@@ -38,7 +38,7 @@ vi.mock('@/contexts/GameDataContext', () => {
     stats: world.stats, statGroups: [], playStats: world.stats, placeholders: [], traits: [], traitGroups: [],
     entities: [{ id: 'p1', name: 'P', persona: true, locations: [], vrmPick: { kind: 'library', id: 'aurelia' } }],
     playEntities: [], entityGroups: [], dictionaries: [], placementLetters: new Map(), placeholderOwners: new Map(),
-    worldOverview: { allowedPersonas: 'world' },
+    worldOverview: {},
     updateStat: (next: Stat) => {
       world.writes += 1;
       world.stats = world.stats.map((s) => (s.id === next.id ? next : s));

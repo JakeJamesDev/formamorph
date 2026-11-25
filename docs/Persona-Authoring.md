@@ -4,7 +4,7 @@
 This page covers how your world meets the player's persona:
 
 - Playable entities
-- The **Allowed Personas** and **Starts On** controls
+- The **Starting Persona** control
 - The **Persona** chip
 - The two Built-in chips that put names in your text
 
@@ -35,16 +35,15 @@ For an entity that exists only when the player picks it, select **Persona-Only**
 5. Give it traits. Drag a top-level trait onto its node, or select a Blueprints trait or group and use **Link To…** in the footer.
 6. Optional: give the entity [Self Openings](World-Editor-Openings#self-openings). They draw for a player with no world persona.
 
-## How to Choose Who the Player Can Be
-<!-- keywords: allowed, restrict, limit, character select, play as, starting character, allowed personas, force a protagonist, lock choices, ban outside characters, only my cast, whitelist, fixed hero, preselect for newcomers -->
+## How to Choose Who a New Player Starts As
+<!-- keywords: allowed, restrict, limit, character select, play as, starting character, starting persona, starts on, force a protagonist, lock choices, only my cast, fixed hero, preselect for newcomers -->
 <!-- route: worldEditor.overview -->
 
 1. Switch the World Editor to Advanced mode.
 2. Open the **Overview** tab.
-3. In **Allowed Personas**, select **Any** or **World Only**.
-4. In **Starts On**, pick the persona a new player starts on.
+3. In **Starting Persona**, pick the persona a new player starts on.
 
-See [Persona Rules](#persona-rules) for each choice.
+The player can still pick any persona. See [Starting Persona](#starting-persona) for each choice.
 
 ## How to Put a Name in Your Text
 <!-- keywords: {{user}}, {{char}}, user, char, macro, placeholder, player, character, variable, insert token, curly braces, address reader directly, dynamic, auto fill, double brackets, mention the hero -->
@@ -63,7 +62,7 @@ The menu offers **Entity Name** only in an entity's own fields. You can also typ
 | The player to play as one of your entities | **Playable** in the entity's **Persona** control |
 | An entity that exists only when the player picks it | **Persona-Only** in the **Persona** control |
 | Traits for a player with no world persona | **Custom Persona** in the **Persona** control |
-| To decide who the player can be | **Allowed Personas** and **Starts On** on the **Overview** tab |
+| To decide who a new player starts as | **Starting Persona** on the **Overview** tab |
 | Your own prompt to know the persona | The **Persona** chip |
 | Your text to say the player's name | The **Persona Name** chip |
 | An entity's text to say its own name | The **Entity Name** chip |
@@ -96,7 +95,7 @@ Only entities you select are playable. The setting is your statement that the en
 
 > ⚠️ **Check text that names "the player" as someone else.** Suppose the blacksmith's description says "She distrusts the player". A player who plays the blacksmith now reads as someone who distrusts herself. The app doesn't rewrite this text. You own it when you make the entity playable. Read the entity's descriptions, and the descriptions that mention it, from the player's side first.
 
-In Simple mode, a dot on the corner of the mode menu tells you the world uses Advanced features. A **Playable** or **Persona-Only** entity adds the dot. A non-default **Allowed Personas** or **Starts On** does the same.
+In Simple mode, a dot on the corner of the mode menu tells you the world uses Advanced features. A **Playable** or **Persona-Only** entity adds the dot. A **Starting Persona** other than **Player's Default** does the same.
 
 ## Persona-Only Entities
 <!-- keywords: hidden unless chosen, never in the world, reserved for player, invisible character, exclusive hero, not offered in library -->
@@ -150,33 +149,23 @@ A world with no marked entity keeps **None** as before. A blueprint chip then re
 
 See [Custom Persona](World-Editor-Traits#custom-persona) for how its links and pins work in the **Traits** tab.
 
-## Persona Rules
-<!-- keywords: block imported characters, permissions, enforce my cast, legacy setting converted, restriction ignored, returning player override -->
+## Starting Persona
+<!-- keywords: block imported characters, permissions, enforce my cast, allowed personas, world only, legacy setting converted, restriction ignored, returning player override -->
 
-Two controls on the **Overview** tab decide who the player can be. Both are **Advanced mode only**.
-
-**Allowed Personas** decides what the persona list offers:
-
-| Value | The player can pick |
-|---|---|
-| **Any** | Your world's personas, their own library personas, and **None** (or your **Custom Persona**) |
-| **World Only** | Your world's personas and your **Custom Persona**. No library personas. |
-
-**Starts On** decides which persona a new player starts on, at Enter World and in **Quick Start**:
+**Starting Persona** on the **Overview** tab decides which persona a new player starts on, at Enter World and in **Quick Start**. It's **Advanced mode only**.
 
 | Value | Starts on |
 |---|---|
-| **Player's Default** | The player's default persona. **World Only** hides this choice. |
-| **None**, or your Custom Persona by name | No persona, or your **Custom Persona** when the world has one. **World Only** hides **None** when the world has no Custom Persona. |
+| **Player's Default** | The player's default persona |
+| **None**, or your Custom Persona by name | No persona, or your **Custom Persona** when the world has one |
 | One of your personas | That persona |
 
-Use **Starts On: None** when your world already defines the player. Use **World Only** when the player must be one of your entities.
+The player can always pick any persona: your world's personas, their own library personas, and **None** (or your **Custom Persona**). Use **Starting Persona: None** when your world already defines the player.
 
-- **A pick the player made in your world before wins**, when the list still offers it. **Starts On** guides new players. It doesn't lock them.
-- **World Only with no persona entity works like Any** until you give an entity a **Persona** role other than **Cast**.
-- **A start persona you later unmark falls back to Player's Default.** Under **World Only**, it falls back to the first choice **Starts On** still offers.
-- **The side panel's Change list follows Allowed Personas** too.
-- **Worlds saved with the older Persona Choice control load as the same rules.** Fixed becomes **Starts On: None**. Cast becomes **World Only**, and also **Starts On: None** when no entity was playable.
+- **A pick the player made in your world before wins**, when the world still has it.
+- **A start persona you later unmark falls back to Player's Default.**
+- **Worlds saved with the older Allowed Personas control load with it removed.** A **World Only** world starts on its first persona when its start was one that control hid.
+- **Worlds saved with the older Persona Choice control** load the same way. Fixed becomes **Starting Persona: None**. Cast starts on the first persona, or on **None** when no entity was playable.
 
 ## Persona Stats
 <!-- keywords: persona owns stats, persona stats, global stats, where the ai reads my character's stats, player character block, my persona's stats, same name twice, two health bars, stats reset on switch, trait changes wrong stat -->

@@ -59,12 +59,9 @@ describe('lens options', () => {
     expect(lensPersonaOptions(world())).toEqual([]);
   });
 
-  it('reads the None row as None, as the Custom Persona in its place, or not at all under World Only', () => {
+  it('reads the None row as None, or as the Custom Persona in its place', () => {
     expect(lensNoneLabel(world({ entities: [wren] }))).toBe('None');
     expect(lensNoneLabel(world({ entities: [wren, newcomer] }))).toBe('Newcomer');
-    const worldOnly = { allowedPersonas: 'world' } as LensWorld['worldOverview'];
-    expect(lensNoneLabel(world({ entities: [wren], worldOverview: worldOnly }))).toBeNull();
-    expect(lensNoneLabel(world({ entities: [wren, newcomer], worldOverview: worldOnly }))).toBe('Newcomer');
   });
 
   it('lists every location', () => {
@@ -100,7 +97,7 @@ describe('seedLens', () => {
     expect(seedLens(world({ entities: [wren] }), stored, 'loc-harbor')).toEqual(stored);
   });
 
-  it('keeps a stored None over the world’s Starts On', () => {
+  it('keeps a stored None over the world’s Starting Persona', () => {
     const w = world({ entities: [wren], worldOverview: { startPersona: { source: 'world', entityId: 'e-wren' } } as LensWorld['worldOverview'] });
     expect(seedLens(w, { personaId: null, locationId: null }, null).personaId).toBeNull();
   });
@@ -114,11 +111,9 @@ describe('seedLens', () => {
     expect(seedLens(world({ entities: [sable] }), { personaId: 'e-wren', locationId: null }, null).personaId).toBeNull();
   });
 
-  it('starts a fresh lens on the world’s Starts On, then the first persona under World Only, then None', () => {
+  it('starts a fresh lens on the world’s Starting Persona, then None', () => {
     const startsOn = { startPersona: { source: 'world', entityId: 'e-sable' } } as LensWorld['worldOverview'];
-    const worldOnly = { allowedPersonas: 'world' } as LensWorld['worldOverview'];
     expect(seedLens(world({ entities: [wren, sable], worldOverview: startsOn }), null, null).personaId).toBe('e-sable');
-    expect(seedLens(world({ entities: [wren, sable], worldOverview: worldOnly }), null, null).personaId).toBe('e-wren');
     expect(seedLens(world({ entities: [wren, sable] }), null, null).personaId).toBeNull();
   });
 

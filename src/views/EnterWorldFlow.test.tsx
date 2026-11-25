@@ -748,10 +748,10 @@ describe('a world persona at world entry', () => {
   });
 });
 
-describe("the world's persona rules at world entry", () => {
+describe("the world's Starting Persona at world entry", () => {
   const keeperRef: PersonaRef = { source: 'world', entityId: 'keeper' };
   // A library persona set as the global default, and optionally one marked world entity.
-  const setUp = async (rules: Pick<WorldOverview, 'allowedPersonas' | 'startPersona'>, withKeeper: boolean) => {
+  const setUp = async (rules: Pick<WorldOverview, 'startPersona'>, withKeeper: boolean) => {
     const record = world();
     Object.assign(record.data.worldOverview as WorldOverview, rules);
     if (withKeeper) {
@@ -769,23 +769,13 @@ describe("the world's persona rules at world entry", () => {
   };
   afterEach(async () => { await EntityStorageService.deleteEntity('self').catch(() => {}); });
 
-  it("world only lists only the world's personas, with no None, on the first", async () => {
-    await setUp({ allowedPersonas: 'world' }, true);
+  it("lists the world's personas beside the library and None, on the global default", async () => {
+    await setUp({}, true);
     renderEnterWorld();
     await enter();
-    expect(screen.getByRole('radio', { name: 'Harbor Keeper' })).toBeChecked();
-    expect(screen.queryByRole('radio', { name: 'None' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('radio', { name: 'Self' })).not.toBeInTheDocument();
-  });
-
-  it('world only gives Quick Start the first world persona over the global default', async () => {
-    await setUp({ allowedPersonas: 'world' }, true);
-    const onStartGame = vi.fn();
-    renderEnterWorld({ onStartGame });
-    fireEvent.click(await screen.findByText('Entry World'));
-    fireEvent.click(await screen.findByRole('button', { name: 'Quick Start' }));
-    await waitFor(() => expect(onStartGame).toHaveBeenCalledOnce());
-    expect(onStartGame.mock.calls[0][6]).toEqual({ ref: keeperRef });
+    expect(screen.getByRole('radio', { name: 'Self' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'Harbor Keeper' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'None' })).toBeInTheDocument();
   });
 
   it('starts the step on None and still offers the global default', async () => {

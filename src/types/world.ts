@@ -1218,8 +1218,6 @@ export interface WorldOverview {
   defaultTime?: Daypart;
   /** Absent = Clear alone. */
   weather?: WorldWeather;
-  /** Which personas the player can pick. Absent = any. */
-  allowedPersonas?: AllowedPersonas;
   /** The persona a new player starts on. Absent = the player's default persona. */
   startPersona?: StartPersona;
   /** The picture behind the Locations canvas and the player's Map. Absent = none. */
@@ -1246,9 +1244,6 @@ export interface MapBackground {
   /** 0 to 1. */
   opacity: number;
 }
-
-/** `world` limits the pickers to this world's personas and its Custom Persona. Applied by lib/personaPick. */
-export type AllowedPersonas = 'any' | 'world';
 
 /** None (or the Custom Persona, which stands in its place), or one of this world's personas. */
 export type StartPersona = { source: 'none' } | { source: 'world'; entityId: string };

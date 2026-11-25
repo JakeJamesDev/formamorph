@@ -49,7 +49,7 @@ const world = vi.hoisted(() => ({
 vi.mock('@/contexts/GameDataContext', () => {
   const data = () => ({
     stats: world.stats, statGroups: [], traits: world.traits, traitGroups: [], entities: world.entities, locations: [],
-    placeholders: [], worldOverview: { allowedPersonas: 'world' }, bodies: undefined,
+    placeholders: [], worldOverview: {}, bodies: undefined,
     updateTrait: (next: Trait) => {
       world.writes += 1;
       world.traits = world.traits.map((t) => (t.id === next.id ? next : t));

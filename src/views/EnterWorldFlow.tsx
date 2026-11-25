@@ -37,8 +37,8 @@ import { bindLibraryEntity, blueprintBindWorld } from '@/lib/blueprintTravel';
 import { playLibraryStats } from '@/lib/portableStats';
 import { hasWorldAdditionDefaults, restoreWorldAdditionDefaults, saveWorldAdditionDefaults } from '@/lib/worldAdditionDefaults';
 import {
-  hasPersonaChoice, offeredPersonas, offeredStartLocations, personaStartLocation, preselectPersona, readWorldPersona,
-  rememberWorldPersona, withoutPersona, worldPersonaRules, type PersonaPickContext,
+  hasPersonaChoice, offeredStartLocations, personaStartLocation, preselectPersona, readWorldPersona,
+  rememberWorldPersona, withoutPersona, worldStartPersona, type PersonaPickContext,
 } from '@/lib/personaPick';
 import { personaOption, withPersonaEntry } from '@/lib/persona';
 import type { PersonaPick } from '@/lib/persona';
@@ -395,11 +395,11 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
     () => withPersonaEntry(entryWorld.entities, entryDraft.persona, entryLibraryName),
     [entryWorld.entities, entryDraft.persona, entryLibraryName],
   );
-  const personaRules = worldPersonaRules(selectedWorld?.data.worldOverview);
-  /** What the step's Persona category lists under the world's Allowed Personas. */
+  const startPersona = worldStartPersona(selectedWorld?.data.worldOverview);
+  /** What the step's Persona category lists. */
   const personaOffer = useMemo(
-    () => offeredPersonas(personaRules.allowed, { world: worldPersonaOptions, library: personaOptions, custom: customPersonaOption }),
-    [personaRules.allowed, worldPersonaOptions, personaOptions, customPersonaOption],
+    () => ({ world: worldPersonaOptions, library: personaOptions, custom: customPersonaOption }),
+    [worldPersonaOptions, personaOptions, customPersonaOption],
   );
   // The locations the gates leave on and unlocked at the start under the picked persona and Options (Q12, Q43).
   const openStartIds = useCallback((draft: EntryDraft) => startLocationIdsOpen(
@@ -419,8 +419,8 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
   };
   // What a Preset's persona and location rows read (Q35, Q36).
   const presetPlaces = useMemo<PresetPlaces>(
-    () => ({ allowed: personaRules.allowed, worldEntities: resolvedWorldEntities, locations, openLocationIds: openStartIds }),
-    [personaRules.allowed, resolvedWorldEntities, locations, openStartIds],
+    () => ({ worldEntities: resolvedWorldEntities, locations, openLocationIds: openStartIds }),
+    [resolvedWorldEntities, locations, openStartIds],
   );
   // Each Preset's match settles once per value, so it runs only when the draft or the world changes.
   const presetMatches = useMemo(
@@ -430,7 +430,7 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
   const presetMatch = (preset: PresetWorldOption) => presetMatches.get(preset.id) ?? null;
   // Enter World and Quick Start start on the same persona, and at the same location for it.
   const personaPreselect = (worldId: string) => preselectPersona({
-    rules: personaRules,
+    start: startPersona,
     remembered: readWorldPersona(worldId),
     globalDefault: defaultPersona,
     available: {
@@ -705,7 +705,6 @@ const EnterWorldFlow = forwardRef<EnterWorldFlowHandle, EnterWorldFlowProps>(fun
           dictionaryItems={entryDraft.dictionaryItems}
           worldPersonas={personaOffer.world}
           personas={personaOffer.library}
-          personaNone={personaOffer.none}
           personaCustom={personaOffer.custom}
           persona={entryDraft.persona}
           onPersonaChange={handlePersonaChange}

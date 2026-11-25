@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useGameDataOptional } from "@/contexts/GameDataContext";
 import { customPersonaEntity } from "./blueprints";
 import { readUserDefaultAvatar } from "./defaultAvatar";
-import { offeredPersonas, worldAllowedPersonas } from "./personaPick";
 import { readLibraryNames } from "./useLibraryAvatars";
 import { useMountedRef } from "./useMountedRef";
 import { playedVrmPick, resolveOwnPick, type VrmSource } from "./vrmResolver";
@@ -84,22 +83,20 @@ export async function withLibraryModelUrl<T>(id: string, load: (url: string) => 
 
 /** The world as the pickers read it. */
 interface WorldRowSource {
-  overview: Pick<WorldOverview, "vrmStore" | "allowedPersonas" | "legacyVrmFallback"> | undefined;
+  overview: Pick<WorldOverview, "vrmStore" | "legacyVrmFallback"> | undefined;
   entities: readonly Entity[];
 }
 
 /**
- * The picks a new game of the world can be played with, one per persona Enter World offers under Allowed
- * Personas. A library persona or None plays as the Custom Persona's pick, so one entry stands for them. Starts On
- * only guides the player, so it never narrows the set.
+ * The picks a new game of the world can be played with, one per world persona and one for None. A library persona
+ * or None plays as the Custom Persona's pick, so one entry stands for them.
  */
 function playablePicks({ overview, entities }: WorldRowSource): (VrmPick | undefined)[] {
   const customPersona = customPersonaEntity(entities);
   const world = entities.filter((entity) => entity.persona === true);
-  const offer = offeredPersonas(worldAllowedPersonas(overview), { world, library: [], custom: customPersona });
   const base = { store: overview?.vrmStore, customPersona, legacyFallback: overview?.legacyVrmFallback };
-  const picks = offer.world.map((entity) => playedVrmPick({ ...base, played: { source: "world", entity } }));
-  if (offer.none) picks.push(playedVrmPick({ ...base, played: { source: "none" } }));
+  const picks = world.map((entity) => playedVrmPick({ ...base, played: { source: "world", entity } }));
+  picks.push(playedVrmPick({ ...base, played: { source: "none" } }));
   return picks;
 }
 

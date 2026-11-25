@@ -149,14 +149,14 @@ describe('the Body Sliders picker', () => {
     const custom = (vrmPick?: unknown) => ({ id: 'you', name: 'You', customPersona: true, locations: [], vrmPick });
 
     it('splits a persona Avatar into Body Sliders and Head Features', async () => {
-      worldParts.overview = { allowedPersonas: 'world', vrmStore: worldAvatar('wsplit', 'Aki', ['Belly', 'Fat'], ['EarShape']) };
+      worldParts.overview = { vrmStore: worldAvatar('wsplit', 'Aki', ['Belly', 'Fat'], ['EarShape']) };
       worldParts.entities = [persona('p1', { kind: 'world', id: 'wsplit' })];
       renderManager();
       expect(await offeredByGroup()).toEqual({ 'Aki · Body Sliders': ['Belly', 'Fat'], 'Aki · Head Features': ['EarShape'] });
     });
 
     it('lists only the fixed persona’s Avatar when the world offers one persona', async () => {
-      worldParts.overview = { allowedPersonas: 'world', vrmStore: worldAvatar('wfix', 'Fixed', ['Hips']) };
+      worldParts.overview = { vrmStore: worldAvatar('wfix', 'Fixed', ['Hips']) };
       worldParts.entities = [persona('p1', { kind: 'world', id: 'wfix' })];
       library.models = [{ id: 'unused-fix', name: 'Unused' }];
       renderManager();

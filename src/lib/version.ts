@@ -412,6 +412,23 @@ function migratePlayerSetting(world: Record<string, unknown>): void {
 }
 
 /**
+ * Drop the 3.7 `allowedPersonas`. A World Only world whose start it did not offer started on its first
+ * persona, so that persona becomes its `startPersona`. Idempotent: the field never comes back.
+ */
+function migrateAllowedPersonas(world: Record<string, unknown>): void {
+  const ov = world.worldOverview as Record<string, unknown> | undefined;
+  if (!ov || typeof ov !== 'object' || !('allowedPersonas' in ov)) return;
+  const { allowedPersonas, ...next } = ov;
+  const entities = (Array.isArray(world.entities) ? world.entities : []) as Record<string, unknown>[];
+  const personas = entities.filter((e) => e?.persona === true && !e.customPersona).map((e) => e.id);
+  const hasCustom = entities.some((e) => !!e?.customPersona);
+  const start = next.startPersona as { source?: unknown; entityId?: unknown } | undefined;
+  const offered = start?.source === 'none' ? hasCustom : start?.source === 'world' && personas.includes(start.entityId);
+  if (allowedPersonas === 'world' && !offered && personas.length) next.startPersona = { source: 'world', entityId: personas[0] };
+  world.worldOverview = next;
+}
+
+/**
  * Turn the shipped `exclusive: true` into `maxPicks: 1` on world and entity-owned trait groups, and drop the
  * old key. Not version-gated: 3.x worlds carry `version === APP_VERSION`. Idempotent.
  */
@@ -919,6 +936,7 @@ export function migrateWorld(raw: unknown): World {
   migrateWorldPlaceholders(world);
   migrateOpeningCue(world);
   migratePlayerSetting(world);
+  migrateAllowedPersonas(world);
   migrateExclusiveGroups(world);
   migrateRequirementRows(world);
   dropRootTraitLinks(world);

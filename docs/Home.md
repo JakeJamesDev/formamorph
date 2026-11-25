@@ -67,7 +67,7 @@ Pick a world that comes with Formamorph, import one, or build your own in the Wo
 | 📖 **[World Editor: Dictionary](World-Editor-Dictionary)** | Lore entries, what gets scanned, keyword matching, and books |
 | 🧩 **[World Editor: Placeholders](World-Editor-Placeholders)** | Wildcards, Objects and Variables, rolls, pins, copies and the built-in chips |
 | 🧪 **[Test Bench](Test-Bench)** | Checking a world before you play it: the World Doctor, which dictionary entries fire, what the AI gets at a location, and turn one of a new game |
-| 🪪 **[Personas for Authors](Persona-Authoring)** | Playable entities, the **Allowed Personas** and **Starts On** controls, and the Persona chip and the Persona Name chip |
+| 🪪 **[Personas for Authors](Persona-Authoring)** | Playable entities, the **Starting Persona** control, and the Persona chip and the Persona Name chip |
 | 📐 **[World Format](WorldFormat)** | Every field of a world `.json` file, and how to add a stat, a trait or an entity by hand |
 | 🧮 **[Scripts Guide](ScriptsGuide)** | Writing JavaScript scripts for stats, traits and the world: formulas, narration rewrites and player prompts |
 | 🧮 **[Scripts Reference](Scripts-Reference)** | Every object a script reads and writes, with examples |

@@ -128,7 +128,8 @@ Import runs every world through a migration. The migration changes an older shap
 | A location `isStartLocation` flag | `isStarting` |
 | Placeholder `values` as strings, `weights` keyed by text | Value records, weights keyed by value `id` |
 | `worldOverview.openingCue` and `openingCueEnabled` | One Opening Action in `openings` |
-| `worldOverview.playerSetting` | `allowedPersonas` and `startPersona` |
+| `worldOverview.playerSetting` | `startPersona` |
+| `worldOverview.allowedPersonas` | Removed. A `"world"` world whose start was not one of its personas, or its Custom Persona, starts on its first persona |
 | A trait group `exclusive: true` | `maxPicks: 1` |
 | An entity link to a trait outside Blueprints | Removed, with its overrides |
 | A stat's `beforeCode` and `code` | Scripts with the timings `"before"` and `"after"` |
@@ -168,11 +169,10 @@ Write new files in the current shape. A file with `scripts` loads in an older ve
 | `openingWeights` | | Object | Draw weight per opening `id`. A missing entry weighs 1. `0` keeps an opening and never draws it |
 | `defaultTime` | | `"night"` \| `"dawn"` \| `"morning"` \| `"midday"` \| `"afternoon"` \| `"evening"` | The time of day a game starts at when the drawn opening has no `time`. Absent = the AI reads it from page one |
 | `weather` | | Object | The world's Weather: `{ "allowed": String[], "defaultWeather": String }`. `allowed` lists any of `"clear"`, `"rain"`, `"snow"`, `"storm"` and `"brightSun"`. One kind is the weather all story long; two or more let the story change it; empty = Clear alone. `defaultWeather` is an allowed kind, and is optional. Absent = Clear alone |
-| `allowedPersonas` | | `"any"` \| `"world"` | Which personas the player can pick. `"world"` allows only this world's personas and its Custom Persona. Absent = `"any"` |
 | `startPersona` | | Object | The persona a new player starts on: `{ "source": "none" }`, or `{ "source": "world", "entityId": "<entity id>" }`. Absent = the player's default persona |
 | `mapBackground` | | Object | The picture behind the Locations canvas and the in-game Map. See below. Absent = none |
 
-See [Persona Rules](Persona-Authoring#persona-rules) for how the last two fields behave.
+See [Starting Persona](Persona-Authoring#starting-persona) for how `startPersona` behaves.
 
 **`mapBackground`** holds the world map art:
 

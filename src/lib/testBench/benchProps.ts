@@ -75,7 +75,7 @@ export interface LensBarProps {
   lens: BenchLens;
   personaOptions: LensOption[];
   /** What the None row reads as. Null when the world does not offer it. */
-  noneLabel: string | null;
+  noneLabel: string;
   locationOptions: LensOption[];
   /** The stats the lens switches away from the world's defaults. */
   statOverrides: StatOverride[];

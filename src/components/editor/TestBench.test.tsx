@@ -273,13 +273,6 @@ describe('TestBench lens bar', () => {
     expect(screen.queryByRole('option', { name: 'Sedge-Born' })).toBeNull();
   });
 
-  it('drops the None row when the world does not offer it', async () => {
-    renderLens({ personaId: 'e-wren', locationId: null }, { noneLabel: null });
-    await userEvent.click(pcSelector());
-    expect(screen.queryByRole('option', { name: 'None' })).toBeNull();
-    expect(screen.getByRole('option', { name: 'Wren' })).toBeInTheDocument();
-  });
-
   it('reports a pick as the id of the thing picked', async () => {
     const { lens } = renderLens(EMPTY_LENS);
     await userEvent.click(pcSelector());

@@ -1163,20 +1163,64 @@ describe('migrateWorld — player setting to persona rules', () => {
     expect(ov.startPersona).toEqual({ source: 'none' });
   });
 
-  it('turns Cast into World Only, starting on the first persona', () => {
+  it('turns Cast into a start on the first persona', () => {
     const ov = overviewOf('cast', [playable]);
-    expect(ov.allowedPersonas).toBe('world');
-    expect(ov.startPersona).toBeUndefined();
+    expect('allowedPersonas' in ov).toBe(false);
+    expect(ov.startPersona).toEqual({ source: 'world', entityId: 'w' });
   });
 
   it('keeps a Cast world with no playable entity starting on None, as Cast did', () => {
     const ov = overviewOf('cast');
-    expect(ov.allowedPersonas).toBe('world');
+    expect('allowedPersonas' in ov).toBe(false);
     expect(ov.startPersona).toEqual({ source: 'none' });
   });
 
   it('is idempotent', () => {
     const once = migrateWorld({ version: APP_VERSION, worldOverview: { playerSetting: 'cast' }, entities: [playable] });
+    expect(migrateWorld(JSON.parse(JSON.stringify(once))).worldOverview).toEqual(once.worldOverview);
+  });
+});
+
+describe('migrateWorld — Allowed Personas dropped', () => {
+  const maren = { id: 'm', name: 'Maren', persona: true };
+  const tobin = { id: 't', name: 'Tobin', persona: true };
+  const custom = { id: 'c', name: 'Wanderer', customPersona: true };
+  const overviewOf = (overview: Record<string, unknown>, entities: unknown[] = [maren, tobin]) =>
+    migrateWorld({ version: APP_VERSION, worldOverview: { name: 'W', ...overview }, entities }).worldOverview as unknown as Record<string, unknown>;
+
+  it('drops Any and leaves the start alone', () => {
+    const ov = overviewOf({ allowedPersonas: 'any', startPersona: { source: 'none' } });
+    expect('allowedPersonas' in ov).toBe(false);
+    expect(ov.startPersona).toEqual({ source: 'none' });
+  });
+
+  it('turns World Only with no start into a start on the first persona, as it started', () => {
+    const ov = overviewOf({ allowedPersonas: 'world' });
+    expect('allowedPersonas' in ov).toBe(false);
+    expect(ov.startPersona).toEqual({ source: 'world', entityId: 'm' });
+  });
+
+  it('keeps a World Only start the world offered', () => {
+    expect(overviewOf({ allowedPersonas: 'world', startPersona: { source: 'world', entityId: 't' } }).startPersona)
+      .toEqual({ source: 'world', entityId: 't' });
+    expect(overviewOf({ allowedPersonas: 'world', startPersona: { source: 'none' } }, [maren, custom]).startPersona)
+      .toEqual({ source: 'none' });
+  });
+
+  it('moves a World Only start it did not offer to the first persona', () => {
+    expect(overviewOf({ allowedPersonas: 'world', startPersona: { source: 'none' } }).startPersona)
+      .toEqual({ source: 'world', entityId: 'm' });
+    expect(overviewOf({ allowedPersonas: 'world', startPersona: { source: 'world', entityId: 'gone' } }).startPersona)
+      .toEqual({ source: 'world', entityId: 'm' });
+  });
+
+  it('leaves World Only with no persona on the start it had, as it worked like Any', () => {
+    expect(overviewOf({ allowedPersonas: 'world' }, []).startPersona).toBeUndefined();
+    expect(overviewOf({ allowedPersonas: 'world' }, [custom]).startPersona).toBeUndefined();
+  });
+
+  it('is idempotent', () => {
+    const once = migrateWorld({ version: APP_VERSION, worldOverview: { allowedPersonas: 'world' }, entities: [maren] });
     expect(migrateWorld(JSON.parse(JSON.stringify(once))).worldOverview).toEqual(once.worldOverview);
   });
 });
