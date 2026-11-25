@@ -103,8 +103,8 @@ export function RequirementRowsField({
   const targets = (heading: string, list: RequirementOption[], tag = ''): BreadcrumbPickerSection<RequirementOption> => ({
     heading,
     rows: list.map((option) => ({
-      // One stat can belong to several owners.
-      key: `${tag}${option.requirement.kind}:${option.requirement.id}${option.requirement.kind === 'stat' ? `:${requirementOwnerKey(requirementOwnerOf(option.requirement))}` : ''}${option.requirement.kind === 'item' ? `:${option.requirement.status}` : ''}`,
+      // One stat can belong to several owners, and so can a linked trait or group.
+      key: `${tag}${option.requirement.kind}:${option.requirement.id}${option.requirement.kind === 'stat' || option.home ? `:${requirementOwnerKey(requirementOwnerOf(option.requirement))}` : ''}${option.requirement.kind === 'item' ? `:${option.requirement.status}` : ''}`,
       value: option,
       name: option.label,
       breadcrumb: option.breadcrumb,
@@ -134,11 +134,13 @@ export function RequirementRowsField({
       kind: 'page', key: `${prefix}:${id}`, heading: home.heading, children: [{ kind: 'section', rows: targets('', home.list).rows }],
     }));
   };
+  // Off-world only the host's own traits exist to read.
+  const linkedOf = (kind: 'traits' | 'groups') => (offWorld ? [] : options.linked?.[kind] ?? []);
   const category = (key: string, heading: string, children: BreadcrumbPickerNode<RequirementOption>[]): BreadcrumbPickerNode<RequirementOption>[] =>
     (children.length ? [{ kind: 'page', key, heading, children }] : []);
   const tree: BreadcrumbPickerNode<RequirementOption>[] = [
-    ...category('traits', 'Traits', ownerPages('traits', options.traits)),
-    ...category('groups', 'Any Trait in a Group', ownerPages('groups', options.groups)),
+    ...category('traits', 'Traits', ownerPages('traits', [...options.traits, ...linkedOf('traits')])),
+    ...category('groups', 'Any Trait in a Group', ownerPages('groups', [...options.groups, ...linkedOf('groups')])),
     ...category('stats', 'Stats', shownStats.map((s, i): BreadcrumbPickerNode<RequirementOption> => ({
       kind: 'page', key: `stats:${i}`, heading: s.owner, children: [{ kind: 'section', ...targets(s.heading, s.options, s.blueprint ? 'blueprint ' : '') }],
     }))),

@@ -77,7 +77,7 @@ describe('TraitRequiresField owners', () => {
     const user = userEvent.setup();
     render(<Harness trait={traits[3]} />);
     openPicker();
-    fireEvent.click(await screen.findByRole('option', { name: /^Paladin/ }));
+    fireEvent.click(await screen.findByRole('option', { name: /^Paladin.*Blueprints/ }));
     expect(screen.queryByRole('button', { name: 'Back to targets' })).toBeNull();
     expect(rows()).toEqual([{ all: [{ kind: 'trait', id: 'paladin' }] }]);
     expect(sentences()).toEqual(['This entity has Paladin and…']);
@@ -94,9 +94,22 @@ describe('TraitRequiresField owners', () => {
     openPicker();
     const names = () => screen.getAllByRole('option').map((o) => o.getAttribute('aria-label') ?? o.textContent);
     await user.click(await screen.findByRole('option', { name: /^Traits, / }));
-    expect(names()).toEqual(['World, 12 available, opens a page', 'Blueprints, 3 available, opens a page', 'SquireMira']);
+    expect(names()).toEqual(['World, 12 available, opens a page', 'Blueprints, 3 available, opens a page', 'SquireMira', 'Albus, 2 available, opens a page']);
     await user.click(screen.getByRole('option', { name: /^Blueprints, / }));
     expect(names()).toEqual(['PaladinClasses', 'WizardClasses', 'Smite']);
+  });
+
+  it('lists an entity’s linked traits on its page, and a pick there names the entity', async () => {
+    const user = userEvent.setup();
+    const calm = Array.from({ length: 12 }, (_, i) => trait(`calm${i}`, { name: `Calm ${i}`, groupId: null, order: 2 + i }));
+    render(<Harness trait={traits[0]} extra={{ traits: calm, traitGroups: [] }} />);
+    openPicker();
+    await user.click(await screen.findByRole('option', { name: /^Traits, / }));
+    await user.click(screen.getByRole('option', { name: /^Albus, / }));
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['PaladinClasses', 'WizardClasses']);
+    await user.click(option(/^Paladin/));
+    expect(rows()).toEqual([{ all: [{ kind: 'trait', id: 'paladin', owner: ALBUS }] }]);
+    expect(sentences()).toEqual(['Albus has Paladin and…']);
   });
 
   // A Global Trait's Condition on a Blueprint trait names no one (Q25), so it needs an owner from the target popover (Q31, Q37).
@@ -146,7 +159,7 @@ describe('TraitRequiresField owners', () => {
     const listed: TraitRequirement[] = [{ kind: 'trait', id: 'paladin', owner: { kind: 'you' } }];
     render(<Harness trait={smite([{ all: listed }])} />);
     fireEvent.click(button(ADD_TO_ROW));
-    const paladin = await screen.findByRole('option', { name: /^Paladin/ });
+    const paladin = await screen.findByRole('option', { name: /^Paladin.*Blueprints/ });
     expect(paladin).not.toHaveAttribute('aria-disabled', 'true');
     fireEvent.click(paladin);
     expect(sentences()).toEqual(['The player has Paladin and this entity has Paladin and…']);
@@ -155,14 +168,14 @@ describe('TraitRequiresField owners', () => {
     expect(option(/^Albus/)).not.toHaveAttribute('aria-disabled', 'true');
     await user.keyboard('{Escape}');
     fireEvent.click(button(ADD_TO_ROW));
-    expect(await screen.findByRole('option', { name: /^Paladin/ })).toHaveAttribute('aria-disabled', 'true');
+    expect(await screen.findByRole('option', { name: /^Paladin.*Blueprints/ })).toHaveAttribute('aria-disabled', 'true');
   });
 
   it('reads an owned trait’s Condition under its owner, and lists the group’s owners', async () => {
     const user = userEvent.setup();
     render(<Harness trait={mira.traits![0]} />);
     openPicker();
-    fireEvent.click(await screen.findByRole('option', { name: /^Classes/ }));
+    fireEvent.click(await screen.findByRole('option', { name: /^Classes.*Blueprints/ }));
     expect(sentences()).toEqual(['Mira has a trait in Classes and…']);
     await user.click(button('Owner: Mira'));
     expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Mira', 'The player', 'Albus']);
@@ -204,8 +217,13 @@ describe('TraitRequiresField breadcrumbs', () => {
     const user = userEvent.setup();
     render(<Harness trait={traits[0]} extra={deep} />);
     await user.click(button(ADD_FIRST));
+    // The world opens on its pages; a search lists rows with their whole path.
+    const search = screen.getByPlaceholderText('Search traits, groups, time of day, and personas');
+    await user.type(search, 'paladin');
+    expect(option(/^Paladin.*Blueprints/).textContent).toBe('PaladinBlueprints › Classes');
+    await user.clear(search);
+    await user.type(search, 'rune');
     expect(option(/^Rune(?!s)/).textContent).toBe('RuneLore › … › Deep');
-    expect(option(/^Paladin/).textContent).toBe('PaladinBlueprints › Classes');
     await user.hover(option(/^Rune(?!s)/));
     expect(await screen.findByText('Lore › Runes › Elder › Deep')).toBeVisible();
   });
@@ -254,8 +272,8 @@ describe('TraitRequiresField rows', () => {
   it('disables a Condition already in the row "and…" adds to, but not one only in another row', async () => {
     render(<Harness trait={smite([{ all: [paladin] }, { all: [wizard] }])} />);
     fireEvent.click(screen.getAllByRole('button', { name: ADD_TO_ROW })[0]);
-    expect(await screen.findByRole('option', { name: /^Paladin/ })).toHaveAttribute('aria-disabled', 'true');
-    expect(option(/^Wizard/)).not.toHaveAttribute('aria-disabled', 'true');
+    expect(await screen.findByRole('option', { name: /^Paladin.*Blueprints/ })).toHaveAttribute('aria-disabled', 'true');
+    expect(option(/^Wizard.*Blueprints/)).not.toHaveAttribute('aria-disabled', 'true');
   });
 
   it('removes a Condition from its row, and the row with its last one', () => {
@@ -330,7 +348,7 @@ describe('TraitRequiresField Not flip', () => {
   it('adds a target already present as plain to another row, where it flips to Not', async () => {
     render(<Harness trait={smite([{ all: [paladin] }, { all: [brave] }])} />);
     fireEvent.click(screen.getAllByRole('button', { name: ADD_TO_ROW })[1]);
-    fireEvent.click(await screen.findByRole('option', { name: /^Paladin/ }));
+    fireEvent.click(await screen.findByRole('option', { name: /^Paladin.*Blueprints/ }));
     fireEvent.click(screen.getAllByRole('button', { name: 'Change to “doesn\'t have”' })[1]);
     expect(sentences()).toEqual(['This entity has Paladin and…', "Brave is active and this entity doesn't have Paladin and…"]);
   });
@@ -338,7 +356,7 @@ describe('TraitRequiresField Not flip', () => {
   it('lets a plain row join beside a Not row on the same target', async () => {
     render(<Harness trait={smite([{ all: [{ ...paladin, not: true }] }])} />);
     openPicker();
-    expect(await screen.findByRole('option', { name: /^Paladin/ })).not.toHaveAttribute('aria-disabled', 'true');
+    expect(await screen.findByRole('option', { name: /^Paladin.*Blueprints/ })).not.toHaveAttribute('aria-disabled', 'true');
   });
 });
 

@@ -185,6 +185,18 @@ describe('the trait and group options of a Blueprint', () => {
   const pick = (list: { label: string; blueprint?: true; breadcrumb: string[]; home?: { id: string } }[]) =>
     list.map((o) => [o.label, o.blueprint ?? false, o.breadcrumb, o.home?.id ?? null]);
 
+  it('lists a linked trait again under each entity that links it, naming that entity', () => {
+    const linked = requirementOptions(editor(), 'oath').linked!;
+    expect(linked.traits.map((o) => [o.label, o.home?.id, o.requirement, o.breadcrumb])).toEqual([
+      ['Gate', 'mira', { kind: 'trait', id: 'gate', owner: { kind: 'entity', id: 'mira', name: 'Mira' } }, ['Mira']],
+      ['Bold', 'mira', { kind: 'trait', id: 'bold', owner: { kind: 'entity', id: 'mira', name: 'Mira' } }, ['Mira']],
+      ['Gate', 'wren', { kind: 'trait', id: 'gate', owner: { kind: 'entity', id: 'wren', name: 'Wren' } }, ['Wren']],
+      ['Bold', 'wren', { kind: 'trait', id: 'bold', owner: { kind: 'entity', id: 'wren', name: 'Wren' } }, ['Wren']],
+    ]);
+    // The first list still holds each trait once, so a swap list never repeats one.
+    expect(requirementOptions(editor(), 'oath').traits.map((o) => o.label).sort()).toEqual(['Bold', 'Brave', 'Gate']);
+  });
+
   it('marks a Blueprint trait and group, and no global one', () => {
     const options = requirementOptions(editor(), 'oath');
     expect(new Set(pick(options.traits))).toEqual(new Set([

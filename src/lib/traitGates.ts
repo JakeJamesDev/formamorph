@@ -1456,6 +1456,9 @@ export interface RequirementOption {
 export interface RequirementOptions {
   traits: RequirementOption[];
   groups: RequirementOption[];
+  /** Each Blueprint trait and group again per entity that links it, naming that entity. For the picker's owner
+   *  pages only: `traits` and `groups` hold each target once. */
+  linked?: { traits: RequirementOption[]; groups: RequirementOption[] };
   personas: RequirementOption[];
   /** Each item once as owned, and once as equipped when it fits a slot. */
   items?: RequirementOption[];
@@ -1546,10 +1549,23 @@ export function requirementOptions(input: Omit<GateInput, 'active' | 'persona'>,
   const seen = new Set<string>();
   const traits: RequirementOption[] = [];
   const groups: RequirementOption[] = [];
+  const linked: NonNullable<RequirementOptions['linked']> = { traits: [], groups: [] };
   for (const owner of gateTrees(input)) {
     for (const node of flattenTree(buildTree(owner.groups, owner.traits))) {
       const id = node.leaf?.id ?? node.group?.id;
-      if (!id || seen.has(id)) continue;
+      if (!id) continue;
+      if (seen.has(id)) {
+        // An entity's Link keeps its Blueprint's id, so the entity's page lists it with the entity named.
+        if (owner.id === null) continue;
+        const named = { kind: 'entity' as const, id: owner.id, name: owner.name };
+        const add = (kind: 'trait' | 'group', parentId: string | null | undefined) => {
+          const requirement = { kind, id, owner: named };
+          if (idx.isBlueprint(requirement)) linked[`${kind}s`].push(option(requirement, breadcrumbOf(owner, parentId), ownersOf(id, kind), owner));
+        };
+        if (node.leaf && !skip.has(id)) add('trait', node.leaf.groupId);
+        if (node.group && !deadGroup(id)) add('group', node.group.parentId);
+        continue;
+      }
       seen.add(id);
       if (node.leaf && !skip.has(id)) traits.push(option({ kind: 'trait', id }, breadcrumbOf(owner, node.leaf.groupId), ownersOf(id, 'trait'), owner));
       if (node.group && !deadGroup(id)) groups.push(option({ kind: 'group', id }, breadcrumbOf(owner, node.group.parentId), ownersOf(id, 'group'), owner));
@@ -1571,7 +1587,7 @@ export function requirementOptions(input: Omit<GateInput, 'active' | 'persona'>,
   // A new Opening Condition starts with none picked, unresolved until the author checks one.
   const opening = input.openings?.length ? [{ ...option({ kind: 'opening', openings: [] }, [], []), label: 'Opening' }] : undefined;
   return {
-    traits, groups, personas, items, worldOptions: worldOptionRows(input.worldOptions), ...(weather && { weather, weatherKinds }),
+    traits, groups, ...(linked.traits.length || linked.groups.length ? { linked } : {}), personas, items, worldOptions: worldOptionRows(input.worldOptions), ...(weather && { weather, weatherKinds }),
     ...(opening && { opening, openings: input.openings }),
   };
 }
