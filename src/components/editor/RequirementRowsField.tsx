@@ -162,7 +162,7 @@ export function RequirementRowsField({
     />
   );
 
-  const ctx: ClauseContext = { options, placeholders, offWorld, clausesOf, host: clauseHost, onOpen, opens };
+  const ctx: ClauseContext = { options, statSections, placeholders, offWorld, clausesOf, host: clauseHost, onOpen, opens };
   const textOf = (requirement: TraitRequirement) => plainText(clauseText(clausesOf(requirement, { host: clauseHost })));
 
   return (

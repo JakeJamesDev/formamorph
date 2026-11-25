@@ -5,23 +5,25 @@ import { SentenceFlipToken, SentenceListToken, SentenceToken } from '@/component
 import type { BreadcrumbPickerRow } from '@/components/ui/breadcrumb-picker';
 import { Meta } from '@/components/ui/typography';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
-import { StatConditionControls } from '@/components/editor/StatConditionControls';
+import { ComparisonToken, NumberValueToken } from '@/components/editor/NumberConditionTokens';
+import type { RequirementStatSection } from '@/lib/requirementStatOptions';
 import { TimeConditionControls } from '@/components/editor/TimeConditionControls';
 import { WeatherConditionControls } from '@/components/editor/WeatherConditionControls';
 import { OpeningConditionControls } from '@/components/editor/OpeningConditionControls';
 import { ItemConditionControls } from '@/components/editor/ItemConditionControls';
-import { OptionConditionControls } from '@/components/editor/OptionConditionControls';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import {
-  clauseText, flipped, requirementOwnerKey, requirementOwnerOf, withRequirementOwner,
+  flipped, requirementOwnerKey, requirementOwnerOf, withRequirementOwner,
   type ClauseHost, type ClausePart, type ClauseView, type RequirementOption, type RequirementOptions,
 } from '@/lib/traitGates';
 import { Tip } from '@/components/ui/tooltip';
-import type { Placeholder, RequirementOwner, TraitRequirement } from '@/types';
+import type { OptionRequirement, Placeholder, RequirementOwner, StatRequirement, TraitRequirement } from '@/types';
 
 /** What every clause of one field reads: the host's targets and names, and where a target opens. */
 export interface ClauseContext {
   options: RequirementOptions;
+  /** The stats by owner: a stat's owner and target lists. */
+  statSections: readonly RequirementStatSection[];
   placeholders: readonly Placeholder[];
   offWorld: boolean;
   clausesOf: (requirement: TraitRequirement, view?: ClauseView) => ClausePart[];
@@ -37,8 +39,7 @@ export interface ConditionEdit {
 }
 
 type ItemRequirement = Extract<TraitRequirement, { kind: 'item' }>;
-type Tokened = Extract<TraitRequirement, { kind: 'trait' | 'group' | 'playingAs' | 'item' }>;
-const tokened = (req: TraitRequirement): req is Tokened => req.kind === 'trait' || req.kind === 'group' || req.kind === 'playingAs' || req.kind === 'item';
+type Tokened = Extract<TraitRequirement, { kind: 'trait' | 'group' | 'playingAs' | 'item' | 'stat' }>;
 
 type SetRequirement = Extract<TraitRequirement, { kind: 'time' | 'weather' | 'opening' }>;
 const isSet = (req: TraitRequirement): req is SetRequirement => req.kind === 'time' || req.kind === 'weather' || req.kind === 'opening';
@@ -89,14 +90,37 @@ const flippedText = (parts: readonly ClausePart[], other: readonly ClausePart[])
   other.find((p, i) => p.text.toLowerCase() !== parts[i]?.text.toLowerCase())?.text ?? '';
 
 /** The swap list's targets: those of the same kind (Q17). */
-const peersOf = (req: Tokened, options: RequirementOptions): readonly RequirementOption[] => {
-  if (req.kind === 'item') return (options.items ?? []).filter((o) => o.requirement.kind === 'item' && o.requirement.status === req.status);
-  return req.kind === 'trait' ? options.traits : req.kind === 'group' ? options.groups : options.personas;
+const peersOf = (req: Tokened, ctx: ClauseContext): readonly RequirementOption[] => {
+  if (req.kind === 'item') return (ctx.options.items ?? []).filter((o) => o.requirement.kind === 'item' && o.requirement.status === req.status);
+  if (req.kind === 'trait') return ctx.options.traits;
+  if (req.kind === 'group') return ctx.options.groups;
+  if (req.kind === 'playingAs') return ctx.options.personas;
+  // A stat's peers: the stats of the sections that read its owner.
+  const owner = requirementOwnerKey(requirementOwnerOf(req));
+  const seen = new Set<string>();
+  return ctx.statSections.filter((s) => requirementOwnerKey(requirementOwnerOf(s.options[0].requirement)) === owner)
+    .flatMap((s) => s.options).filter((o) => !seen.has(idOf(o.requirement)) && seen.add(idOf(o.requirement)));
+};
+
+/** The owners that hold stat `id`, one entry per owner; `undefined` is the host's own reading, with no owner. */
+const statOwnersOf = (id: string, sections: readonly RequirementStatSection[]): (RequirementOwner | undefined)[] => {
+  const seen = new Set<string>();
+  return sections.filter((s) => s.options.some((o) => idOf(o.requirement) === id))
+    .map((s) => requirementOwnerOf(s.options[0].requirement))
+    .filter((owner) => !seen.has(requirementOwnerKey(owner)) && seen.add(requirementOwnerKey(owner)));
+};
+
+/** A stat swap keeps the owner, operator and Not; the number and unit are the new stat's own. This is the one place
+ *  that decides which fields a stat swap carries. */
+const statSwapped = (req: StatRequirement, option: RequirementOption): TraitRequirement => {
+  const next = option.requirement;
+  if (next.kind !== 'stat') return next;
+  return { ...next, ...(req.owner && { owner: req.owner }), operator: req.operator, ...(req.not && { not: true as const }) };
 };
 
 /** One Condition as tokens: an owner list, a verb and a target swap list for a trait, a group, a persona or an item
  *  (an item verb lists four forms, and its checks open the State and identity controls); a flip and one set token for
- *  a time, weather or Opening; else one token over the whole clause whose popover holds the kind's controls. */
+ *  a time, weather or Opening; a stat or World Option has its own tokens. */
 export function RequirementClause({ requirement: req, edit, ctx, first }: {
   requirement: TraitRequirement;
   edit: ConditionEdit;
@@ -108,22 +132,21 @@ export function RequirementClause({ requirement: req, edit, ctx, first }: {
   const parts = ctx.clausesOf(req, view);
   const text = (t: string) => <PlaceholderText text={t} placeholders={ctx.placeholders} />;
   const plain = (t: string) => labelPlaceholders(t, ctx.placeholders);
-  const sentence = plain(clauseText(parts));
-  const brokenPart = parts.find((p) => p.broken);
   if (isSet(req)) return <SetClause requirement={req} parts={parts} edit={edit} ctx={ctx} view={view} />;
-  if (!tokened(req)) return <WholeClause requirement={req} parts={parts} sentence={sentence} edit={edit} ctx={ctx} broken={brokenPart && brokenReason(req, brokenPart)} />;
+  if (req.kind === 'option') return <OptionClause requirement={req} parts={parts} edit={edit} ctx={ctx} />;
 
-  const peers = peersOf(req, ctx.options);
+  const peers = peersOf(req, ctx);
   const own = peers.find((o) => idOf(o.requirement) === req.id);
   const targetName = (option: RequirementOption) =>
     ctx.clausesOf(option.requirement, { host: ctx.host }).find((p) => p.role === 'target')?.text ?? option.label;
 
   // The owner choices: no owner first, read as its own subject, then the target's owners.
   const noOwnerSubject = ctx.clausesOf(withoutOwner(req), { host: ctx.host }).find((p) => p.role === 'subject')?.text;
-  const owners: { owner?: RequirementOwner; name: string }[] = req.kind === 'playingAs' ? [] : [
-    { name: noOwnerSubject ? capital(noOwnerSubject) : 'No owner' },
-    ...(own?.owners ?? []).map((o) => ({ owner: o.owner, name: o.owner.kind === 'you' ? 'The player' : o.name })),
-  ];
+  const ownerName = (o: RequirementOwner) => (o.kind === 'you' ? 'The player' : o.name ?? '');
+  const noOwner = { name: noOwnerSubject ? capital(noOwnerSubject) : 'No owner' };
+  const owners: { owner?: RequirementOwner; name: string }[] = req.kind === 'playingAs' ? []
+    : req.kind === 'stat' ? statOwnersOf(req.id, ctx.statSections).map((o) => (o ? { owner: o, name: ownerName(o) } : noOwner))
+      : [noOwner, ...(own?.owners ?? []).map((o) => ({ owner: o.owner, name: ownerName(o.owner) }))];
   const currentOwner = requirementOwnerKey(requirementOwnerOf(req));
   const ownerRows: BreadcrumbPickerRow<string>[] = owners.map((o) => {
     const key = requirementOwnerKey(o.owner);
@@ -137,6 +160,7 @@ export function RequirementClause({ requirement: req, edit, ctx, first }: {
 
   // A swap keeps the owner when the new target allows it, else clears it.
   const swapped = (option: RequirementOption): TraitRequirement => {
+    if (req.kind === 'stat') return statSwapped(req, option);
     const owner = requirementOwnerOf(req);
     const keeps = owner && option.owners.some((o) => requirementOwnerKey(o.owner) === requirementOwnerKey(owner));
     const next = req.not ? { ...option.requirement, not: true as const } : option.requirement;
@@ -254,6 +278,20 @@ export function RequirementClause({ requirement: req, edit, ctx, first }: {
     );
   };
 
+  const statTokens = (part: ClausePart): ReactNode => {
+    if (req.kind !== 'stat') return text(part.text);
+    if (part.role === 'comparison') {
+      return <ComparisonToken word={part.text} operator={req.operator} accepts={(operator) => edit.accepts({ ...req, operator })} onPick={(operator) => edit.replace({ ...req, operator })} />;
+    }
+    return (
+      <NumberValueToken
+        text={part.text} value={req.value} unit={req.unit}
+        accepts={(change) => edit.accepts({ ...req, ...change })}
+        onNumber={(value) => edit.replace({ ...req, value })} onUnit={(unit) => edit.replace({ ...req, unit })}
+      />
+    );
+  };
+
   return (
     <>
       {parts.map((part, i) => {
@@ -262,7 +300,8 @@ export function RequirementClause({ requirement: req, edit, ctx, first }: {
           : part.role === 'verb' ? verbToken(part)
             : part.role === 'target' ? targetToken(part)
               : part.role === 'checks' && req.kind === 'item' ? checksToken(part, req)
-                : text(part.text);
+                : part.role === 'comparison' || part.role === 'value' ? statTokens(part)
+                  : text(part.text);
         // Parts have no ids; their order is fixed by kind.
         return <Fragment key={i}>{space}{token}</Fragment>;
       })}
@@ -308,37 +347,101 @@ function SetClause({ requirement: req, parts, edit, ctx, view }: {
   );
 }
 
-/** A kind without its own tokens yet: the whole clause as one token, its popover holding the kind's controls. */
-function WholeClause({ requirement: req, parts, sentence, edit, ctx, broken }: {
-  requirement: Exclude<TraitRequirement, Tokened | SetRequirement>;
+/** A World Option Condition as tokens: the Option swap list, a verb flip (choice), a comparison (number) and a value
+ *  token: a value list, a number box, or an on/off flip. */
+function OptionClause({ requirement: req, parts, edit, ctx }: {
+  requirement: OptionRequirement;
   parts: readonly ClausePart[];
-  sentence: string;
   edit: ConditionEdit;
   ctx: ClauseContext;
-  broken?: string;
 }) {
-  const next = flipped(req);
-  // A number World Option flips by its operator, so its controls hold the Not.
-  const flips = !(req.kind === 'option' && req.operator !== undefined);
-  const option = req.kind === 'option' && !broken ? ctx.options.worldOptions?.find((o) => idOf(o.requirement) === req.id)?.worldOption : undefined;
-  const controls = (() => {
-    switch (req.kind) {
-      case 'stat': return <StatConditionControls requirement={req} accepts={edit.accepts} onChange={edit.replace} />;
-      case 'option': return option && option.type !== 'boolean' && <OptionConditionControls option={option} requirement={req} accepts={edit.accepts} onChange={edit.replace} />;
-    }
-  })();
-  return (
-    <SentenceToken modal wide label={`Edit ${sentence}`} broken={broken} editor={(
-      <div className="space-y-2">
-        {controls && <div className="flex flex-wrap items-center gap-1.5">{controls}</div>}
-        {flips && (
-          <Button type="button" size="sm" variant="outline" className="h-7" disabled={!edit.accepts(next)} onClick={() => edit.replace(next)}>
-            Change to &ldquo;{flippedText(parts, ctx.clausesOf(next, { host: ctx.host }))}&rdquo;
-          </Button>
+  const text = (t: string) => <PlaceholderText text={t} placeholders={ctx.placeholders} />;
+  const plain = (t: string) => labelPlaceholders(t, ctx.placeholders);
+  const choices = ctx.options.worldOptions ?? [];
+  const worldOption = choices.find((o) => idOf(o.requirement) === req.id)?.worldOption;
+  const type = worldOption?.type ?? (req.operator !== undefined ? 'number' : req.valueId !== undefined ? 'choice' : 'boolean');
+
+  const targetRows: BreadcrumbPickerRow<string>[] = choices.map((o) => ({
+    key: idOf(o.requirement), value: idOf(o.requirement), name: o.label,
+    disabled: idOf(o.requirement) !== req.id && !edit.accepts(o.requirement),
+  }));
+  const pickTarget = (id: string) => {
+    const option = choices.find((o) => idOf(o.requirement) === id);
+    // The new Option starts on its own default value.
+    if (option && id !== req.id) edit.replace(option.requirement);
+  };
+
+  const targetToken = (part: ClausePart) => {
+    const reason = part.broken ? brokenReason(req, part) : undefined;
+    return (
+      <SentenceListToken
+        modal label={`Target: ${plain(part.text)}`} search="Search" broken={reason}
+        rows={targetRows} value={req.id} onPick={pickTarget} renderText={text} plainText={plain}
+        header={(close) => ctx.opens(req) && (
+          <div className="border-b p-1.5">
+            <Button
+              type="button" size="sm" variant="outline" className="h-7 w-full" disabled={!!reason} aria-label={`Open ${plain(part.text)}`}
+              onClick={() => { close(); ctx.onOpen(req); }}
+            >Open</Button>
+          </div>
         )}
-      </div>
-    )}>
-      <PlaceholderText text={clauseText(parts)} placeholders={ctx.placeholders} />
-    </SentenceToken>
+      >{text(part.text)}</SentenceListToken>
+    );
+  };
+
+  const valueToken = (part: ClausePart) => {
+    const reason = part.broken ? brokenReason(req, part) : undefined;
+    if (type === 'number') {
+      return (
+        <NumberValueToken
+          text={part.text} value={req.value ?? 0} broken={reason}
+          accepts={({ value }) => value !== undefined && Number.isInteger(value) && edit.accepts({ ...req, value })}
+          onNumber={(value) => edit.replace({ ...req, value })}
+        />
+      );
+    }
+    if (type === 'boolean') {
+      const next = flipped(req);
+      return (
+        <SentenceFlipToken label={`Change to “${req.not ? 'on' : 'off'}”`} disabled={!edit.accepts(next)} onFlip={() => edit.replace(next)}>
+          {part.text}
+        </SentenceFlipToken>
+      );
+    }
+    if (worldOption?.type !== 'choice') return text(part.text);
+    const pick = (valueId: string): OptionRequirement =>
+      ({ ...req, valueId, valueName: worldOption.values.find((v) => v.id === valueId)?.name ?? req.valueName });
+    const rows: BreadcrumbPickerRow<string>[] = worldOption.values.map((v) => ({
+      key: v.id, value: v.id, name: v.name, disabled: v.id !== req.valueId && !edit.accepts(pick(v.id)),
+    }));
+    return (
+      <SentenceListToken
+        modal label={`Value: ${plain(part.text)}`} search="Search values" broken={reason}
+        rows={rows} value={req.valueId} onPick={(id) => { if (id !== req.valueId) edit.replace(pick(id)); }} renderText={text} plainText={plain}
+      >{text(part.text)}</SentenceListToken>
+    );
+  };
+
+  const verbToken = (part: ClausePart) => {
+    const next = flipped(req);
+    return (
+      <SentenceFlipToken label={`Change to “${req.not ? 'is' : 'is not'}”`} disabled={!edit.accepts(next)} onFlip={() => edit.replace(next)}>
+        {part.text}
+      </SentenceFlipToken>
+    );
+  };
+
+  return (
+    <>
+      {parts.map((part, i) => {
+        const space = i > 0 && !part.attach ? ' ' : '';
+        const token: ReactNode = part.role === 'target' ? targetToken(part)
+          : part.role === 'verb' ? verbToken(part)
+            : part.role === 'comparison'
+              ? <ComparisonToken word={part.text} operator={req.operator ?? '='} accepts={(operator) => edit.accepts({ ...req, operator })} onPick={(operator) => edit.replace({ ...req, operator })} />
+              : part.role === 'value' ? valueToken(part) : text(part.text);
+        return <Fragment key={i}>{space}{token}</Fragment>;
+      })}
+    </>
   );
 }

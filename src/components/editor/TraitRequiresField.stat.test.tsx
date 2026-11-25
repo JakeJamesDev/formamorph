@@ -57,8 +57,9 @@ describe('TraitRequiresField with stats', () => {
       { all: [{ kind: 'stat', id: 'nerve', owner: { kind: 'entity', id: 'mira', name: 'Mira' }, operator: '>=', value: 50, unit: 'raw' }] },
     ]);
     // The editor's gate input knows the stat, so its token resolves under the entity's name.
-    const token = screen.getByRole('button', { name: "Edit Mira's Nerve is at least 50" });
+    const token = screen.getByRole('button', { name: 'Target: Nerve' });
     expect(token).not.toHaveAttribute('data-broken');
+    expect(document.querySelector('[data-requirement-row] p')?.textContent).toContain("Mira's Nerve is at least 50");
   });
 
   // Q10: a global stat takes no owner from an entity's trait either.
@@ -73,8 +74,8 @@ describe('TraitRequiresField with stats', () => {
     fireEvent.click(await screen.findByRole('option', { name: /^Rage/ }));
     expect(JSON.parse(screen.getByTestId('rows').textContent!)[0].all.map((c: { id: string; owner?: unknown }) => [c.id, c.owner ?? null]))
       .toEqual([['nerve', null], ['rage', null]]);
-    expect(screen.getByRole('button', { name: "Edit Mira's Nerve is at least 50" })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Edit Rage is at least 50' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Target: Nerve' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Target: Rage' })).toBeInTheDocument();
   });
 
   it('offers an off-world entity only its own stats', async () => {

@@ -199,7 +199,9 @@ describe('Media tab image panel location rules', () => {
     // Stored with no owner: a location rule's owner-less Condition reads the played persona.
     expect(second.requires).toEqual([{ all: [expect.objectContaining({ kind: 'stat', id: 'health' })] }]);
     expect(second.requires![0].all[0]).not.toHaveProperty('owner');
-    expect(within(framed()!).getByRole('button', { name: /^Edit The player's Health is at least/ })).toBeInTheDocument();
+    expect(within(framed()!).getByRole('button', { name: 'Owner: The player' })).toBeInTheDocument();
+    expect(within(framed()!).getByRole('button', { name: 'Target: Health' })).toBeInTheDocument();
+    expect(within(framed()!).getByRole('button', { name: 'Comparison: at least' })).toBeInTheDocument();
   });
 });
 

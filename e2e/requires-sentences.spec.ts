@@ -51,18 +51,52 @@ const WORLD = {
   ],
 };
 
-async function openWorld(page: Page, tab: string) {
+const stat = (id: string, name: string) => ({ id, name, type: 'number', description: '', min: 0, max: 100, value: 50, regen: 0, descriptors: [] });
+
+// A trait whose rows read a global stat, an entity's stat and each World Option type.
+const NUMBERS_WORLD = {
+  id: 'e2e-requires-numbers',
+  worldOverview: { name: 'E2E Numbers', description: '', author: '' },
+  locations: [{ id: 'hall', name: 'Hall' }],
+  stats: [stat('rage', 'Rage')],
+  statUpdates: [],
+  options: [
+    { id: 'diff', name: 'Difficulty', type: 'choice', shownToPlayer: true, midGame: false, values: [{ id: 'easy', name: 'Easy' }, { id: 'hard', name: 'Hard' }], default: 'easy' },
+    { id: 'perma', name: 'Permadeath', type: 'boolean', shownToPlayer: true, midGame: false, default: false },
+    { id: 'party', name: 'Party Size', type: 'number', shownToPlayer: true, midGame: false, min: 1, max: 6, default: 2 },
+  ],
+  entities: [
+    { id: 'albus', name: 'Albus', persona: true, playerDescription: '', aiDescription: '', locations: ['hall'], stats: [stat('health', 'Health')], traits: [] },
+  ],
+  traits: [
+    trait('smite', 'Smite', {
+      requires: [
+        { all: [
+          { kind: 'stat', id: 'rage', operator: '>=', value: 50, unit: 'raw' },
+          { kind: 'stat', id: 'health', owner: { kind: 'entity', id: 'albus', name: 'Albus' }, operator: '>', value: 40, unit: 'percent' },
+        ] },
+        { all: [
+          { kind: 'option', id: 'diff', name: 'Difficulty', valueId: 'hard', valueName: 'Hard' },
+          { kind: 'option', id: 'perma', name: 'Permadeath' },
+          { kind: 'option', id: 'party', name: 'Party Size', operator: '>=', value: 3 },
+        ] },
+      ],
+    }),
+  ],
+};
+
+async function openWorld(page: Page, tab: string, world: unknown = WORLD) {
   await openApp(page);
-  await page.evaluate(async ([world, t]) => {
+  await page.evaluate(async ([w, t]) => {
     const dev = (window as unknown as { __fmDev: DevRouter }).__fmDev;
-    const id = await dev.putWorld(world);
+    const id = await dev.putWorld(w);
     await dev.editWorld(id);
     dev.goto('mainMenu', { modal: 'worldEditor', tab: t as string });
-  }, [WORLD, tab] as const);
+  }, [world, tab] as const);
 }
 
-async function openTrait(page: Page, name: string) {
-  await openWorld(page, 'traits');
+async function openTrait(page: Page, name: string, world: unknown = WORLD) {
+  await openWorld(page, 'traits', world);
   await page.getByRole('dialog').getByText(name, { exact: true }).first().click();
   await page.getByRole('tab', { name: 'Availability' }).click();
   await page.locator('[data-requirement-row]').first().waitFor();
@@ -137,6 +171,38 @@ test.describe('Requires sentences', () => {
         await option.click();
         await expect(page.getByRole('listbox')).toHaveCount(0);
       }
+    }
+  });
+
+  test('a selection in the comparison list never moves or resizes its six choices', async ({ page }) => {
+    test.setTimeout(120_000);
+    await openTrait(page, 'Smite', NUMBERS_WORLD);
+    const row = page.locator('[data-requirement-row]').first();
+    const options = page.getByRole('option');
+    const read = async () => {
+      await options.first().waitFor();
+      const list = page.getByRole('listbox');
+      let last = '';
+      // The popover zooms in on open, so read once two reads agree.
+      for (let tries = 0; tries < 40; tries++) {
+        const origin = (await list.boundingBox())!;
+        const rects = (await boxes(options)).map((r) => ({ x: r.x - origin.x, y: r.y - origin.y, width: r.width, height: r.height }));
+        const now = JSON.stringify([origin.width, origin.height, rects]);
+        if (now === last) return { rects: now, names: await options.allTextContents() };
+        last = now;
+        await page.waitForTimeout(50);
+      }
+      throw new Error('the list never settled');
+    };
+    await row.getByRole('button', { name: /^Comparison:/ }).first().click();
+    const first = await read();
+    expect(first.names).toEqual(['above', 'below', 'at least', 'at most', 'exactly', 'different from']);
+    await page.keyboard.press('Escape');
+    for (let i = 0; i < first.names.length; i++) {
+      await row.getByRole('button', { name: /^Comparison:/ }).first().click();
+      expect((await read()).rects).toBe(first.rects);
+      await options.nth(i).click();
+      await expect(page.getByRole('listbox')).toHaveCount(0);
     }
   });
 

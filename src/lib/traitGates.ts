@@ -623,7 +623,8 @@ export interface ClauseView {
   sentenceStart?: boolean;
 }
 
-const COMPARISON_WORDS: Record<StatComparison, string> = {
+/** The six comparison words, in the order a list offers them. */
+export const COMPARISON_WORDS: Record<StatComparison, string> = {
   '>': 'above', '<': 'below', '>=': 'at least', '<=': 'at most', '=': 'exactly', '≠': 'different from',
 };
 
