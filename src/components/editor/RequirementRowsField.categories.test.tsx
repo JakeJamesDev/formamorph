@@ -105,7 +105,7 @@ describe('the Requires picker categories', () => {
     expect(JSON.parse(screen.getByTestId('rows').textContent!)).toEqual([{ all: [{ kind: 'trait', id: 'a1' }] }]);
   });
 
-  it('returns from an item’s owner page to the drilled page', async () => {
+  it('adds an item at once from a drilled page, with no owner page', async () => {
     const lamp: RequirementOption = {
       requirement: { kind: 'item', id: 'lamp', status: 'owned' }, label: 'Lantern', breadcrumb: [],
       owners: [{ owner: { kind: 'you' }, name: 'Persona' }, { owner: { kind: 'entity', id: 'ash', name: 'Ash' }, name: 'Ash' }],
@@ -115,10 +115,8 @@ describe('the Requires picker categories', () => {
     const user = await openPicker();
     await user.click(pageRow('Items'));
     fireEvent.click(screen.getByRole('option', { name: /^Lantern/ }));
-    expect(screen.getByRole('button', { name: 'Back to targets' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Back to targets' }));
-    expect(items()).toEqual(['Lantern', 'Rope']);
-    expect(screen.getByText('Items', { selector: '*:not([role=option] *)' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Back to targets' })).toBeNull();
+    expect(JSON.parse(screen.getByTestId('rows').textContent!)).toEqual([{ all: [{ kind: 'item', id: 'lamp', status: 'owned' }] }]);
   });
 
   it('keeps a small picker as today’s flat list', async () => {

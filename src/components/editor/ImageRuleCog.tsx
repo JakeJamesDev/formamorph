@@ -58,9 +58,6 @@ const withoutPersonaOwner = (options: RequirementOptions): RequirementOptions =>
   return { ...options, traits: dropPersona(options.traits), groups: dropPersona(options.groups) };
 };
 
-/** What an owner-less Condition reads, where it is not the host itself. */
-const HOST_NAMES: Partial<Record<RuleHost['kind'], string>> = { location: 'The player', item: "The item's owner" };
-
 const ITEM_CLAUSE_HOST: ClauseHost = { kind: 'item' };
 const PERSONA_CLAUSE_HOST: ClauseHost = { kind: 'persona' };
 
@@ -108,7 +105,6 @@ export function HostRuleRows({ host, rows, onChange, label = 'Visibility Rule', 
       statSections={read.statSections}
       clausesOf={read.clausesOf}
       clauseHost={read.clauseHost}
-      hostName={HOST_NAMES[host.kind]}
       placeholders={source.placeholders}
       offWorld={source.offWorld}
       onChange={onChange}

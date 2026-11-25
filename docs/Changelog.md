@@ -23,6 +23,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Each location image in the World Editor now has a Weather Mask button that holds every mask action.** Paint, upload, choose or remove a mask there. Show Mask tints the image blue where the weather shows.
     - **Zoom in with the mouse wheel while you paint a Weather Mask, and switch tools with B and E.** Ctrl+wheel sizes the brush, a middle-button drag pans, and 0 or Fit shows the whole image.
   - **The World Editor's Requires field reads each row as a sentence.** Select an owner, a verb or a target to change it in place. A new condition starts with no owner.
+  - **Item, time, weather and Opening requirements in the Requires field read as sentences with tokens.** An item has an owner, a verb with four forms, a target and its State and identity checks. A time, weather or Opening sets its choices in one token.
 
 ### Minor Changes
 

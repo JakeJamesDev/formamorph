@@ -36,8 +36,25 @@ export interface ConditionEdit {
   accepts: (next: TraitRequirement) => boolean;
 }
 
-type Tokened = Extract<TraitRequirement, { kind: 'trait' | 'group' | 'playingAs' }>;
-const tokened = (req: TraitRequirement): req is Tokened => req.kind === 'trait' || req.kind === 'group' || req.kind === 'playingAs';
+type ItemRequirement = Extract<TraitRequirement, { kind: 'item' }>;
+type Tokened = Extract<TraitRequirement, { kind: 'trait' | 'group' | 'playingAs' | 'item' }>;
+const tokened = (req: TraitRequirement): req is Tokened => req.kind === 'trait' || req.kind === 'group' || req.kind === 'playingAs' || req.kind === 'item';
+
+type SetRequirement = Extract<TraitRequirement, { kind: 'time' | 'weather' | 'opening' }>;
+const isSet = (req: TraitRequirement): req is SetRequirement => req.kind === 'time' || req.kind === 'weather' || req.kind === 'opening';
+
+const SET_NOUN: Record<SetRequirement['kind'], string> = { time: 'Time of day', weather: 'Weather', opening: 'Opening' };
+
+/** The four forms of an item verb (Q21), in the order its list shows them. */
+const ITEM_FORMS: readonly { status: 'owned' | 'equipped'; not: boolean }[] = [
+  { status: 'owned', not: false }, { status: 'owned', not: true }, { status: 'equipped', not: false }, { status: 'equipped', not: true },
+];
+
+/** `req` read in one of the item verb's four forms. */
+const inForm = (req: ItemRequirement, form: { status: 'owned' | 'equipped'; not: boolean }): ItemRequirement => {
+  const { not: _not, ...plain } = req;
+  return form.not ? { ...plain, status: form.status, not: true } : { ...plain, status: form.status };
+};
 
 const TARGET_NOUN: Record<TraitRequirement['kind'], string> = {
   trait: 'trait', group: 'group', playingAs: 'persona', stat: 'stat', item: 'item', time: 'time of day', weather: 'weather', opening: 'opening', option: 'World Option',
@@ -72,11 +89,14 @@ const flippedText = (parts: readonly ClausePart[], other: readonly ClausePart[])
   other.find((p, i) => p.text.toLowerCase() !== parts[i]?.text.toLowerCase())?.text ?? '';
 
 /** The swap list's targets: those of the same kind (Q17). */
-const peersOf = (req: Tokened, options: RequirementOptions): readonly RequirementOption[] =>
-  req.kind === 'trait' ? options.traits : req.kind === 'group' ? options.groups : options.personas;
+const peersOf = (req: Tokened, options: RequirementOptions): readonly RequirementOption[] => {
+  if (req.kind === 'item') return (options.items ?? []).filter((o) => o.requirement.kind === 'item' && o.requirement.status === req.status);
+  return req.kind === 'trait' ? options.traits : req.kind === 'group' ? options.groups : options.personas;
+};
 
-/** One Condition as tokens: an owner list, a verb flip and a target swap list for a trait, a group or a persona,
- *  else one token over the whole clause whose popover holds the kind's controls. */
+/** One Condition as tokens: an owner list, a verb and a target swap list for a trait, a group, a persona or an item
+ *  (an item verb lists four forms, and its checks open the State and identity controls); a flip and one set token for
+ *  a time, weather or Opening; else one token over the whole clause whose popover holds the kind's controls. */
 export function RequirementClause({ requirement: req, edit, ctx, first }: {
   requirement: TraitRequirement;
   edit: ConditionEdit;
@@ -90,6 +110,7 @@ export function RequirementClause({ requirement: req, edit, ctx, first }: {
   const plain = (t: string) => labelPlaceholders(t, ctx.placeholders);
   const sentence = plain(clauseText(parts));
   const brokenPart = parts.find((p) => p.broken);
+  if (isSet(req)) return <SetClause requirement={req} parts={parts} edit={edit} ctx={ctx} view={view} />;
   if (!tokened(req)) return <WholeClause requirement={req} parts={parts} sentence={sentence} edit={edit} ctx={ctx} broken={brokenPart && brokenReason(req, brokenPart)} />;
 
   const peers = peersOf(req, ctx.options);
@@ -150,7 +171,37 @@ export function RequirementClause({ requirement: req, edit, ctx, first }: {
     );
   };
 
+  const itemVerbToken = (part: ClausePart, item: ItemRequirement) => {
+    // "Has equipped" is offered only for an item that fits a slot; the form in use always stays listed.
+    const slotted = (ctx.options.items ?? []).some((o) => o.requirement.kind === 'item' && o.requirement.id === item.id && o.requirement.status === 'equipped');
+    return (
+      <SentenceToken modal label={`Verb: ${part.text}`} editor={(close) => (
+        <div className="space-y-1">
+          {ITEM_FORMS.map((form) => {
+            const next = inForm(item, form);
+            const current = form.status === item.status && form.not === !!item.not;
+            const name = ctx.clausesOf(next, view).find((p) => p.role === 'verb')?.text ?? '';
+            return (
+              <Button
+                key={`${form.status}:${form.not}`} type="button" size="sm" variant={current ? 'secondary' : 'ghost'} aria-pressed={current}
+                disabled={!current && ((form.status === 'equipped' && !slotted) || !edit.accepts(next))}
+                className="h-7 w-full justify-start" onClick={() => { close(); if (!current) edit.replace(next); }}
+              >{name}</Button>
+            );
+          })}
+        </div>
+      )}>{part.text}</SentenceToken>
+    );
+  };
+
+  const checksToken = (part: ClausePart, item: ItemRequirement) => (
+    <SentenceToken modal label={`Checks: ${part.text}`} editor={
+      <div className="flex flex-wrap items-center gap-1.5"><ItemConditionControls requirement={item} accepts={edit.accepts} onChange={edit.replace} /></div>
+    }>{part.text}</SentenceToken>
+  );
+
   const verbToken = (part: ClausePart) => {
+    if (req.kind === 'item') return itemVerbToken(part, req);
     const next = flipped(req);
     return (
       <SentenceFlipToken label={`Change to “${flippedText(parts, ctx.clausesOf(next, view))}”`} disabled={!edit.accepts(next)} onFlip={() => edit.replace(next)}>
@@ -184,6 +235,11 @@ export function RequirementClause({ requirement: req, edit, ctx, first }: {
                 })}
               </div>
             )}
+            {req.kind === 'item' && (
+              <div className="flex flex-wrap items-center gap-1.5 border-b p-1.5">
+                <ItemConditionControls requirement={req} accepts={edit.accepts} onChange={edit.replace} />
+              </div>
+            )}
             {ctx.opens(req) && (
               <div className="border-b p-1.5">
                 <Button
@@ -205,8 +261,47 @@ export function RequirementClause({ requirement: req, edit, ctx, first }: {
         const token: ReactNode = part.role === 'subject' ? ownerToken(part)
           : part.role === 'verb' ? verbToken(part)
             : part.role === 'target' ? targetToken(part)
-              : text(part.text);
+              : part.role === 'checks' && req.kind === 'item' ? checksToken(part, req)
+                : text(part.text);
         // Parts have no ids; their order is fixed by kind.
+        return <Fragment key={i}>{space}{token}</Fragment>;
+      })}
+    </>
+  );
+}
+
+/** A time, weather or Opening Condition: a flip for its verb and one token over its set, whose popover holds the toggles. */
+function SetClause({ requirement: req, parts, edit, ctx, view }: {
+  requirement: SetRequirement;
+  parts: readonly ClausePart[];
+  edit: ConditionEdit;
+  ctx: ClauseContext;
+  view: ClauseView;
+}) {
+  const plain = (t: string) => labelPlaceholders(t, ctx.placeholders);
+  const next = flipped(req);
+  const controls = (() => {
+    switch (req.kind) {
+      case 'time': return <TimeConditionControls requirement={req} accepts={edit.accepts} onChange={edit.replace} />;
+      case 'weather': return ctx.options.weatherKinds && <WeatherConditionControls requirement={req} kinds={ctx.options.weatherKinds} accepts={edit.accepts} onChange={edit.replace} />;
+      case 'opening': return ctx.options.openings && <OpeningConditionControls requirement={req} groups={ctx.options.openings} accepts={edit.accepts} onChange={edit.replace} />;
+    }
+  })();
+  return (
+    <>
+      {parts.map((part, i) => {
+        const space = i > 0 ? ' ' : '';
+        const text = <PlaceholderText text={part.text} placeholders={ctx.placeholders} />;
+        const token: ReactNode = part.role === 'verb' ? (
+          <SentenceFlipToken label={`Change to “${flippedText(parts, ctx.clausesOf(next, view))}”`} disabled={!edit.accepts(next)} onFlip={() => edit.replace(next)}>
+            {part.text}
+          </SentenceFlipToken>
+        ) : part.role === 'set' ? (
+          <SentenceToken
+            modal wide label={`${SET_NOUN[req.kind]}: ${plain(part.text)}`} broken={part.broken ? brokenReason(req, part) : undefined}
+            editor={controls && <div className="flex flex-wrap items-center gap-1.5">{controls}</div>}
+          >{text}</SentenceToken>
+        ) : text;
         return <Fragment key={i}>{space}{token}</Fragment>;
       })}
     </>
@@ -215,7 +310,7 @@ export function RequirementClause({ requirement: req, edit, ctx, first }: {
 
 /** A kind without its own tokens yet: the whole clause as one token, its popover holding the kind's controls. */
 function WholeClause({ requirement: req, parts, sentence, edit, ctx, broken }: {
-  requirement: Exclude<TraitRequirement, Tokened>;
+  requirement: Exclude<TraitRequirement, Tokened | SetRequirement>;
   parts: readonly ClausePart[];
   sentence: string;
   edit: ConditionEdit;
@@ -229,10 +324,6 @@ function WholeClause({ requirement: req, parts, sentence, edit, ctx, broken }: {
   const controls = (() => {
     switch (req.kind) {
       case 'stat': return <StatConditionControls requirement={req} accepts={edit.accepts} onChange={edit.replace} />;
-      case 'item': return <ItemConditionControls requirement={req} accepts={edit.accepts} onChange={edit.replace} />;
-      case 'time': return <TimeConditionControls requirement={req} accepts={edit.accepts} onChange={edit.replace} />;
-      case 'weather': return ctx.options.weatherKinds && <WeatherConditionControls requirement={req} kinds={ctx.options.weatherKinds} accepts={edit.accepts} onChange={edit.replace} />;
-      case 'opening': return ctx.options.openings && <OpeningConditionControls requirement={req} groups={ctx.options.openings} accepts={edit.accepts} onChange={edit.replace} />;
       case 'option': return option && option.type !== 'boolean' && <OptionConditionControls option={option} requirement={req} accepts={edit.accepts} onChange={edit.replace} />;
     }
   })();

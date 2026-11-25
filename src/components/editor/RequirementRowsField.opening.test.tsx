@@ -16,8 +16,8 @@ function Harness({ initial = [], withOpenings = true, openings = groups }: { ini
 
 const rows = writtenRows;
 const WORLD = { ownerId: null, openingId: 'w1' };
-/** Opens the Condition's token, whose popover holds the Openings list. */
-const openToken = () => fireEvent.click(screen.getByRole('button', { name: /^Edit The opening/ }));
+/** Opens the set token, whose popover holds the Openings list. */
+const openToken = () => fireEvent.click(screen.getByRole('button', { name: /^Opening:/ }));
 const openList = () => {
   openToken();
   fireEvent.click(screen.getByRole('button', { name: /^Openings:/ }));
@@ -39,7 +39,7 @@ describe('an Opening Condition in the rows editor', () => {
     fireEvent.click(screen.getByRole('button', { name: ADD_FIRST }));
     fireEvent.click(await screen.findByRole('option', { name: /^Opening/ }));
     expect(rows()).toEqual([{ all: [{ kind: 'opening', openings: [] }] }]);
-    expect(screen.getByRole('button', { name: 'Edit The opening is pick an opening' })).toHaveAccessibleDescription('No opening is picked.');
+    expect(screen.getByRole('button', { name: 'Opening: pick an opening' })).toHaveAccessibleDescription('No opening is picked.');
   });
 
   it('groups every Opening by owner, World first, with derived labels for unnamed rows', async () => {
@@ -56,7 +56,7 @@ describe('an Opening Condition in the rows editor', () => {
     openList();
     fireEvent.click(await screen.findByRole('option', { name: 'ambush' }));
     expect(rows()).toEqual([{ all: [{ kind: 'opening', openings: [] }] }]);
-    expect(screen.getByRole('button', { name: 'Edit The opening is pick an opening', hidden: true })).toHaveAttribute('data-broken');
+    expect(screen.getByRole('button', { name: 'Opening: pick an opening', hidden: true })).toHaveAttribute('data-broken');
     fireEvent.click(screen.getByRole('option', { name: 'ambush' }));
     fireEvent.click(screen.getByRole('option', { name: 'Dock · Opening 1' }));
     expect(rows()).toEqual([{ all: [{ kind: 'opening', openings: [WORLD, { ownerId: null, openingId: 'd1', locationId: 'dock' }] }] }]);
@@ -66,7 +66,6 @@ describe('an Opening Condition in the rows editor', () => {
 
   it('flips to Not and back, keeping its Openings', () => {
     render(<Harness initial={[{ all: [{ kind: 'opening', openings: [WORLD] }] }]} />);
-    openToken();
     fireEvent.click(screen.getByRole('button', { name: 'Change to “is not”' }));
     expect(rows()).toEqual([{ all: [{ kind: 'opening', openings: [WORLD], not: true }] }]);
     expect(sentences()).toEqual(['The opening is not ambush and…']);
@@ -77,11 +76,11 @@ describe('an Opening Condition in the rows editor', () => {
   it('shows a deleted Opening as unresolved, and the next edit drops its key', async () => {
     const dead = { ownerId: 'aki', openingId: 'gone' };
     render(<Harness initial={[{ all: [{ kind: 'opening', openings: [WORLD, dead] }] }]} />);
-    expect(screen.getByRole('button', { name: /^Edit The opening is/ })).toHaveAccessibleDescription('A picked opening no longer exists.');
+    expect(screen.getByRole('button', { name: /^Opening:/ })).toHaveAccessibleDescription('A picked opening no longer exists.');
     openList();
     fireEvent.click(await screen.findByRole('option', { name: 'chase' }));
     expect(rows()).toEqual([{ all: [{ kind: 'opening', openings: [WORLD, { ownerId: 'aki', openingId: 'a2' }] }] }]);
-    expect(screen.getByRole('button', { name: /^Edit The opening is/, hidden: true })).not.toHaveAttribute('data-broken');
+    expect(screen.getByRole('button', { name: /^Opening:/, hidden: true })).not.toHaveAttribute('data-broken');
   });
 
   it('selects every Opening from the Select All row at the top of the list', async () => {

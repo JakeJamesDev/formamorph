@@ -12,7 +12,7 @@ export const EMPTY_INPUT: FieldInput = { global: { traits: [], groups: [] }, own
 
 /** The Requires field over a real gate input's clauses and options, with edits that land in an `<output>`. */
 export function FieldHarness({
-  input = EMPTY_INPUT, initial = [], options, host = { kind: 'entity' }, offWorld = false, statSections, hostName, onOpen = () => {}, opens,
+  input = EMPTY_INPUT, initial = [], options, host = { kind: 'entity' }, offWorld = false, statSections, onOpen = () => {}, opens,
 }: {
   input?: FieldInput;
   initial?: TraitRequirementRow[];
@@ -21,7 +21,6 @@ export function FieldHarness({
   host?: ClauseHost;
   offWorld?: boolean;
   statSections?: readonly RequirementStatSection[];
-  hostName?: string;
   onOpen?: (requirement: TraitRequirement) => void;
   opens?: (requirement: TraitRequirement) => boolean;
 }) {
@@ -30,7 +29,7 @@ export function FieldHarness({
     <TooltipProvider>
       <RequirementRowsField
         rows={rows} options={options ?? requirementOptions(input, '')} statSections={statSections} clausesOf={conditionClauses(input)} clauseHost={host}
-        placeholders={[]} offWorld={offWorld} hostName={hostName} onChange={setRows} onOpen={onOpen} opens={opens}
+        placeholders={[]} offWorld={offWorld} onChange={setRows} onOpen={onOpen} opens={opens}
       />
       <output data-testid="rows">{JSON.stringify(rows)}</output>
     </TooltipProvider>

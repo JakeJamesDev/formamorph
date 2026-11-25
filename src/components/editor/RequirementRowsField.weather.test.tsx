@@ -9,8 +9,8 @@ const ALLOWED = ['clear', 'rain', 'storm'] as const;
 /** The field over the real clauses and options, with the world's weather kinds when it has any. */
 const field = (initial: TraitRequirementRow[] = [], kinds?: GateInput['weatherKinds']) =>
   render(<FieldHarness input={{ ...EMPTY_INPUT, ...(kinds && { weatherKinds: kinds }) }} initial={initial} />);
-/** Opens the Condition's token, whose popover holds the kind toggles. */
-const openToken = () => fireEvent.click(screen.getByRole('button', { name: /^Edit The weather/ }));
+/** Opens the set token, whose popover holds the kind toggles. */
+const openToken = () => fireEvent.click(screen.getByRole('button', { name: /^Weather:/ }));
 const kind = (name: string) => within(screen.getByRole('toolbar', { name: 'Weather' })).getByRole('button', { name });
 
 describe('a weather Condition in the rows editor', () => {
@@ -29,7 +29,7 @@ describe('a weather Condition in the rows editor', () => {
     fireEvent.click(screen.getByRole('button', { name: ADD_FIRST }));
     fireEvent.click(await screen.findByRole('option', { name: /^Weather/ }));
     expect(writtenRows()).toEqual([{ all: [{ kind: 'weather', kinds: [] }] }]);
-    const token = screen.getByRole('button', { name: 'Edit The weather is pick the weather' });
+    const token = screen.getByRole('button', { name: 'Weather: pick the weather' });
     expect(token).toHaveAccessibleDescription('No weather is picked.');
     openToken();
     expect(kind('Rain')).toHaveAttribute('aria-pressed', 'false');
@@ -50,12 +50,16 @@ describe('a weather Condition in the rows editor', () => {
 
   it('flips to Not and back, keeping its kinds, and edits them while negated', () => {
     field([{ all: [{ kind: 'weather', kinds: ['rain'] }] }], ALLOWED);
-    openToken();
     fireEvent.click(screen.getByRole('button', { name: 'Change to “is not”' }));
     expect(writtenRows()).toEqual([{ all: [{ kind: 'weather', kinds: ['rain'], not: true }] }]);
     expect(sentences()).toEqual(['The weather is not Rain and…']);
+    openToken();
     fireEvent.click(kind('Storm'));
     expect(writtenRows()).toEqual([{ all: [{ kind: 'weather', kinds: ['rain', 'storm'], not: true }] }]);
+  });
+
+  it('flips back to the plain verb, keeping its kinds', () => {
+    field([{ all: [{ kind: 'weather', kinds: ['rain'], not: true }] }], ALLOWED);
     fireEvent.click(screen.getByRole('button', { name: 'Change to “is”' }));
     expect(writtenRows()[0].all[0]).not.toHaveProperty('not');
   });

@@ -8,8 +8,8 @@ const pickTime = async (button: string) => {
   fireEvent.click(screen.getByRole('button', { name: button }));
   fireEvent.click(await screen.findByRole('option', { name: /^Time of Day/ }));
 };
-/** Opens the Condition's token, whose popover holds the daypart toggles. */
-const openToken = () => fireEvent.click(screen.getByRole('button', { name: /^Edit It is/ }));
+/** Opens the set token, whose popover holds the daypart toggles. */
+const openToken = () => fireEvent.click(screen.getByRole('button', { name: /^Time of day:/ }));
 const daypart = (name: string) => within(screen.getByRole('toolbar', { name: 'Time of day' })).getByRole('button', { name });
 
 describe('a time Condition in the rows editor', () => {
@@ -18,7 +18,7 @@ describe('a time Condition in the rows editor', () => {
       const { unmount } = field([], offWorld);
       await pickTime(ADD_FIRST);
       expect(writtenRows()).toEqual([{ all: [{ kind: 'time', dayparts: [] }] }]);
-      const token = screen.getByRole('button', { name: 'Edit It is pick a time' });
+      const token = screen.getByRole('button', { name: 'Time of day: pick a time' });
       expect(token).toHaveAttribute('data-broken');
       expect(token).toHaveAccessibleDescription('No time of day is picked.');
       openToken();
@@ -42,14 +42,19 @@ describe('a time Condition in the rows editor', () => {
 
   it('flips to Not and back, keeping its dayparts, and edits them while negated', () => {
     field([{ all: [{ kind: 'time', dayparts: ['night'] }] }]);
-    openToken();
     fireEvent.click(screen.getByRole('button', { name: 'Change to “is not”' }));
     expect(writtenRows()).toEqual([{ all: [{ kind: 'time', dayparts: ['night'], not: true }] }]);
     expect(sentences()).toEqual(['It is not night and…']);
+    openToken();
     fireEvent.click(daypart('Dawn'));
     expect(writtenRows()).toEqual([{ all: [{ kind: 'time', dayparts: ['night', 'dawn'], not: true }] }]);
+    expect(sentences()).toEqual(['It is not night or dawn and…']);
+  });
+
+  it('flips back to the plain verb, keeping its dayparts', () => {
+    field([{ all: [{ kind: 'time', dayparts: ['night'], not: true }] }]);
     fireEvent.click(screen.getByRole('button', { name: 'Change to “is”' }));
-    expect(writtenRows()[0].all[0]).not.toHaveProperty('not');
+    expect(writtenRows()).toEqual([{ all: [{ kind: 'time', dayparts: ['night'] }] }]);
   });
 
   it('a row takes one time Condition', async () => {

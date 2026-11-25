@@ -21,6 +21,7 @@ const WORLD = {
   locations: [{ id: 'hall', name: 'Hall' }],
   stats: [],
   statUpdates: [],
+  items: [{ id: 'lamp', name: 'Lantern' }],
   entities: [
     {
       id: 'mira', name: 'Mira', playerDescription: '', aiDescription: '', locations: ['hall'],
@@ -33,6 +34,12 @@ const WORLD = {
     },
   ],
   traits: [
+    trait('dusk', 'Dusk', {
+      requires: [{ all: [
+        { kind: 'item', id: 'lamp', status: 'owned', owner: { kind: 'entity', id: 'mira', name: 'Mira' }, state: 'lit', identity: 'identified' },
+        { kind: 'time', dayparts: ['morning', 'evening'] },
+      ] }],
+    }),
     ...LONG.map((name, i) => trait(`long${i}`, name)),
     ...many,
     trait('smite', 'Smite', {
@@ -145,5 +152,27 @@ test.describe('Requires sentences', () => {
     await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
     await page.mouse.wheel(0, 400);
     await expect.poll(() => list.evaluate((el) => el.scrollTop)).toBeGreaterThan(before);
+  });
+  test('a toggle in the time set popover never moves or resizes the other toggles', async ({ page }) => {
+    await openTrait(page, 'Dusk');
+    await page.getByRole('button', { name: /^Time of day:/ }).click();
+    const toggles = page.getByRole('toolbar', { name: 'Time of day' }).getByRole('button');
+    await expect(toggles).toHaveCount(6);
+    const read = async () => (await boxes(toggles)).map((r) => ({ ...r, y: Math.round(r.y), x: Math.round(r.x) }));
+    // The popover zooms in on open, so read once two reads agree.
+    let before = await read();
+    for (let tries = 0; tries < 40; tries++) {
+      await page.waitForTimeout(50);
+      const next = await read();
+      if (JSON.stringify(next) === JSON.stringify(before)) break;
+      before = next;
+    }
+    for (let i = 0; i < 6; i++) {
+      await toggles.nth(i).click();
+      // The sentence behind the popover changes width, so the popover may follow its token; compare the toggles to each other.
+      const now = await read();
+      const origin = (b: typeof now) => b.map((r) => ({ width: r.width, height: r.height, dx: r.x - b[0].x, dy: r.y - b[0].y }));
+      expect(origin(now)).toEqual(origin(before));
+    }
   });
 });

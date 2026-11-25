@@ -4,17 +4,16 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Tip } from '@/components/ui/tooltip';
 import {
-  BreadcrumbPicker, BreadcrumbPickerHeader, BreadcrumbPickerList, type BreadcrumbPickerNode, type BreadcrumbPickerRow, type BreadcrumbPickerSection,
+  BreadcrumbPicker, type BreadcrumbPickerNode, type BreadcrumbPickerSection,
 } from '@/components/ui/breadcrumb-picker';
 import { MUTED_SENTENCE_TOKEN_CLASS } from '@/components/ui/sentence-token';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { RequirementClause, type ClauseContext } from '@/components/editor/RequirementClause';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import {
-  clauseText, requirementOwnerKey, requirementOwnerOf, sameRequirement, withRequirementOwner,
-  type ClauseHost, type ClausePart, type ClauseView, type RequirementOwnerOption, type RequirementOption, type RequirementOptions,
+  clauseText, requirementOwnerKey, requirementOwnerOf, sameRequirement,
+  type ClauseHost, type ClausePart, type ClauseView, type RequirementOption, type RequirementOptions,
 } from '@/lib/traitGates';
-import { soleOwnerRequirement } from '@/lib/requirementOwners';
 import { joinAnd } from '@/lib/requirementSummary';
 import type { RequirementStatSection } from '@/lib/requirementStatOptions';
 import type { Placeholder, TraitRequirement, TraitRequirementRow } from '@/types';
@@ -30,8 +29,7 @@ type AddTarget = number | 'new';
  * The Requires field over plain data: each Requirement Row is one sentence of Conditions joined by "and", the
  * rows joined by "or" lines. Each Condition is one box of tokens with its × and its "and", so a box that does
  * not fit moves to the next line whole (Q22). "and…" adds a Condition to its row, "or…" adds a row, and
- * removing a row's last Condition removes the row. A new Condition starts with no owner (Q7); an item still asks
- * which owner on the picker's owner page.
+ * removing a row's last Condition removes the row. A new Condition starts with no owner (Q7).
  *
  * An edit never repeats another Condition in its row, nor turns a one-Condition row into a copy of another; a
  * list row or a flip that would is disabled. The same stat can sit in a row twice, once as a floor and once as
@@ -41,7 +39,7 @@ type AddTarget = number | 'new';
  * owner, `clausesOf` a Condition's clause parts and `clauseHost` the record a Condition with no owner reads.
  */
 export function RequirementRowsField({
-  rows, options, statSections = [], clausesOf, clauseHost, placeholders, offWorld = false, onChange, onOpen, opens = () => true, label = 'Requires', labelAside, hint, hostName,
+  rows, options, statSections = [], clausesOf, clauseHost, placeholders, offWorld = false, onChange, onOpen, opens = () => true, label = 'Requires', labelAside, hint,
 }: {
   rows: TraitRequirementRow[];
   options: RequirementOptions;
@@ -58,11 +56,8 @@ export function RequirementRowsField({
   labelAside?: ReactNode;
   /** Help line between the label and the rows. */
   hint?: ReactNode;
-  /** Who a Condition with no owner reads, as the owner page names it. Absent, the same owner as the host. */
-  hostName?: string;
 }) {
   const [target, setTarget] = useState<AddTarget | null>(null);
-  const [picked, setPicked] = useState<RequirementOption | null>(null);
   const labelId = useId();
 
   // **And** never repeats a Condition in its row; a new row never repeats a one-chip row.
@@ -70,15 +65,11 @@ export function RequirementRowsField({
     : target === 'new' ? rows.filter((r) => r.all.length === 1).map((r) => r.all[0])
     : rows[target]?.all ?? [];
   const listed = (requirement: TraitRequirement) => taken.some((r) => sameRequirement(r, requirement));
-  const changeTarget = (next: AddTarget | null) => {
-    setTarget(next);
-    if (next === null) setPicked(null);
-  };
   const add = (requirement: TraitRequirement) => {
     onChange(typeof target === 'number'
       ? rows.map((row, i) => (i === target ? { all: [...row.all, requirement] } : row))
       : [...rows, { all: [requirement] }]);
-    changeTarget(null);
+    setTarget(null);
   };
   const removeCondition = (rowIndex: number, index: number) => onChange(rows.flatMap((row, i) => {
     if (i !== rowIndex) return [row];
@@ -93,25 +84,15 @@ export function RequirementRowsField({
   };
   const replaceCondition = (rowIndex: number, index: number, next: TraitRequirement) => onChange(rows.map((row, i) =>
     (i === rowIndex ? { all: row.all.map((req, j) => (j === index ? next : req)) } : row)));
-  // Every kind but an item adds at once with no owner, a stat with the owner of its section. An item asks which
-  // owner first, unless off-world or it has one choice.
-  const atOnce = (option: RequirementOption) =>
-    (option.requirement.kind !== 'item' || offWorld ? option.requirement : soleOwnerRequirement(option));
-  const pick = (option: RequirementOption) => {
-    const requirement = atOnce(option);
-    if (requirement) add(requirement);
-    else setPicked(option);
-  };
+  // Every kind adds at once with no owner, a stat with the owner of its section.
+  const pick = (option: RequirementOption) => add(option.requirement);
   /** Every way the row could be added is already listed, so the row has nothing left to add. */
   const exhausted = (option: RequirementOption) => {
     // One time Condition per row: its chip edits the dayparts.
     if (option.requirement.kind === 'time') return taken.some((r) => r.kind === 'time');
     if (option.requirement.kind === 'weather') return taken.some((r) => r.kind === 'weather');
     if (option.requirement.kind === 'opening') return taken.some((r) => r.kind === 'opening');
-    const requirement = atOnce(option);
-    if (requirement && option.requirement.kind !== 'item') return listed(requirement);
-    if (requirement) return [requirement, ...option.owners.map((o) => withRequirementOwner(requirement, o.owner))].some(listed);
-    return listed(option.requirement) && option.owners.every((o) => listed(withRequirementOwner(option.requirement, o.owner)));
+    return listed(option.requirement);
   };
 
   const renderText = (text: string) => <PlaceholderText text={text} placeholders={placeholders} />;
@@ -167,43 +148,16 @@ export function RequirementRowsField({
     ...(offWorld ? [] : category('playingAs', 'Playing As', [{ kind: 'section', ...targets('Playing As', options.personas) }])),
   ];
 
-  const ownerRow = (option: RequirementOption, choice: RequirementOwnerOption | null): BreadcrumbPickerRow<TraitRequirement> => {
-    const requirement = withRequirementOwner(option.requirement, choice?.owner);
-    return {
-      key: requirementOwnerKey(choice?.owner),
-      value: requirement,
-      name: choice?.name ?? hostName ?? 'Same Owner',
-      hint: choice || hostName ? undefined : 'Whoever has the item',
-      disabled: listed(requirement),
-    };
-  };
-  // Its own list, so the target search never carries over to the owner page.
-  const ownerPage = picked && (
-    <div>
-      <BreadcrumbPickerHeader backLabel="Back to targets" onBack={() => setPicked(null)}>
-        Requires <PlaceholderText text={picked.label} placeholders={placeholders} /> on
-      </BreadcrumbPickerHeader>
-      <BreadcrumbPickerList
-        sections={[{ rows: [ownerRow(picked, null), ...picked.owners.map((choice) => ownerRow(picked, choice))] }]}
-        onPick={add}
-        searchPlaceholder="Search owners"
-        renderText={renderText}
-        plainText={plainText}
-      />
-    </div>
-  );
-
   const picker = (key: AddTarget, trigger: ReactElement) => (
     <BreadcrumbPicker
       tree={tree}
       onPick={pick}
       open={target === key}
-      onOpenChange={(next) => changeTarget(next ? key : null)}
+      onOpenChange={(next) => setTarget(next ? key : null)}
       closeOnPick={false}
       searchPlaceholder={`Search ${searchable}`}
       renderText={renderText}
       plainText={plainText}
-      page={(target === key && ownerPage) || undefined}
       trigger={trigger}
     />
   );
