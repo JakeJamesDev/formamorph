@@ -251,7 +251,7 @@ export function resolveOwners(
  * reads its gate, then each entity owner with its links expanded, a persona-only one included since the
  * author sees every tree. Nothing is active and there is no persona. `stats` are what a stat Condition reads.
  */
-export function editorGateInput(world: OwnerWorld, stats?: GateInput['stats']): GateInput {
+export function editorGateInput(world: OwnerWorld, stats?: GateInput['stats'], blueprintStats?: GateInput['blueprintStats']): GateInput {
   const { owners, gate } = resolveOwners(world, undefined);
   const placeable = placeableGroupIds(world.traitGroups);
   const whole: GateTree = { traits: world.traits, groups: world.traitGroups };
@@ -261,6 +261,7 @@ export function editorGateInput(world: OwnerWorld, stats?: GateInput['stats']): 
     owners: owners.map((o) => gateOwner(o, nodePlacement(o.entity.traitPlacement, o.entity, placeable)?.groupId ?? null)),
     active: NO_ACTIVE,
     ...(stats ? { stats } : {}),
+    ...(blueprintStats && Object.keys(blueprintStats).length ? { blueprintStats } : {}),
   };
 }
 

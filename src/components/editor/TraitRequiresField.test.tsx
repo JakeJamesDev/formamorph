@@ -72,7 +72,7 @@ const smite = (requires: Trait['requires']) => trait('smite', { name: 'Smite', g
 const ALBUS = { kind: 'entity', id: 'albus', name: 'Albus' } as const;
 
 describe('TraitRequiresField owners', () => {
-  // A world trait's Condition with no owner on a world target names no one (Q25), so it takes an owner in the target popover.
+  // A Blueprint trait's Condition with no owner on a Blueprint target reads "This entity" (Q37).
   it('adds a target at once with no owner, and offers no owner, the player, then every entity that owns it', async () => {
     const user = userEvent.setup();
     render(<Harness trait={traits[3]} />);
@@ -80,24 +80,23 @@ describe('TraitRequiresField owners', () => {
     fireEvent.click(await screen.findByRole('option', { name: /^Paladin/ }));
     expect(screen.queryByRole('button', { name: 'Back to targets' })).toBeNull();
     expect(rows()).toEqual([{ all: [{ kind: 'trait', id: 'paladin' }] }]);
-    expect(sentences()).toEqual(['Paladin is active and…']);
-    await user.click(button('Target: Paladin'));
-    expect(screen.getAllByRole('button', { pressed: false }).map((b) => b.textContent).filter((t) => ['The player', 'Albus'].includes(t ?? ''))).toEqual(['The player', 'Albus']);
-    expect(button('No owner')).toHaveAttribute('aria-pressed', 'true');
+    expect(sentences()).toEqual(['This entity has Paladin and…']);
+    await user.click(button('Owner: This entity'));
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['This entity', 'The player', 'Albus']);
   });
 
   it('writes the owner picked, and the sentence names it', async () => {
     const user = userEvent.setup();
     render(<Harness trait={smite([{ all: [{ kind: 'trait', id: 'paladin' }] }])} />);
-    await user.click(button('Target: Paladin'));
-    await user.click(button('Albus'));
+    await user.click(button('Owner: This entity'));
+    await user.click(option(/^Albus/));
     expect(rows()).toEqual([{ all: [{ kind: 'trait', id: 'paladin', owner: ALBUS }] }]);
     expect(sentences()).toEqual(['Albus has Paladin and…']);
     await user.click(button('Owner: Albus'));
     await user.click(option(/^The player/));
     expect(sentences()).toEqual(['The player has Paladin and…']);
     await user.click(button('Owner: The player'));
-    await user.click(option(/^No owner/));
+    await user.click(option(/^This entity/));
     expect(rows()).toEqual([{ all: [{ kind: 'trait', id: 'paladin' }] }]);
   });
 
@@ -118,10 +117,10 @@ describe('TraitRequiresField owners', () => {
     const paladin = await screen.findByRole('option', { name: /^Paladin/ });
     expect(paladin).not.toHaveAttribute('aria-disabled', 'true');
     fireEvent.click(paladin);
-    expect(sentences()).toEqual(['The player has Paladin and Paladin is active and…']);
-    await user.click(screen.getAllByRole('button', { name: 'Target: Paladin' })[1]);
-    expect(button('The player')).toBeDisabled();
-    expect(button('Albus')).toBeEnabled();
+    expect(sentences()).toEqual(['The player has Paladin and this entity has Paladin and…']);
+    await user.click(button('Owner: this entity'));
+    expect(option(/^The player/)).toHaveAttribute('aria-disabled', 'true');
+    expect(option(/^Albus/)).not.toHaveAttribute('aria-disabled', 'true');
     await user.keyboard('{Escape}');
     fireEvent.click(button(ADD_TO_ROW));
     expect(await screen.findByRole('option', { name: /^Paladin/ })).toHaveAttribute('aria-disabled', 'true');
@@ -203,7 +202,7 @@ describe('TraitRequiresField rows', () => {
 
   it('joins Conditions with "and" inside a row and rows with "or" between them', () => {
     render(<Harness trait={smite([{ all: [paladin, brave] }, { all: [wizard] }])} />);
-    expect(sentences()).toEqual(['Paladin is active and Brave is active and…', 'Wizard is active and…']);
+    expect(sentences()).toEqual(['This entity has Paladin and Brave is active and…', 'This entity has Wizard and…']);
     expect(screen.getAllByText('or')).toHaveLength(1);
     expect(screen.getAllByRole('button', { name: ADD_TO_ROW })).toHaveLength(2);
     expect(button(ADD_ROW)).toBeInTheDocument();
@@ -213,11 +212,11 @@ describe('TraitRequiresField rows', () => {
     render(<Harness trait={smite([{ all: [paladin] }, { all: [wizard] }])} />);
     fireEvent.click(screen.getAllByRole('button', { name: ADD_TO_ROW })[1]);
     fireEvent.click(await screen.findByRole('option', { name: /^Brave/ }));
-    expect(sentences()).toEqual(['Paladin is active and…', 'Wizard is active and Brave is active and…']);
+    expect(sentences()).toEqual(['This entity has Paladin and…', 'This entity has Wizard and Brave is active and…']);
 
     openPicker();
     fireEvent.click(await screen.findByRole('option', { name: /^Brave/ }));
-    expect(sentences()).toEqual(['Paladin is active and…', 'Wizard is active and Brave is active and…', 'Brave is active and…']);
+    expect(sentences()).toEqual(['This entity has Paladin and…', 'This entity has Wizard and Brave is active and…', 'Brave is active and…']);
   });
 
   it('disables a Condition already in the row "and…" adds to, but not one only in another row', async () => {
@@ -229,23 +228,23 @@ describe('TraitRequiresField rows', () => {
 
   it('removes a Condition from its row, and the row with its last one', () => {
     render(<Harness trait={smite([{ all: [paladin, brave] }, { all: [wizard] }])} />);
-    fireEvent.click(button('Remove Wizard is active'));
-    expect(sentences()).toEqual(['Paladin is active and Brave is active and…']);
+    fireEvent.click(button('Remove this entity has Wizard'));
+    expect(sentences()).toEqual(['This entity has Paladin and Brave is active and…']);
     expect(screen.queryByText('or')).toBeNull();
 
     fireEvent.click(button('Remove Brave is active'));
-    expect(sentences()).toEqual(['Paladin is active and…']);
+    expect(sentences()).toEqual(['This entity has Paladin and…']);
   });
 
   it('removes a whole row with its own control', () => {
     render(<Harness trait={smite([{ all: [paladin, brave] }, { all: [wizard] }])} />);
-    fireEvent.click(button('Delete row: Paladin is active and Brave is active'));
-    expect(sentences()).toEqual(['Wizard is active and…']);
+    fireEvent.click(button('Delete row: this entity has Paladin and Brave is active'));
+    expect(sentences()).toEqual(['This entity has Wizard and…']);
   });
 
   it('removes the last row and goes back to "Add a requirement…"', () => {
     render(<Harness trait={smite([{ all: [paladin] }])} />);
-    fireEvent.click(button('Delete row: Paladin is active'));
+    fireEvent.click(button('Delete row: this entity has Paladin'));
     expect(sentences()).toEqual([]);
     expect(button(ADD_FIRST)).toBeInTheDocument();
   });
@@ -258,18 +257,18 @@ describe('TraitRequiresField Not flip', () => {
   it('flips a Condition to Not on its verb, and stores the flag', () => {
     const onRows = vi.fn();
     render(<Harness trait={smite([{ all: [paladin, brave] }])} onRows={onRows} />);
-    fireEvent.click(screen.getAllByRole('button', { name: 'Change to “is not”' })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Change to “doesn\'t have”' })[0]);
     expect(onRows).toHaveBeenLastCalledWith([{ all: [{ ...paladin, not: true }, brave] }]);
-    expect(sentences()).toEqual(['Paladin is not active and Brave is active and…']);
-    expect(button('Delete row: Paladin is not active and Brave is active')).toBeInTheDocument();
+    expect(sentences()).toEqual(["This entity doesn't have Paladin and Brave is active and…"]);
+    expect(button("Delete row: this entity doesn't have Paladin and Brave is active")).toBeInTheDocument();
   });
 
   it('flips a Not Condition back to plain', () => {
     const onRows = vi.fn();
     render(<Harness trait={smite([{ all: [{ ...paladin, not: true }] }])} onRows={onRows} />);
-    fireEvent.click(button('Change to “is”'));
+    fireEvent.click(button('Change to “has”'));
     expect(onRows).toHaveBeenLastCalledWith([{ all: [paladin] }]);
-    expect(sentences()).toEqual(['Paladin is active and…']);
+    expect(sentences()).toEqual(['This entity has Paladin and…']);
   });
 
   it('keeps the owner on a flipped Condition', () => {
@@ -281,16 +280,17 @@ describe('TraitRequiresField Not flip', () => {
 
   it('disables a flip that would repeat a Condition in its row', () => {
     render(<Harness trait={smite([{ all: [paladin, { ...paladin, not: true }, brave] }])} />);
-    const [paladinOff, braveOff] = screen.getAllByRole('button', { name: 'Change to “is not”' });
+    const paladinOff = button('Change to “doesn\'t have”');
+    const braveOff = button('Change to “is not”');
     expect(paladinOff).toBeDisabled();
-    expect(button('Change to “is”')).toBeDisabled();
+    expect(button('Change to “has”')).toBeDisabled();
     expect(braveOff).toBeEnabled();
   });
 
   it('disables a flip that would turn a one-Condition row into a copy of another', () => {
     render(<Harness trait={smite([{ all: [{ ...paladin, not: true }] }, { all: [paladin] }, { all: [paladin, brave] }])} />);
-    expect(button('Change to “is”')).toBeDisabled();
-    const toOff = screen.getAllByRole('button', { name: 'Change to “is not”' });
+    expect(button('Change to “has”')).toBeDisabled();
+    const toOff = screen.getAllByRole('button', { name: 'Change to “doesn\'t have”' });
     expect(toOff[0]).toBeDisabled();
     expect(toOff[1]).toBeEnabled();
   });
@@ -299,8 +299,8 @@ describe('TraitRequiresField Not flip', () => {
     render(<Harness trait={smite([{ all: [paladin] }, { all: [brave] }])} />);
     fireEvent.click(screen.getAllByRole('button', { name: ADD_TO_ROW })[1]);
     fireEvent.click(await screen.findByRole('option', { name: /^Paladin/ }));
-    fireEvent.click(screen.getAllByRole('button', { name: 'Change to “is not”' })[2]);
-    expect(sentences()).toEqual(['Paladin is active and…', 'Brave is active and Paladin is not active and…']);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Change to “doesn\'t have”' })[1]);
+    expect(sentences()).toEqual(['This entity has Paladin and…', "Brave is active and this entity doesn't have Paladin and…"]);
   });
 
   it('lets a plain row join beside a Not row on the same target', async () => {

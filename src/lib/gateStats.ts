@@ -2,9 +2,9 @@
 
 import type { Entity, Stat, StatGroup } from '@/types';
 import { statMax, statMin, statStartValue } from './statDescriptorGeometry';
-import { globalStatsOf, resolvedEntityStats } from './statLinks';
+import { globalStatsOf, resolvedEntityStats, statBlueprintIds } from './statLinks';
 import { scoped } from './scope';
-import type { GateStat, GateStats } from './traitGates';
+import type { GateStat, GateStats, GateStatSet } from './traitGates';
 
 /** A stat at its authored start, on its authored min→max. */
 export const startingGateStat = (stat: Stat): GateStat => ({
@@ -22,6 +22,12 @@ const byId = (stats: readonly Stat[]): Record<string, GateStat> =>
 /** Every stat at its authored start: the global stats, and each entity's under its id. */
 export const startingGateStatsOf = (global: readonly Stat[], entities: Readonly<Record<string, readonly Stat[]>>): GateStats =>
   scoped(byId(global), Object.fromEntries(Object.entries(entities).map(([id, stats]) => [id, byId(stats)])));
+
+/** The world's Blueprint stats at their authored start, by id: what a Blueprint's own field reads with no owner. */
+export const blueprintGateStats = (world: Pick<GateStatWorld, 'stats' | 'statGroups'>): GateStatSet => {
+  const inside = statBlueprintIds({ stats: world.stats ?? [], statGroups: world.statGroups ?? [] });
+  return byId((world.stats ?? []).filter((s) => inside.has(s.id)));
+};
 
 /** What the starting stat sets read from a world. */
 export interface GateStatWorld {

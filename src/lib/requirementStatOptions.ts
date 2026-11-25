@@ -22,10 +22,12 @@ export interface RequirementStatSection {
  * span, so its text reads at once. An inert stat is left out: a Condition on it never resolves.
  */
 export function requirementStatSections(
-  input: Pick<GateInput, 'owners' | 'entities' | 'stats'>, hostId: OwnerId,
+  input: Pick<GateInput, 'owners' | 'entities' | 'stats' | 'blueprintStats'>, hostId: OwnerId, blueprintHost = false,
 ): RequirementStatSection[] {
-  const { section, playable, name } = sectionsOf(input);
+  const { section, blueprintSection, playable, name } = sectionsOf(input);
   const sections = [
+    // A Blueprint's own field reads its stats with no owner, like the entity that links it (Q37).
+    ...(blueprintHost ? [{ ...blueprintSection(), own: true as const }] : []),
     { ...(hostId === null ? section('Global', [null]) : section(name(hostId), [hostId])), own: true as const },
     ...(hostId === null ? [] : [section('Global', [null])]),
     section('Persona', playable, { kind: 'you' }),
@@ -66,16 +68,16 @@ export function itemHostStatSections(input: Pick<GateInput, 'owners' | 'entities
 }
 
 /** The section builder over `input`'s stats, the entities a persona can be, and an owner's name. */
-function sectionsOf(input: Pick<GateInput, 'owners' | 'entities' | 'stats'>) {
+function sectionsOf(input: Pick<GateInput, 'owners' | 'entities' | 'stats' | 'blueprintStats'>) {
   const statsOf = (ownerId: OwnerId): GateStatSet => (input.stats && partOf(input.stats, ownerId)) ?? {};
   const playable = input.entities.filter(canBePlayer).map((e) => e.id);
   const name = (id: string) => input.entities.find((e) => e.id === id)?.name ?? input.owners.find((o) => o.id === id)?.name ?? '';
 
-  const section = (owner: string, ids: readonly OwnerId[], named?: RequirementOwner): RequirementStatSection => {
+  const sectionOf = (owner: string, sets: readonly GateStatSet[], named?: RequirementOwner): RequirementStatSection => {
     const seen = new Set<string>();
     const options: RequirementOption[] = [];
-    for (const ownerId of ids) {
-      for (const [id, stat] of Object.entries(statsOf(ownerId))) {
+    for (const set of sets) {
+      for (const [id, stat] of Object.entries(set)) {
         if (seen.has(id) || stat.inert) continue;
         seen.add(id);
         options.push({
@@ -88,5 +90,7 @@ function sectionsOf(input: Pick<GateInput, 'owners' | 'entities' | 'stats'>) {
     }
     return { heading: `${owner} Stats`, owner, options };
   };
-  return { section, playable, name };
+  const section = (owner: string, ids: readonly OwnerId[], named?: RequirementOwner) => sectionOf(owner, ids.map(statsOf), named);
+  const blueprintSection = () => sectionOf('Blueprint', [input.blueprintStats ?? {}]);
+  return { section, blueprintSection, playable, name };
 }

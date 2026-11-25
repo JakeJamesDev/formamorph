@@ -108,6 +108,8 @@ export interface GateInput {
   active: GateActive;
   /** Absent, every stat Condition is unresolved. */
   stats?: GateStats;
+  /** The world's Blueprint stats by id, which a Blueprint's own field reads with no owner. Absent, none. */
+  blueprintStats?: GateStatSet;
   /** Setup only: the stats a game starts with under a set of picks (Q26). Present, a trait's gate reads the
    *  stats of the picks around it, its own left out, and the settle grows them from the ground up. */
   statsOf?: (active: GateActive) => GateStats;
@@ -348,9 +350,17 @@ function index(input: GateInput) {
     return faceName(item, !!showUnidentified);
   };
   const statNames = new Map<string, string>();
-  for (const [, set] of stats ? scopedEntries(stats) : []) {
+  for (const [, set] of [...(stats ? scopedEntries(stats) : []), [null, input.blueprintStats ?? {}] as const]) {
     for (const [id, stat] of Object.entries(set)) if (!statNames.has(id)) statNames.set(id, stat.name);
   }
+  // The world's own traits and groups, Blueprints included: the originals, else the global tree.
+  const worldTree = input.originals ?? input.global;
+  const inWorld = { trait: new Set(worldTree.traits.map((t) => t.id)), group: new Set(worldTree.groups.map((g) => g.id)) };
+  /** Whether a Condition's target is a Blueprint trait, group or stat: one only entities that link it hold. */
+  const isBlueprint = (req: Targeted): boolean => {
+    if (req.kind === 'item' || isGlobal(req)) return false;
+    return req.kind === 'stat' ? !!input.blueprintStats?.[req.id] : inWorld[req.kind].has(req.id);
+  };
   /** The stat a stat Condition on `from` reads in `read`: the first scope of the id in its owner set. Null when
    *  no scope in the set has it. */
   const statOf = (req: StatRequirement, from: GateScopeTree, read: GateStats | undefined = stats): GateStat | null => {
@@ -358,11 +368,13 @@ function index(input: GateInput) {
       const stat = statsIn(read, ownerId)?.[req.id];
       if (stat) return stat;
     }
-    return null;
+    // A Blueprint's own field reads its stat with no owner, though no scope on it holds one.
+    const blueprint = from.id === null && req.owner === undefined ? input.blueprintStats?.[req.id] : undefined;
+    return blueprint && isBlueprint(req) ? blueprint : null;
   };
   const options = new Map(valuedOptions(input.worldOptions).map((option) => [option.id, option]));
   return {
-    owners, traitNames, groupNames, hiddenTraits, statNames, entities, global, isGlobal, ownerSet, traitsBelow, statOf, itemNames, itemNameFor, itemHeld, persona: input.persona, played, reader: input.reader, globalTree: globalScopeTree(input.global),
+    owners, traitNames, groupNames, hiddenTraits, statNames, entities, global, isGlobal, isBlueprint, ownerSet, traitsBelow, statOf, itemNames, itemNameFor, itemHeld, persona: input.persona, played, reader: input.reader, globalTree: globalScopeTree(input.global),
     daypart: input.daypart ?? OPENING_DAYPART, weather: input.weather ?? 'clear', options, optionValues: input.optionValues,
     opening: input.opening ?? null, openingLabels: input.openings && openingLabelMap(input.openings),
   };
@@ -388,6 +400,12 @@ export function globalItems(input: Pick<GateInput, 'global' | 'originals'>): { t
     traits: new Set(world.traits.filter((t) => t.groupId == null || !blueprints.has(t.groupId)).map((t) => t.id)),
     groups: new Set(groups.filter((g) => !blueprints.has(g.id)).map((g) => g.id)),
   };
+}
+
+/** Whether `traitId` is a Blueprint trait: the world holds it, and it is no global trait. */
+export function isBlueprintTrait(input: Pick<GateInput, 'global' | 'originals'>, traitId: string): boolean {
+  const world = input.originals ?? input.global;
+  return world.traits.some((t) => t.id === traitId) && !globalItems(input).traits.has(traitId);
 }
 
 type Index = ReturnType<typeof index>;
@@ -555,7 +573,7 @@ export interface ClausePart {
 
 /** The record a Condition with no owner sits on. An entity's id lets a Condition on global scope drop its subject (Q25).
  *  An item's image rule reads the owner of its Item Instance. */
-export type ClauseHost = { kind: 'entity'; id?: string; name?: string } | { kind: 'world' } | { kind: 'persona' } | { kind: 'item' };
+export type ClauseHost = { kind: 'entity'; id?: string; name?: string } | { kind: 'world' } | { kind: 'blueprint' } | { kind: 'persona' } | { kind: 'item' };
 
 export interface ClauseView {
   /** Default: an entity with no name. */
@@ -618,14 +636,14 @@ function buildClauseReader(idx: Index): ClauseReader {
 
   /** The scope a Condition on `host` reads from; null for an entity with no id. */
   const fromOf = (host: ClauseHost): GateScopeTree | null => {
-    if (host.kind === 'world' || host.kind === 'persona') return idx.globalTree;
+    if (host.kind === 'world' || host.kind === 'blueprint' || host.kind === 'persona') return idx.globalTree;
     if (host.kind === 'item' || host.id === undefined) return null;
     return idx.owners.get(host.id)?.owner ?? { id: host.id, name: host.name ?? '', traits: [], groups: [] };
   };
 
   const subjectOf = (req: Targeted, host: ClauseHost, from: GateScopeTree | null): ClauseSubject => {
     // An owner-less item Condition on global scope reads the persona; a trait, group or stat reads the world (Q25).
-    const owner = req.owner ?? ((host.kind === 'persona' || host.kind === 'world') && req.kind === 'item' ? { kind: 'you' as const } : undefined);
+    const owner = req.owner ?? ((host.kind === 'persona' || host.kind === 'world' || host.kind === 'blueprint') && req.kind === 'item' ? { kind: 'you' as const } : undefined);
     if (owner?.kind === 'you') return player ? { kind: 'you' } : { kind: 'named', text: 'the player', fixed: true, broken: false };
     // The player's view says "you" for any owner that is the played entity (Q18).
     if (owner && isPlayed(owner.id)) return { kind: 'you' };
@@ -637,6 +655,8 @@ function buildClauseReader(idx: Index): ClauseReader {
     }
     // A target the world does not hold reads the persona on a persona host.
     if (host.kind === 'persona' && !idx.isGlobal(req)) return player ? { kind: 'you' } : { kind: 'named', text: 'the player', fixed: true, broken: false };
+    // On a Blueprint's own field, a Blueprint target reads the entity that links it (Q37).
+    if (host.kind === 'blueprint' && req.kind !== 'item' && idx.isBlueprint(req)) return { kind: 'named', text: 'this entity', fixed: true, broken: false };
     if (req.kind !== 'item' && from && idx.ownerSet(req, from).has(null)) {
       // A Condition on a world trait, group or stat has no subject in either view (Q25).
       return { kind: 'none' };

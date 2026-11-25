@@ -1,7 +1,7 @@
 import { useMemo, type ReactNode } from 'react';
 import { useTraitStore } from '@/contexts/TraitStoreContext';
 import { RequirementRowsField } from '@/components/editor/RequirementRowsField';
-import { conditionClauses, ownerHolding, requirementOptions, type ClauseHost } from '@/lib/traitGates';
+import { conditionClauses, isBlueprintTrait, ownerHolding, requirementOptions, type ClauseHost } from '@/lib/traitGates';
 import { SELF_ENTITY } from '@/lib/portableTraits';
 import { joinAnd, summarizeRequirement } from '@/lib/requirementSummary';
 import { requirementStatSections } from '@/lib/requirementStatOptions';
@@ -70,10 +70,11 @@ export function TraitRequiresField({ trait, onChange, onOpen, opens, ownerId, la
     const linked = ownerId !== undefined ? gateInput.owners.find((o) => o.id === ownerId) : undefined;
     const hostOwnerId = linked?.id ?? ownerHolding(gateInput, trait.id)?.id ?? null;
     const owner = hostOwnerId === null ? undefined : gateInput.owners.find((o) => o.id === hostOwnerId);
-    const host: ClauseHost = hostOwnerId === null ? { kind: 'world' } : { kind: 'entity', id: hostOwnerId, name: owner?.name };
+    const blueprint = hostOwnerId === null && isBlueprintTrait(gateInput, trait.id);
+    const host: ClauseHost = hostOwnerId !== null ? { kind: 'entity', id: hostOwnerId, name: owner?.name } : { kind: blueprint ? 'blueprint' : 'world' };
     return {
       options: requirementOptions(gateInput, trait.id),
-      statSections: requirementStatSections(gateInput, ownerId ?? hostOwnerId),
+      statSections: requirementStatSections(gateInput, ownerId ?? hostOwnerId, blueprint),
       clausesOf: selfBound(conditionClauses(gateInput), hostOwnerId),
       clauseHost: host,
     };

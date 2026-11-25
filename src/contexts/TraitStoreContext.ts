@@ -2,7 +2,7 @@ import { createContext, useContext, useMemo } from 'react';
 import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { useOpeningPickContext } from '@/contexts/OpeningPickContext';
 import { editorGateInput } from '@/lib/owners';
-import { startingGateStats } from '@/lib/gateStats';
+import { blueprintGateStats, startingGateStats } from '@/lib/gateStats';
 import type { GateInput } from '@/lib/traitGates';
 import type { PinEditorWorld } from '@/lib/placeholderPins';
 import type { PlacementLetters } from '@/lib/placementLetters';
@@ -90,6 +90,7 @@ export function useOptionalTraitStore(): TraitStore | null {
     () => editorGateInput(
       { traits: traits ?? [], traitGroups: traitGroups ?? [], entities: entities ?? [], items, options, weather, defaultTime, opening, openings },
       startingGateStats({ stats, statGroups, entities: entities ?? [] }),
+      blueprintGateStats({ stats, statGroups }),
     ),
     [traits, traitGroups, entities, items, options, weather, defaultTime, opening, openings, stats, statGroups],
   );
