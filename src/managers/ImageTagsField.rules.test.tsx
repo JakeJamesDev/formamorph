@@ -37,8 +37,8 @@ function Harness({ initial, inDialog = false, ruleCog, host = WREN_HOST }: {
   initial: GalleryImage[]; inDialog?: boolean; ruleCog?: boolean; host?: RuleHost;
 }) {
   const [images, setImages] = useState(initial);
-  // A location's rules read the played persona, so there Wren is one.
-  const cast = host.kind === 'location' ? [{ ...wren, persona: true }] : [wren];
+  // A location's rules read the played persona, and an item's offer the player for what a persona holds, so there Wren is one.
+  const cast = host.kind === 'entity' ? [wren] : [{ ...wren, persona: true }];
   const world = { traits: [], traitGroups: [], entities: cast };
   const store = {
     ...world, placeholders: [], stats: [],
@@ -86,7 +86,8 @@ describe('Gallery Visibility rules on a location', () => {
     render(<Harness initial={[{ data: A }, { data: B }]} host={LOCATION_RULE_HOST} />);
     fireEvent.click(ruleOf('Image 2'));
     fireEvent.click(await screen.findByRole('button', { name: 'Add a requirement…' }));
-    fireEvent.click(await screen.findByRole('option', { name: /^Healed/ }));
+    // The rule's first page, Persona, adds with no owner; Wren's page would name her (Q44).
+    fireEvent.click(within(await screen.findByRole('group', { name: 'Persona Traits' })).getByRole('option', { name: /^Healed/ }));
 
     expect(screen.queryByRole('button', { name: 'Back to targets' })).toBeNull();
     expect(stored()[1].requires).toEqual([{ all: [{ kind: 'trait', id: 'healed' }] }]);
@@ -108,7 +109,8 @@ describe('Gallery Visibility rules on an item', () => {
     render(<Harness initial={[{ data: A }, { data: B }]} host={LAMP_HOST} />);
     fireEvent.click(ruleOf('Image 2'));
     fireEvent.click(await screen.findByRole('button', { name: 'Add a requirement…' }));
-    fireEvent.click(await screen.findByRole('option', { name: /^Healed/ }));
+    // The rule's first page, Item Owner, adds with no owner.
+    fireEvent.click(within(await screen.findByRole('group', { name: 'Item Owner Traits' })).getByRole('option', { name: /^Healed/ }));
 
     expect(screen.queryByRole('button', { name: 'Back to targets' })).toBeNull();
     expect(stored()[1].requires).toEqual([{ all: [{ kind: 'trait', id: 'healed' }] }]);

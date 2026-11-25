@@ -117,7 +117,7 @@ describe('a World Option Condition', () => {
   });
 
   it('is offered once per Option in the picker, starting on its default', () => {
-    const offered = requirementOptions(input([T('a')]), 'a').worldOptions!.map((o) => o.requirement);
+    const offered = requirementOptions(input([T('a')])).worldOptions!.map((o) => o.requirement);
     expect(offered).toEqual([
       { kind: 'option', id: 'len', name: 'Reply Length', valueId: 'short', valueName: 'Short' },
       { kind: 'option', id: 'lit', name: 'Lanterns Lit' },
@@ -130,7 +130,7 @@ describe('a World Option Condition', () => {
   it('never names a Preset: the picker leaves it out and a stored Condition on one never holds', () => {
     const start: WorldOption = { id: 'start', name: 'Start', type: 'preset', mode: 'snapshot', values: [{ id: 'hard', name: 'Hard', description: '', rows: [] }] };
     const withStart = [...OPTIONS, start];
-    const offered = requirementOptions(input([T('a')], undefined, withStart), 'a').worldOptions!.map((o) => o.requirement.id);
+    const offered = requirementOptions(input([T('a')], undefined, withStart)).worldOptions!.map((o) => o.requirement.id);
     expect(offered).toEqual(['len', 'lit', 'heat', 'secret']);
     const onPreset: OptionRequirement = { kind: 'option', id: 'start', valueId: 'hard' };
     expect(gateFor(onPreset, { start: 'hard' }, withStart).unlocked).toBe(false);

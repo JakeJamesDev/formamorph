@@ -4,7 +4,7 @@ import { gateOf, gateStates, requirementOptions, sameRequirement, settle, type G
 import { buildEntityCardData, parseEntityCardData } from './entityFile';
 import { itemRuleStates } from './imageVisibility';
 import { gateLine } from './traitGateLine';
-import { itemHostStatSections } from './requirementStatOptions';
+import { requirementTargets } from './requirementTargets';
 import { bindOwnedTraits, portableOwnedTraits, traitWorldOf } from './portableTraits';
 import { scoped, type OwnerId } from './scope';
 
@@ -105,11 +105,12 @@ describe('item Conditions', () => {
   });
 
   it('offers each item as owned, and as equipped when it fits a slot', () => {
-    const { items } = requirementOptions({ ...input([T('Curse')], []), }, 'Curse');
+    const gate = input([T('Curse')], []);
+    const { items } = requirementOptions(gate);
     expect(items?.map((o) => [o.label, o.requirement.kind === 'item' && o.requirement.status])).toEqual([
       ['Cursed Ring', 'owned'], ['Cursed Ring', 'equipped'], ['Cup', 'owned'],
     ]);
-    expect(items?.[0].owners.map((o) => o.name)).toEqual(['Persona', 'Ash']);
+    expect(requirementTargets(gate, { kind: 'world' }).owners.get('item:ring')).toEqual([undefined, { kind: 'you' }, { kind: 'entity', id: 'ash', name: 'Ash' }]);
   });
 });
 
@@ -211,12 +212,12 @@ describe('item rules', () => {
     expect(itemRuleStates(base, at, [{ all: [ring('owned', { owner: { kind: 'entity', id: 'ash' } })] }])[0].holds).toBe(true);
   });
 
-  it('offers one Item Owner section for stats, with no separate Global section', () => {
+  it('offers one Item Owner page for stats, with no separate Global page', () => {
     const stats = scoped<GateStatSet>({ gold: { name: 'Gold', value: 1, min: 0, max: 9 } }, { ash: { grit: { name: 'Grit', value: 1, min: 0, max: 9 } } });
-    const sections = itemHostStatSections({ owners: [], entities: [{ id: 'ash', name: 'Ash' }], stats });
-    expect(sections[0]).toMatchObject({ owner: 'Item Owner', own: true });
-    expect(sections[0].options.map((o) => o.label).sort()).toEqual(['Gold', 'Grit']);
-    expect(sections.some((s) => s.owner === 'Global')).toBe(false);
+    const { pages } = requirementTargets({ global: { traits: [], groups: [] }, owners: [], entities: [{ id: 'ash', name: 'Ash' }], stats }, { kind: 'item' });
+    expect(pages[0]).toMatchObject({ heading: 'Item Owner', own: true });
+    expect(pages[0].options.map((o) => o.label).sort()).toEqual(['Gold', 'Grit']);
+    expect(pages.some((p) => p.heading === 'Global')).toBe(false);
   });
 });
 

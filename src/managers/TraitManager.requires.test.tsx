@@ -66,8 +66,8 @@ describe('the Requires field', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add a requirement…' }));
 
     const list = await screen.findByRole('listbox');
-    expect(within(list).getByText('Traits')).toBeInTheDocument();
-    expect(within(list).getByText('Any Trait in a Group')).toBeInTheDocument();
+    expect(within(list).getByText('Global Traits')).toBeInTheDocument();
+    expect(within(list).getByText('Global Groups')).toBeInTheDocument();
     expect(within(list).getByText('Playing As')).toBeInTheDocument();
     const paladin = within(list).getByRole('option', { name: /^Paladin/ });
     expect(paladin).toHaveTextContent('PaladinClass');
@@ -93,7 +93,7 @@ describe('the Requires field', () => {
     fireEvent.change(search, { target: { value: 'trait' } });
     expect(screen.queryAllByRole('option')).toEqual([]);
     fireEvent.change(search, { target: { value: 'cl' } });
-    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['PaladinClass', 'RogueClass', 'ClassWorld']);
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['PaladinClass', 'RogueClass', 'ClassGlobal']);
     fireEvent.click(screen.getByRole('option', { name: /^Class/ }));
 
     expect(traitRequires(ctx, 't-plate')).toEqual([{ all: [{ kind: 'trait', id: 't-paladin' }] }, { all: [{ kind: 'group', id: 'g-class' }] }]);

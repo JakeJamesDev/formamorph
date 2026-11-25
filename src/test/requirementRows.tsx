@@ -3,7 +3,7 @@ import { screen } from '@testing-library/react';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { RequirementRowsField } from '@/components/editor/RequirementRowsField';
 import { conditionClauses, requirementOptions, type ClauseHost, type GateInput, type RequirementOptions } from '@/lib/traitGates';
-import type { RequirementStatSection } from '@/lib/requirementStatOptions';
+import { requirementTargets, type RequirementTargets } from '@/lib/requirementTargets';
 import type { TraitRequirement, TraitRequirementRow } from '@/types';
 
 export type FieldInput = Omit<GateInput, 'active' | 'persona'>;
@@ -12,15 +12,16 @@ export const EMPTY_INPUT: FieldInput = { global: { traits: [], groups: [] }, own
 
 /** The Requires field over a real gate input's clauses and options, with edits that land in an `<output>`. */
 export function FieldHarness({
-  input = EMPTY_INPUT, initial = [], options, host = { kind: 'entity' }, offWorld = false, statSections, onOpen = () => {}, opens,
+  input = EMPTY_INPUT, initial = [], options, targets, host = { kind: 'entity' }, offWorld = false, onOpen = () => {}, opens,
 }: {
   input?: FieldInput;
   initial?: TraitRequirementRow[];
   /** Absent, the input's own options. */
   options?: RequirementOptions;
+  /** Absent, the input's own traits, groups and stats on `host`. */
+  targets?: RequirementTargets;
   host?: ClauseHost;
   offWorld?: boolean;
-  statSections?: readonly RequirementStatSection[];
   onOpen?: (requirement: TraitRequirement) => void;
   opens?: (requirement: TraitRequirement) => boolean;
 }) {
@@ -28,7 +29,7 @@ export function FieldHarness({
   return (
     <TooltipProvider>
       <RequirementRowsField
-        rows={rows} options={options ?? requirementOptions(input, '')} statSections={statSections} clausesOf={conditionClauses(input)} clauseHost={host}
+        rows={rows} targets={targets ?? requirementTargets(input, host)} options={options ?? requirementOptions(input)} clausesOf={conditionClauses(input)} clauseHost={host}
         placeholders={[]} offWorld={offWorld} onChange={setRows} onOpen={onOpen} opens={opens}
       />
       <output data-testid="rows">{JSON.stringify(rows)}</output>

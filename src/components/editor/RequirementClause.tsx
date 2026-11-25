@@ -6,7 +6,7 @@ import type { BreadcrumbPickerRow } from '@/components/ui/breadcrumb-picker';
 import { Meta } from '@/components/ui/typography';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
 import { ComparisonToken, NumberValueToken } from '@/components/editor/NumberConditionTokens';
-import type { RequirementStatSection } from '@/lib/requirementStatOptions';
+import { readsWithNoOwner, targetKey, type RequirementTargets } from '@/lib/requirementTargets';
 import { TimeConditionControls } from '@/components/editor/TimeConditionControls';
 import { WeatherConditionControls } from '@/components/editor/WeatherConditionControls';
 import { OpeningConditionControls } from '@/components/editor/OpeningConditionControls';
@@ -21,9 +21,9 @@ import type { OptionRequirement, Placeholder, RequirementOwner, StatRequirement,
 
 /** What every clause of one field reads: the host's targets and names, and where a target opens. */
 export interface ClauseContext {
+  /** The traits, groups and stats by page, and each target's owner choices. */
+  targets: RequirementTargets;
   options: RequirementOptions;
-  /** The stats by owner: a stat's owner and target lists. */
-  statSections: readonly RequirementStatSection[];
   placeholders: readonly Placeholder[];
   offWorld: boolean;
   clausesOf: (requirement: TraitRequirement, view?: ClauseView) => ClausePart[];
@@ -97,25 +97,16 @@ const capital = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 const flippedText = (parts: readonly ClausePart[], other: readonly ClausePart[]): string =>
   other.find((p, i) => p.text.toLowerCase() !== parts[i]?.text.toLowerCase())?.text ?? '';
 
-/** The swap list's targets: those of the same kind (Q17). */
+/** The swap list's targets: those of the same kind (Q17), each once. */
 const peersOf = (req: Tokened, ctx: ClauseContext): readonly RequirementOption[] => {
   if (req.kind === 'item') return (ctx.options.items ?? []).filter((o) => o.requirement.kind === 'item' && o.requirement.status === req.status);
-  if (req.kind === 'trait') return ctx.options.traits;
-  if (req.kind === 'group') return ctx.options.groups;
   if (req.kind === 'playingAs') return ctx.options.personas;
-  // A stat's peers: the stats of the sections that read its owner.
+  if (req.kind !== 'stat') return ctx.targets.swapList.filter((o) => o.requirement.kind === req.kind);
+  // A stat swap keeps its owner (Q34), so its peers are the stats of the pages that store that owner.
   const owner = requirementOwnerKey(requirementOwnerOf(req));
   const seen = new Set<string>();
-  return ctx.statSections.filter((s) => requirementOwnerKey(requirementOwnerOf(s.options[0].requirement)) === owner)
-    .flatMap((s) => s.options).filter((o) => !seen.has(idOf(o.requirement)) && seen.add(idOf(o.requirement)));
-};
-
-/** The owners that hold stat `id`, one entry per owner; `undefined` is the host's own reading, with no owner. */
-const statOwnersOf = (id: string, sections: readonly RequirementStatSection[]): (RequirementOwner | undefined)[] => {
-  const seen = new Set<string>();
-  return sections.filter((s) => s.options.some((o) => idOf(o.requirement) === id))
-    .map((s) => requirementOwnerOf(s.options[0].requirement))
-    .filter((owner) => !seen.has(requirementOwnerKey(owner)) && seen.add(requirementOwnerKey(owner)));
+  return ctx.targets.pages.filter((p) => requirementOwnerKey(p.owner) === owner).flatMap((p) => p.options)
+    .filter((o) => o.requirement.kind === 'stat' && !seen.has(idOf(o.requirement)) && seen.add(idOf(o.requirement)));
 };
 
 /** A stat swap keeps the owner, operator and Not. A % value stays, since it reads the same on any stat; a Raw value
@@ -138,25 +129,30 @@ export function RequirementClause({ requirement: req, edit, ctx, first }: {
   first: boolean;
 }) {
   const view: ClauseView = { host: ctx.host, sentenceStart: first };
-  const parts = ctx.clausesOf(req, view);
+  // A Condition with no owner on a target its host does not read alone needs an owner (Q45).
+  const needsOwner = !requirementOwnerOf(req) && !readsWithNoOwner(ctx.targets, req);
+  const parts = ctx.clausesOf(req, view).map((p) => (needsOwner && p.role === 'target' && !p.broken ? { ...p, broken: true as const, why: 'owner' as const } : p));
   const text = (t: string) => <PlaceholderText text={t} placeholders={ctx.placeholders} />;
   const plain = (t: string) => labelPlaceholders(t, ctx.placeholders);
   if (isSet(req)) return <SetClause requirement={req} parts={parts} edit={edit} ctx={ctx} view={view} />;
   if (req.kind === 'option') return <OptionClause requirement={req} parts={parts} edit={edit} ctx={ctx} />;
 
   const peers = peersOf(req, ctx);
-  const own = peers.find((o) => idOf(o.requirement) === req.id);
+  const choicesOf = (target: TraitRequirement) => ctx.targets.owners.get(targetKey(target)) ?? [];
   const targetName = (option: RequirementOption) =>
     ctx.clausesOf(option.requirement, { host: ctx.host }).find((p) => p.role === 'target')?.text ?? option.label;
 
-  // The owner choices: no owner first, read as its own subject, then the target's owners.
+  // The owner choices: the target's, with the stored one first when the target no longer offers it.
   const noOwnerSubject = ctx.clausesOf(withoutOwner(req), { host: ctx.host }).find((p) => p.role === 'subject')?.text;
-  const ownerName = (o: RequirementOwner) => (o.kind === 'you' ? 'The player' : o.name ?? '');
-  const noOwner = { name: noOwnerSubject ? capital(noOwnerSubject) : 'No owner' };
-  const owners: { owner?: RequirementOwner; name: string }[] = req.kind === 'playingAs' ? []
-    : req.kind === 'stat' ? statOwnersOf(req.id, ctx.statSections).map((o) => (o ? { owner: o, name: ownerName(o) } : noOwner))
-      : [noOwner, ...(own?.owners ?? []).map((o) => ({ owner: o.owner, name: ownerName(o.owner) }))];
+  const ownerName = (o?: RequirementOwner) => {
+    if (!o) return noOwnerSubject ? capital(noOwnerSubject) : 'No owner';
+    return o.kind === 'you' ? 'The player' : o.name ?? '';
+  };
   const currentOwner = requirementOwnerKey(requirementOwnerOf(req));
+  const choices = choicesOf(req);
+  const owners: { owner?: RequirementOwner; name: string }[] = (req.kind === 'playingAs' ? []
+    : choices.some((o) => requirementOwnerKey(o) === currentOwner) ? choices : [requirementOwnerOf(req), ...choices])
+    .map((owner) => ({ owner, name: ownerName(owner) }));
   const ownerRows: BreadcrumbPickerRow<string>[] = owners.map((o) => {
     const key = requirementOwnerKey(o.owner);
     return { key, value: key, name: o.name, disabled: key !== currentOwner && !edit.accepts(withRequirementOwner(withoutOwner(req), o.owner)) };
@@ -171,7 +167,7 @@ export function RequirementClause({ requirement: req, edit, ctx, first }: {
   const swapped = (option: RequirementOption): TraitRequirement => {
     if (req.kind === 'stat') return statSwapped(req, option);
     const owner = requirementOwnerOf(req);
-    const keeps = owner && option.owners.some((o) => requirementOwnerKey(o.owner) === requirementOwnerKey(owner));
+    const keeps = owner && choicesOf(option.requirement).some((o) => requirementOwnerKey(o) === requirementOwnerKey(owner));
     const next = req.not ? { ...option.requirement, not: true as const } : option.requirement;
     return withRequirementOwner(next, keeps ? owner : undefined);
   };

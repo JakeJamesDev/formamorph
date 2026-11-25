@@ -1430,35 +1430,26 @@ function opensTogether(targets: Located<Trait>[], idx: Index, stuck: ReadonlySet
   return targets.reduceRight<() => boolean>((then, t) => () => open(t, then), () => true)();
 }
 
-/** An owner the picker can name for a target, with the name its row shows. */
-export interface RequirementOwnerOption {
-  owner: RequirementOwner;
-  name: string;
-}
-
 /** One row of the requirement picker: what it adds, how the chip reads, and where the target lives. */
 export interface RequirementOption {
   requirement: TraitRequirement;
   label: string;
-  /** The owner, when not the world, then the group path. `World` for a top-level world item. */
+  /** The owner, when not the world, then the group path. `Global` for a top-level world item. */
   breadcrumb: string[];
-  /** The owners the row can name instead of the same owner: You, then every entity that owns the target. None
-   *  for a global target. */
-  owners: RequirementOwnerOption[];
-  /** The entity whose tree holds the target; absent for the world. */
-  home?: { id: string; name: string };
-  /** A Blueprint trait or group, which the picker lists apart from the world's own. */
-  blueprint?: true;
   /** The World Option a World Option row names, whose values the chip's controls offer. */
   worldOption?: WorldOption;
 }
 
+/** A trait or group one scope's tree holds, as the add menu lists it. `scope` null is the world's tree. */
+export interface HeldTarget {
+  requirement: { kind: 'trait' | 'group'; id: string };
+  label: string;
+  breadcrumb: string[];
+  scope: OwnerId;
+}
+
+/** The add menu's rows besides traits, groups and stats, which `requirementTargets` builds. */
 export interface RequirementOptions {
-  traits: RequirementOption[];
-  groups: RequirementOption[];
-  /** Each Blueprint trait and group again per entity that links it, naming that entity. For the picker's owner
-   *  pages only: `traits` and `groups` hold each target once. */
-  linked?: { traits: RequirementOption[]; groups: RequirementOption[] };
   personas: RequirementOption[];
   /** Each item once as owned, and once as equipped when it fits a slot. */
   items?: RequirementOption[];
@@ -1489,18 +1480,21 @@ export function optionRequirement(option: ValuedWorldOption): OptionRequirement 
 
 /** The picker's World Option rows, in Options-tab order. A Preset holds nothing to gate on. */
 export const worldOptionRows = (options: readonly WorldOption[] | undefined): RequirementOption[] =>
-  valuedOptions(options).map((option) => ({ requirement: optionRequirement(option), label: option.name, breadcrumb: [], owners: [], worldOption: option }));
+  valuedOptions(options).map((option) => ({ requirement: optionRequirement(option), label: option.name, breadcrumb: [], worldOption: option }));
 
 /** `requirement` scoped to `owner`; the same owner when `owner` is absent. */
 export const withRequirementOwner = (requirement: TraitRequirement, owner?: RequirementOwner): TraitRequirement =>
   (requirement.kind === 'playingAs' || requirement.kind === 'time' || requirement.kind === 'weather' || requirement.kind === 'opening' || requirement.kind === 'option' || !owner ? requirement : { ...requirement, owner });
 
+/** The breadcrumb root of a world trait or group with no group above it, in the add menu. */
+const GLOBAL_BREADCRUMB: readonly string[] = ['Global'];
+
 /**
- * Every requirement an author can give `traitId`, each target once, in tree order per owner. The trait
- * itself, its exclusive siblings, and a group holding only those are left out, because none of them can
- * ever hold it up.
+ * Every trait and group each scope holds that `traitId` can require, in tree order per scope. The trait itself,
+ * its exclusive siblings, and a group holding only those are left out, because none of them can ever hold it
+ * up. An entity lists a target the world's tree holds too only when it links that Blueprint target.
  */
-export function requirementOptions(input: Omit<GateInput, 'active' | 'persona'>, traitId: string): RequirementOptions {
+export function heldTargets(input: Omit<GateInput, 'active' | 'persona'>, traitId: string): HeldTarget[] {
   const idx = index({ ...input, active: NO_ACTIVE, persona: { source: 'none' } });
   const fromId = ownerHolding(input, traitId)?.id ?? null;
   const skip = new Set([traitId, ...(idx.owners.get(fromId)?.rivals.get(traitId) ?? [])]);
@@ -1519,75 +1513,44 @@ export function requirementOptions(input: Omit<GateInput, 'active' | 'persona'>,
       id = group.parentId;
     }
     if (owner.id !== null) path.unshift(owner.name);
-    return path.length > 0 ? path : [...WORLD_BREADCRUMB];
+    return path.length > 0 ? path : [...GLOBAL_BREADCRUMB];
   };
-  // A global item reads global scope whoever is named (Q10), so it offers no owner.
-  const ownersOf = (id: string, kind: 'trait' | 'group'): RequirementOwnerOption[] => ((kind === 'trait' ? idx.global.traits : idx.global.groups).has(id) ? [] : [
-    { owner: { kind: 'you' }, name: 'Persona' },
-    ...input.owners
-      .filter((o) => (kind === 'trait' ? o.traits : o.groups).some((item) => item.id === id))
-      .map((o): RequirementOwnerOption => ({ owner: { kind: 'entity', id: o.id, name: o.name }, name: o.name })),
-  ]);
-  // The picker's category already says the kind, so a row names its target alone.
-  const targetName = (requirement: TraitRequirement): string => {
-    switch (requirement.kind) {
-      case 'trait': return idx.traitNames.get(requirement.id) ?? '';
-      case 'group': return idx.groupNames.get(requirement.id) ?? '';
-      case 'playingAs': return idx.entities.get(requirement.id)?.name ?? '';
-      default: return '';
-    }
-  };
-  const option = (requirement: TraitRequirement, breadcrumb: string[], owners: RequirementOwnerOption[] = [], owner?: GateScopeTree): RequirementOption => {
-    const blueprint = owner?.id === null && (requirement.kind === 'trait' || requirement.kind === 'group') && idx.isBlueprint(requirement);
-    return {
-      requirement, label: targetName(requirement), breadcrumb, owners,
-      ...(owner?.id != null ? { home: { id: owner.id, name: owner.name } } : {}),
-      ...(blueprint ? { blueprint: true as const } : {}),
-    };
-  };
-
   const seen = new Set<string>();
-  const traits: RequirementOption[] = [];
-  const groups: RequirementOption[] = [];
-  const linked: NonNullable<RequirementOptions['linked']> = { traits: [], groups: [] };
+  const held: HeldTarget[] = [];
   for (const owner of gateTrees(input)) {
     for (const node of flattenTree(buildTree(owner.groups, owner.traits))) {
       const id = node.leaf?.id ?? node.group?.id;
       if (!id) continue;
-      if (seen.has(id)) {
-        // An entity's Link keeps its Blueprint's id, so the entity's page lists it with the entity named.
-        if (owner.id === null) continue;
-        const named = { kind: 'entity' as const, id: owner.id, name: owner.name };
-        const add = (kind: 'trait' | 'group', parentId: string | null | undefined) => {
-          const requirement = { kind, id, owner: named };
-          if (idx.isBlueprint(requirement)) linked[`${kind}s`].push(option(requirement, breadcrumbOf(owner, parentId), ownersOf(id, kind), owner));
-        };
-        if (node.leaf && !skip.has(id)) add('trait', node.leaf.groupId);
-        if (node.group && !deadGroup(id)) add('group', node.group.parentId);
-        continue;
-      }
+      // An entity's Link keeps its Blueprint's id; any other repeat is left out.
+      const repeat = seen.has(id);
       seen.add(id);
-      if (node.leaf && !skip.has(id)) traits.push(option({ kind: 'trait', id }, breadcrumbOf(owner, node.leaf.groupId), ownersOf(id, 'trait'), owner));
-      if (node.group && !deadGroup(id)) groups.push(option({ kind: 'group', id }, breadcrumbOf(owner, node.group.parentId), ownersOf(id, 'group'), owner));
+      const add = (kind: 'trait' | 'group', parentId: string | null | undefined) => {
+        if (repeat && (owner.id === null || !idx.isBlueprint({ kind, id }))) return;
+        const label = (kind === 'trait' ? idx.traitNames : idx.groupNames).get(id) ?? '';
+        held.push({ requirement: { kind, id }, label, breadcrumb: breadcrumbOf(owner, parentId), scope: owner.id });
+      };
+      if (node.leaf && !skip.has(id)) add('trait', node.leaf.groupId);
+      if (node.group && !deadGroup(id)) add('group', node.group.parentId);
     }
   }
-  const personas = input.entities.filter((e) => e.persona).map((e) => option({ kind: 'playingAs', id: e.id }, ['Persona']));
-  // Anyone can own an item, so every entity is a choice beside the Persona.
-  const itemOwners: RequirementOwnerOption[] = [
-    { owner: { kind: 'you' }, name: 'Persona' },
-    ...input.entities.map((e): RequirementOwnerOption => ({ owner: { kind: 'entity', id: e.id, name: e.name }, name: e.name })),
-  ];
+  return held;
+}
+
+/** The add menu's personas, items, World Options, weather and Opening rows. */
+export function requirementOptions(input: Omit<GateInput, 'active' | 'persona'>): RequirementOptions {
+  const row = (requirement: TraitRequirement, label: string, breadcrumb: string[] = []): RequirementOption => ({ requirement, label, breadcrumb });
+  const personas = input.entities.filter((e) => e.persona).map((e) => row({ kind: 'playingAs', id: e.id }, e.name, ['Persona']));
   const items = (input.worldItems ?? []).flatMap((item) => [
-    option({ kind: 'item', id: item.id, status: 'owned' }, [], itemOwners),
-    ...(item.slotRule ? [option({ kind: 'item', id: item.id, status: 'equipped' }, [], itemOwners)] : []),
-  ].map((o) => ({ ...o, label: item.name })));
+    row({ kind: 'item', id: item.id, status: 'owned' }, item.name),
+    ...(item.slotRule ? [row({ kind: 'item', id: item.id, status: 'equipped' }, item.name)] : []),
+  ]);
   const weatherKinds = input.weatherKinds;
   // A new weather Condition starts with no kind, unresolved until the author turns one on.
-  const weather = weatherKinds?.length ? [{ ...option({ kind: 'weather', kinds: [] }, [], []), label: 'Weather' }] : undefined;
+  const weather = weatherKinds?.length ? [row({ kind: 'weather', kinds: [] }, 'Weather')] : undefined;
   // A new Opening Condition starts with none picked, unresolved until the author checks one.
-  const opening = input.openings?.length ? [{ ...option({ kind: 'opening', openings: [] }, [], []), label: 'Opening' }] : undefined;
+  const opening = input.openings?.length ? [row({ kind: 'opening', openings: [] }, 'Opening')] : undefined;
   return {
-    traits, groups, ...(linked.traits.length || linked.groups.length ? { linked } : {}), personas, items, worldOptions: worldOptionRows(input.worldOptions), ...(weather && { weather, weatherKinds }),
+    personas, items, worldOptions: worldOptionRows(input.worldOptions), ...(weather && { weather, weatherKinds }),
     ...(opening && { opening, openings: input.openings }),
   };
 }

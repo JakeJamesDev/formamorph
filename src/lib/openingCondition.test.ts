@@ -115,7 +115,7 @@ describe('the Opening Condition outside play', () => {
   it('offers a library entity its own Openings, and reads none drawn there', () => {
     const route = gated('route', onOpening([{ ownerId: 'aki', openingId: 'a1' }]));
     const input = libraryGateInput({ ...aki, traits: [route] }, null);
-    expect(requirementOptions(input, 'route').openings?.map((g) => [g.label, g.options.map((o) => o.label)])).toEqual([['Aki', ['Aki · Opening 1']]]);
+    expect(requirementOptions(input).openings?.map((g) => [g.label, g.options.map((o) => o.label)])).toEqual([['Aki', ['Aki · Opening 1']]]);
     expect(gateOf(gateStates(input), 'aki', 'route')!.unlocked).toBe(false);
   });
 

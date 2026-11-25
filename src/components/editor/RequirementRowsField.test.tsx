@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ADD_FIRST, ADD_ROW, ADD_TO_ROW, FieldHarness, sentences, writtenRows, type FieldInput } from '@/test/requirementRows';
 import type { ClauseHost } from '@/lib/traitGates';
@@ -7,7 +7,7 @@ import type { Trait, TraitRequirementRow } from '@/types';
 
 const T = (id: string, name: string, extra: Partial<Trait> = {}): Trait => ({ id, name, statChanges: [], ...extra });
 
-// Paladin and Healer are global; Mira owns Knight, Squire and the Arms group; Albus and Sylvie are personas.
+// Paladin and Healer are global; Mira owns Knight, Squire and the Arms group and can be played; Albus and Sylvie are personas.
 const input: FieldInput = {
   global: { traits: [T('paladin', 'Paladin'), T('healer', 'Healer')], groups: [] },
   owners: [{
@@ -15,7 +15,7 @@ const input: FieldInput = {
     traits: [T('knight', 'Knight', { groupId: 'arms' }), T('squire', 'Squire', { groupId: 'arms' })],
     groups: [{ id: 'arms', name: 'Arms', parentId: null }],
   }],
-  entities: [{ id: 'mira', name: 'Mira' }, { id: 'albus', name: 'Albus', persona: true }, { id: 'sylvie', name: 'Sylvie', persona: true }],
+  entities: [{ id: 'mira', name: 'Mira', customPersona: true }, { id: 'albus', name: 'Albus', persona: true }, { id: 'sylvie', name: 'Sylvie', persona: true }],
 };
 // The Conditions sit on Ash, who holds none of the targets.
 const ASH: ClauseHost = { kind: 'entity', id: 'ash', name: 'Ash' };
@@ -28,6 +28,8 @@ const field = (initial: TraitRequirementRow[] = [], extra: Partial<Parameters<ty
   render(<FieldHarness input={input} host={ASH} initial={initial} {...extra} />);
 const button = (name: string | RegExp) => screen.getByRole('button', { name });
 const optionNames = () => screen.getAllByRole('option').map((o) => o.textContent);
+/** The add menu's rows under one page's section, such as "Mira Traits": a target can sit on Persona and on its holder's page. */
+const onPage = (heading: string) => within(screen.getByRole('group', { name: heading }));
 
 describe('the Requires field as sentences', () => {
   it('reads a trait, a group and a persona Condition as the grammar table writes them', () => {
@@ -57,14 +59,22 @@ describe('the Requires field as sentences', () => {
 
   it('writes the owner picked in the owner token, and clears it with no owner', async () => {
     const user = userEvent.setup();
-    field([{ all: [knight] }]);
+    const { unmount } = field([{ all: [knight] }]);
+    // Ash holds no Knight, so no owner is offered only while it is the stored choice (Q43).
     await user.click(button('Owner: Ash'));
     expect(optionNames()).toEqual(['Ash', 'The player', 'Mira']);
+    expect(screen.getByRole('option', { name: 'Ash' })).toHaveAttribute('aria-selected', 'true');
     await user.click(screen.getByRole('option', { name: 'Mira' }));
     expect(writtenRows()).toEqual([{ all: [{ ...knight, owner: { kind: 'entity', id: 'mira', name: 'Mira' } }] }]);
     expect(sentences()).toEqual(['Mira has Knight and…']);
     await user.click(button('Owner: Mira'));
-    await user.click(screen.getByRole('option', { name: 'Ash' }));
+    expect(optionNames()).toEqual(['The player', 'Mira']);
+    unmount();
+    // On Mira's own field she is the no-owner choice, shown once, and a pick clears the owner.
+    render(<FieldHarness input={input} host={{ kind: 'entity', id: 'mira', name: 'Mira' }} initial={[{ all: [{ ...knight, owner: { kind: 'you' as const } }] }]} />);
+    await user.click(button('Owner: The player'));
+    expect(optionNames()).toEqual(['Mira', 'The player']);
+    await user.click(screen.getByRole('option', { name: 'Mira' }));
     expect(writtenRows()).toEqual([{ all: [knight] }]);
   });
 
@@ -79,7 +89,7 @@ describe('the Requires field as sentences', () => {
     const mira = { kind: 'entity', id: 'mira', name: 'Mira' } as const;
     field([{ all: [{ ...knight, owner: mira, not: true }] }]);
     await user.click(button('Target: Knight'));
-    expect(optionNames()).toEqual(['PaladinWorld', 'HealerWorld', 'KnightMira › Arms', 'SquireMira › Arms']);
+    expect(optionNames()).toEqual(['PaladinGlobal', 'HealerGlobal', 'KnightMira › Arms', 'SquireMira › Arms']);
     await user.click(screen.getByRole('option', { name: /^Squire/ }));
     expect(writtenRows()).toEqual([{ all: [{ kind: 'trait', id: 'squire', owner: mira, not: true }] }]);
     // Paladin is global, so it names no owner and the Mira owner goes.
@@ -110,14 +120,14 @@ describe('the Requires field as sentences', () => {
     const mira = { kind: 'entity', id: 'mira', name: 'Mira' } as const;
     field();
     await user.click(button(ADD_FIRST));
-    await user.click(screen.getByRole('option', { name: /^Knight/ }));
+    await user.click(onPage('Mira Traits').getByRole('option', { name: /^Knight/ }));
     expect(writtenRows()).toEqual([{ all: [{ ...knight, owner: mira }] }]);
     expect(sentences()).toEqual(['Mira has Knight and…']);
     await user.click(button(ADD_TO_ROW));
-    await user.click(screen.getByRole('option', { name: /^Arms/ }));
+    await user.click(onPage('Mira Groups').getByRole('option', { name: /^Arms/ }));
     expect(writtenRows()).toEqual([{ all: [{ ...knight, owner: mira }, { ...arms, owner: mira }] }]);
     await user.click(button(ADD_ROW));
-    await user.click(screen.getByRole('option', { name: /^Squire/ }));
+    await user.click(onPage('Mira Traits').getByRole('option', { name: /^Squire/ }));
     expect(screen.queryByRole('button', { name: 'Back to targets' })).toBeNull();
     expect(writtenRows()).toEqual([{ all: [{ ...knight, owner: mira }, { ...arms, owner: mira }] }, { all: [{ kind: 'trait', id: 'squire', owner: mira }] }]);
     expect(screen.getByText('or')).toBeInTheDocument();
@@ -170,17 +180,22 @@ describe('the Requires field as sentences', () => {
       const user = userEvent.setup();
       field([{ all: [{ ...knight, owner: { kind: 'entity' as const, id: 'mira', name: 'Mira' } }] }]);
       await user.click(button(ADD_TO_ROW));
-      expect(screen.getByRole('option', { name: /^Knight/ })).toHaveAttribute('aria-disabled', 'true');
+      expect(onPage('Mira Traits').getByRole('option', { name: /^Knight/ })).toHaveAttribute('aria-disabled', 'true');
+      // From Persona it names the player, a different Condition.
+      expect(onPage('Persona Traits').getByRole('option', { name: /^Knight/ })).not.toHaveAttribute('aria-disabled', 'true');
     });
   });
 
   describe('a Condition with no subject (Q25)', () => {
     it('takes its owner from the target popover and then reads its subject', async () => {
       const user = userEvent.setup();
-      const options = { traits: [{ requirement: knight, label: 'Knight', breadcrumb: ['World'], owners: [{ owner: { kind: 'you' as const }, name: 'Persona' }] }], groups: [], personas: [] };
-      // On the world, a global trait with no owner names no one.
-      const world: FieldInput = { ...input, global: { traits: [T('knight', 'Knight')], groups: [] }, owners: [] };
-      render(<FieldHarness input={world} options={options} host={{ kind: 'world' }} initial={[{ all: [knight] }]} />);
+      // On a Global Trait, a Blueprint trait with no owner names no one (Q38); Mira links Knight.
+      const world: FieldInput = {
+        ...input,
+        global: { traits: [T('knight', 'Knight', { groupId: 'bp' })], groups: [{ id: 'bp', name: 'Blueprints', parentId: null, system: 'blueprints' }] },
+        owners: [{ id: 'mira', name: 'Mira', traits: [T('knight', 'Knight')], groups: [] }],
+      };
+      render(<FieldHarness input={world} host={{ kind: 'world' }} initial={[{ all: [knight] }]} />);
       expect(sentences()).toEqual(['Knight is active and…']);
       expect(screen.queryByRole('button', { name: /^Owner:/ })).toBeNull();
       await user.click(button('Target: Knight'));
@@ -188,6 +203,19 @@ describe('the Requires field as sentences', () => {
       expect(writtenRows()).toEqual([{ all: [{ ...knight, owner: { kind: 'you' } }] }]);
       expect(sentences()).toEqual(['The player has Knight and…']);
     });
+  });
+
+  // Q45: Ash holds no Knight, so "Ash has Knight" reads nothing until the Condition names an owner.
+  it('marks the target red when the host does not hold it and no owner is named', () => {
+    const { unmount } = field([{ all: [knight, { ...knight, owner: { kind: 'entity' as const, id: 'mira', name: 'Mira' } }] }]);
+    const [ownerless, named] = screen.getAllByRole('button', { name: 'Target: Knight' });
+    expect(ownerless).toHaveAttribute('data-broken');
+    expect(ownerless).toHaveAccessibleDescription('This trait needs an owner.');
+    expect(named).not.toHaveAttribute('data-broken');
+    unmount();
+    // On Mira's own field, Knight with no owner reads Mira and holds.
+    render(<FieldHarness input={input} host={{ kind: 'entity', id: 'mira', name: 'Mira' }} initial={[{ all: [knight] }]} />);
+    expect(button('Target: Knight')).not.toHaveAttribute('data-broken');
   });
 
   it('marks a missing owner red with a warning, as a token and as plain text off-world', () => {

@@ -2,37 +2,28 @@ import { describe, expect, it } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ADD_FIRST, FieldHarness, type FieldInput } from '@/test/requirementRows';
-import { requirementStatSections } from '@/lib/requirementStatOptions';
-import type { GateStat, GateStatSet, RequirementOption, RequirementOptions } from '@/lib/traitGates';
-import { scoped, type OwnerId } from '@/lib/scope';
+import type { GateOwner, GateStat, GateStatSet, RequirementOption } from '@/lib/traitGates';
+import { scoped } from '@/lib/scope';
+import type { Trait } from '@/types';
 
 const S = (name: string): GateStat => ({ name, value: 10, min: 0, max: 100 });
-const ash = { id: 'ash', name: 'Ash' };
-const mira = { id: 'mira', name: 'Mira', persona: true };
+const T = (id: string, name: string, groupId: string | null = null): Trait => ({ id, name, statChanges: [], groupId });
 
-const trait = (id: string, label: string, breadcrumb: string[], home?: { id: string; name: string }, owners: RequirementOption['owners'] = []): RequirementOption =>
-  ({ requirement: { kind: 'trait', id }, label, breadcrumb, owners, ...(home ? { home } : {}) });
-const world = (n: number) => Array.from({ length: n }, (_, i) => trait(`w${i}`, `World Trait ${i}`, i % 2 ? ['Habits'] : ['World']));
-const traits = [
-  ...world(6),
-  ...Array.from({ length: 5 }, (_, i) => trait(`a${i}`, `Ash Trait ${i}`, ['Ash', 'Bond'], ash, [{ owner: { kind: 'you' }, name: 'Persona' }])),
-  ...Array.from({ length: 3 }, (_, i) => trait(`m${i}`, `Mira Trait ${i}`, ['Mira'], mira)),
-];
-const personas: RequirementOption[] = [{ requirement: { kind: 'playingAs', id: 'mira' }, label: 'Mira', breadcrumb: ['Persona'], owners: [] }];
+// Six Global traits (the odd ones in Habits), five of Ash's in Bond, three of Mira's; Mira can be played.
+const globalTraits = Array.from({ length: 6 }, (_, i) => T(`w${i}`, `World Trait ${i}`, i % 2 ? 'habits' : null));
+const ash: GateOwner = { id: 'ash', name: 'Ash', groups: [{ id: 'bond', name: 'Bond', parentId: null }], traits: Array.from({ length: 5 }, (_, i) => T(`a${i}`, `Ash Trait ${i}`, 'bond')) };
+const mira: GateOwner = { id: 'mira', name: 'Mira', groups: [], traits: Array.from({ length: 3 }, (_, i) => T(`m${i}`, `Mira Trait ${i}`)) };
 const input: FieldInput = {
-  global: { traits: [], groups: [] },
-  owners: [],
-  entities: [ash, mira],
+  global: { traits: globalTraits, groups: [{ id: 'habits', name: 'Habits', parentId: null }] },
+  owners: [ash, mira],
+  entities: [{ id: 'ash', name: 'Ash' }, { id: 'mira', name: 'Mira', persona: true }],
   stats: scoped<GateStatSet>({ rage: S('Rage'), gold: S('Gold') }, { ash: { hunger: S('Hunger'), thirst: S('Thirst') }, mira: { mood: S('Mood'), joy: S('Joy') } }),
 };
+const ASH = { kind: 'entity', id: 'ash', name: 'Ash' } as const;
 
-function Harness({ choices = { traits, groups: [], personas }, host = 'ash', offWorld = false, stats = true }: {
-  choices?: RequirementOptions;
-  host?: OwnerId;
-  offWorld?: boolean;
-  stats?: boolean;
-}) {
-  return <FieldHarness input={input} options={choices} offWorld={offWorld} statSections={stats ? requirementStatSections(input, host) : []} />;
+function Harness({ gate = input, offWorld = false, items }: { gate?: FieldInput; offWorld?: boolean; items?: RequirementOption[] }) {
+  const options = { personas: [{ requirement: { kind: 'playingAs' as const, id: 'mira' }, label: 'Mira', breadcrumb: ['Persona'] }], ...(items && { items }) };
+  return <FieldHarness input={gate} host={ASH} options={options} offWorld={offWorld} />;
 }
 
 const items = () => screen.getAllByRole('option').map((o) => o.getAttribute('aria-label') ?? o.textContent);
@@ -48,15 +39,36 @@ describe('the Requires picker categories', () => {
   it('opens on the categories with counts in a large world', async () => {
     render(<Harness />);
     await openPicker();
-    // 14 traits, 8 stats, Time of Day and one persona: Time of Day and the lone persona are rows of their own.
-    expect(items()).toEqual([opens('Traits', 14), opens('Stats', 8), 'Time of Day', 'MiraPlaying As › Persona']);
+    // 17 trait rows (Mira's three on Persona and on her page), 2 groups, 8 stats, Time of Day and one persona.
+    expect(items()).toEqual([opens('Traits', 17), opens('Any Trait in a Group', 2), opens('Stats', 8), 'Time of Day', 'MiraPlaying As › Persona']);
   });
 
-  it('lists the stat owners in the order of the old sections', async () => {
+  it('gives Traits, Any Trait in a Group and Stats the same pages in the same order', async () => {
+    // Two groups on every page, so each category drills into pages.
+    const two = (a: string, b: string) => [{ id: a, name: a, parentId: null }, { id: b, name: b, parentId: null }];
+    const both = {
+      ...input,
+      global: { ...input.global, groups: [...input.global.groups, ...two('Quirks', 'Vows')] },
+      owners: [{ ...ash, groups: [...ash.groups, ...two('Kin', 'Pack')] }, { ...mira, groups: two('Mood', 'Air') }],
+    };
+    render(<Harness gate={both} />);
+    const user = await openPicker();
+    const pages = async (category: string) => {
+      await user.click(pageRow(category));
+      const names = items().map((i) => i?.replace(/, \d+ available, opens a page$/, ''));
+      await user.click(screen.getByRole('button', { name: 'Back' }));
+      return names;
+    };
+    const traitPages = await pages('Traits');
+    expect(traitPages).toEqual(['Ash', 'Global', 'Persona', 'Mira']);
+    expect(await pages('Any Trait in a Group')).toEqual(traitPages);
+    expect(await pages('Stats')).toEqual(traitPages);
+  });
+
+  it('lists the stat owners: the host’s own first, then Global, then Persona, then each entity', async () => {
     render(<Harness />);
     const user = await openPicker();
     await user.click(pageRow('Stats'));
-    // The host's own first, then Global, then Persona, then each entity.
     expect(items()).toEqual([opens('Ash', 2), opens('Global', 2), opens('Persona', 2), opens('Mira', 2)]);
     await user.click(pageRow('Global'));
     expect(items()).toEqual(['Rage', 'Gold']);
@@ -66,12 +78,13 @@ describe('the Requires picker categories', () => {
     render(<Harness />);
     const user = await openPicker();
     await user.click(pageRow('Traits'));
-    expect(items()).toEqual([opens('World', 6), opens('Ash', 5), opens('Mira', 3)]);
+    expect(items()).toEqual([opens('Ash', 5), opens('Global', 6), opens('Persona', 3), opens('Mira', 3)]);
     await user.click(pageRow('Ash'));
     expect(items()).toEqual(Array.from({ length: 5 }, (_, i) => `Ash Trait ${i}Bond`));
     await user.click(screen.getByRole('button', { name: 'Back' }));
-    await user.click(pageRow('World'));
-    expect(items()).toEqual(world(6).map((o, i) => `${o.label}${i % 2 ? 'Habits' : ''}`));
+    await user.click(pageRow('Global'));
+    // Tree order: the Habits group's traits, then the root's.
+    expect(items()).toEqual(['World Trait 1Habits', 'World Trait 3Habits', 'World Trait 5Habits', 'World Trait 0', 'World Trait 2', 'World Trait 4']);
     await user.click(screen.getByRole('button', { name: 'Back' }));
     await user.click(screen.getByRole('button', { name: 'Back' }));
 
@@ -80,17 +93,16 @@ describe('the Requires picker categories', () => {
   });
 
   it('keeps two owners with one name on pages of their own', async () => {
-    const twin = { id: 'ash2', name: 'Ash' };
-    const choices = { traits: [...traits, trait('t1', 'Twin Trait', ['Ash'], twin), trait('t2', 'Twin Trait Two', ['Ash'], twin)], groups: [], personas };
-    render(<Harness choices={choices} />);
+    const twin: GateOwner = { id: 'ash2', name: 'Ash', groups: [], traits: [T('t1', 'Twin Trait'), T('t2', 'Twin Trait Two')] };
+    render(<Harness gate={{ ...input, owners: [...input.owners, twin] }} />);
     const user = await openPicker();
     await user.click(pageRow('Traits'));
     expect(items().filter((i) => i?.startsWith('Ash,'))).toHaveLength(2);
   });
 
-  it('shows only the categories that have targets off-world', async () => {
-    const many = { ...input, stats: scoped<GateStatSet>({}, { ash: Object.fromEntries(Array.from({ length: 16 }, (_, i) => [`s${i}`, S(`Stat ${i}`)])) }) };
-    render(<FieldHarness input={many} options={{ traits: [], groups: [], personas: [] }} statSections={requirementStatSections(many, 'ash')} offWorld />);
+  it('shows only the host’s own page off-world', async () => {
+    const many = { ...input, owners: [], global: { traits: [], groups: [] }, stats: scoped<GateStatSet>({ rage: S('Rage') }, { ash: Object.fromEntries(Array.from({ length: 16 }, (_, i) => [`s${i}`, S(`Stat ${i}`)])) }) };
+    render(<Harness gate={many} offWorld />);
     await openPicker();
     expect(items()).toEqual([opens('Stats', 16), 'Time of Day']);
   });
@@ -106,12 +118,9 @@ describe('the Requires picker categories', () => {
   });
 
   it('adds an item at once from a drilled page, with no owner page', async () => {
-    const lamp: RequirementOption = {
-      requirement: { kind: 'item', id: 'lamp', status: 'owned' }, label: 'Lantern', breadcrumb: [],
-      owners: [{ owner: { kind: 'you' }, name: 'Persona' }, { owner: { kind: 'entity', id: 'ash', name: 'Ash' }, name: 'Ash' }],
-    };
+    const lamp: RequirementOption = { requirement: { kind: 'item', id: 'lamp', status: 'owned' }, label: 'Lantern', breadcrumb: [] };
     const rope: RequirementOption = { ...lamp, requirement: { kind: 'item', id: 'rope', status: 'owned' }, label: 'Rope' };
-    render(<Harness choices={{ traits, groups: [], personas, items: [lamp, rope] }} />);
+    render(<Harness items={[lamp, rope]} />);
     const user = await openPicker();
     await user.click(pageRow('Items'));
     fireEvent.click(screen.getByRole('option', { name: /^Lantern/ }));
@@ -120,9 +129,10 @@ describe('the Requires picker categories', () => {
   });
 
   it('keeps a small picker as today’s flat list', async () => {
-    render(<Harness choices={{ traits: traits.slice(0, 3), groups: [], personas: [] }} stats={false} />);
+    const small = { global: { traits: globalTraits.slice(0, 3), groups: input.global.groups }, owners: [], entities: [] };
+    render(<FieldHarness input={small} host={ASH} options={{ personas: [] }} />);
     await openPicker();
     expect(screen.queryByRole('option', { name: /opens a page/ })).toBeNull();
-    expect(items()).toEqual(['World Trait 0World', 'World Trait 1Habits', 'World Trait 2World', 'Time of Day']);
+    expect(items()).toEqual(['World Trait 1Habits', 'World Trait 0Global', 'World Trait 2Global', 'HabitsGlobal', 'Time of Day']);
   });
 });

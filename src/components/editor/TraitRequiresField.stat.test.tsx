@@ -43,7 +43,7 @@ function Harness({ subject, offWorld = false }: { subject: Trait; offWorld?: boo
   );
 }
 
-// Q29: the picker's global section reads Global Stats.
+// Q41: the picker's global page reads Global.
 describe('TraitRequiresField with stats', () => {
   it('offers a world trait the global stats with no owner, then each entity’s with its owner', async () => {
     render(<Harness subject={berserk} />);

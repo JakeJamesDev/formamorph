@@ -10,8 +10,8 @@ import { useGameDataOptional } from '@/contexts/GameDataContext';
 import { RuleSourceContext, useRuleSource } from '@/contexts/RuleSourceContext';
 import { TraitStoreContext } from '@/contexts/TraitStoreContext';
 import { labelPlaceholders } from '@/lib/placementLetters';
-import { itemHostStatSections, personaHostStatSections, requirementStatSections } from '@/lib/requirementStatOptions';
-import { clauseText, conditionClauses, requirementOptions, type ClauseHost, type GateInput, type RequirementOptions } from '@/lib/traitGates';
+import { requirementTargets } from '@/lib/requirementTargets';
+import { clauseText, conditionClauses, requirementOptions, type ClauseHost, type GateInput } from '@/lib/traitGates';
 import { ruleText, shownWhileLine } from '@/lib/traitGateLine';
 import { cn } from '@/lib/utils';
 import type { TraitRequirementRow } from '@/types';
@@ -55,13 +55,6 @@ export function useHostRuleText(host: RuleHost | undefined, rows: readonly Trait
   }, [source, host, rows]);
 }
 
-/** A location rule's owner-less Condition already reads the persona, so no target offers Persona again. */
-const withoutPersonaOwner = (options: RequirementOptions): RequirementOptions => {
-  const dropPersona = (targets: RequirementOptions['traits']) =>
-    targets.map((target) => ({ ...target, owners: target.owners.filter((choice) => choice.owner.kind !== 'you') }));
-  return { ...options, traits: dropPersona(options.traits), groups: dropPersona(options.groups) };
-};
-
 /** A rule target has nowhere to open in the gallery. */
 const noop = () => {};
 const never = () => false;
@@ -85,13 +78,12 @@ export function HostRuleRows({ host, rows, onChange, label = 'Visibility Rule', 
   const source = useRuleSource();
   const read = useMemo(() => {
     if (!source) return null;
-    // No trait is the host, so nothing is left out of the targets.
-    const options = requirementOptions(source.gateInput, '');
-    const clausesOf = conditionClauses(source.gateInput);
     const clauseHost = clauseHostOf(source.gateInput, host);
-    if (host.kind === 'entity') return { options, clausesOf, clauseHost, statSections: requirementStatSections(source.gateInput, host.id) };
-    if (host.kind === 'item') return { options, clausesOf, clauseHost, statSections: itemHostStatSections(source.gateInput) };
-    return { options: withoutPersonaOwner(options), clausesOf, clauseHost, statSections: personaHostStatSections(source.gateInput) };
+    // No trait is the host, so nothing is left out of the targets.
+    return {
+      targets: requirementTargets(source.gateInput, clauseHost), options: requirementOptions(source.gateInput),
+      clausesOf: conditionClauses(source.gateInput), clauseHost,
+    };
   }, [source, host]);
   if (!source || !read) return null;
   return (
@@ -99,8 +91,8 @@ export function HostRuleRows({ host, rows, onChange, label = 'Visibility Rule', 
       label={label}
       hint={hint}
       rows={rows}
+      targets={read.targets}
       options={read.options}
-      statSections={read.statSections}
       clausesOf={read.clausesOf}
       clauseHost={read.clauseHost}
       placeholders={source.placeholders}

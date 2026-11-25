@@ -15,15 +15,19 @@ import {
   type ClauseHost, type ClausePart, type ClauseView, type RequirementOption, type RequirementOptions,
 } from '@/lib/traitGates';
 import { joinAnd } from '@/lib/requirementSummary';
-import type { RequirementStatSection } from '@/lib/requirementStatOptions';
+import type { PagedKind, RequirementTargets } from '@/lib/requirementTargets';
 import type { Placeholder, TraitRequirement, TraitRequirementRow } from '@/types';
 import { Hint } from '@/components/ui/typography';
 
-const WORLD_PAGE = 'world page';
-const BLUEPRINTS_PAGE = 'blueprints page';
+/** The add menu's categories over the owner pages. `noun` follows the page's name in a section heading. */
+const PAGED_CATEGORIES: readonly { key: string; heading: string; kind: PagedKind; noun: string }[] = [
+  { key: 'traits', heading: 'Traits', kind: 'trait', noun: 'Traits' },
+  { key: 'groups', heading: 'Any Trait in a Group', kind: 'group', noun: 'Groups' },
+  { key: 'stats', heading: 'Stats', kind: 'stat', noun: 'Stats' },
+];
 
 /** The picker's one time row: a time Condition starts with no daypart, unresolved until one is on. */
-const TIME_OPTION: RequirementOption = { requirement: { kind: 'time', dayparts: [] }, label: 'Time of Day', breadcrumb: [], owners: [] };
+const TIME_OPTION: RequirementOption = { requirement: { kind: 'time', dayparts: [] }, label: 'Time of Day', breadcrumb: [] };
 
 /** Where the open picker adds: a row's index for **And**, or `new` for a row of its own. */
 type AddTarget = number | 'new';
@@ -38,15 +42,16 @@ type AddTarget = number | 'new';
  * list row or a flip that would is disabled. The same stat can sit in a row twice, once as a floor and once as
  * a ceiling. A row holds one time, one weather and one Opening Condition at most.
  *
- * The host supplies what the rows read: `options` the targets an author can add, `statSections` the stats by
- * owner, `clausesOf` a Condition's clause parts and `clauseHost` the record a Condition with no owner reads.
+ * The host supplies what the rows read: `targets` the traits, groups and stats by page with their owners,
+ * `options` the other targets, `clausesOf` a Condition's clause parts and `clauseHost` the record a Condition
+ * with no owner reads.
  */
 export function RequirementRowsField({
-  rows, options, statSections = [], clausesOf, clauseHost, placeholders, offWorld = false, onChange, onOpen, opens = () => true, label = 'Requires', labelAside, hint,
+  rows, targets, options, clausesOf, clauseHost, placeholders, offWorld = false, onChange, onOpen, opens = () => true, label = 'Requires', labelAside, hint,
 }: {
   rows: TraitRequirementRow[];
+  targets: RequirementTargets;
   options: RequirementOptions;
-  statSections?: readonly RequirementStatSection[];
   clausesOf: (requirement: TraitRequirement, view?: ClauseView) => ClausePart[];
   clauseHost: ClauseHost;
   placeholders: readonly Placeholder[];
@@ -87,18 +92,8 @@ export function RequirementRowsField({
   };
   const replaceCondition = (rowIndex: number, index: number, next: TraitRequirement) => onChange(rows.map((row, i) =>
     (i === rowIndex ? { all: row.all.map((req, j) => (j === index ? next : req)) } : row)));
-  // A pick adds at once: a stat with the owner of its section, a trait or group with the owner of its page.
+  // A pick adds at once, with the owner of its page.
   const pick = (option: RequirementOption) => add(option.requirement);
-  /** A trait or group on an entity's page names that entity; on the host's own page it names no owner. A
-   *  location's or an item's rule keeps no owner, which there reads the player or the item's owner. */
-  const paged = (option: RequirementOption): RequirementOption => {
-    const { home, requirement } = option;
-    const fixedHost = clauseHost.kind === 'entity' ? clauseHost.id !== undefined : clauseHost.kind === 'world' || clauseHost.kind === 'blueprint';
-    if (!home || offWorld || !fixedHost || (requirement.kind !== 'trait' && requirement.kind !== 'group')) return option;
-    const bare = { kind: requirement.kind, id: requirement.id };
-    const own = clauseHost.kind === 'entity' && clauseHost.id === home.id;
-    return { ...option, requirement: own ? bare : { ...bare, owner: { kind: 'entity' as const, id: home.id, name: home.name } } };
-  };
   /** Every way the row could be added is already listed, so the row has nothing left to add. */
   const exhausted = (option: RequirementOption) => {
     // One time Condition per row: its chip edits the dayparts.
@@ -110,59 +105,43 @@ export function RequirementRowsField({
 
   const renderText = (text: string) => <PlaceholderText text={text} placeholders={placeholders} />;
   const plainText = (text: string) => labelPlaceholders(text, placeholders);
-  const targets = (heading: string, list: RequirementOption[], tag = ''): BreadcrumbPickerSection<RequirementOption> => ({
+  const section = (heading: string, list: readonly RequirementOption[], tag = ''): BreadcrumbPickerSection<RequirementOption> => ({
     heading,
     rows: list.map((option) => ({
-      // One stat can belong to several owners, and so can a linked trait or group.
-      key: `${tag}${option.requirement.kind}:${option.requirement.id}${option.requirement.kind === 'stat' || option.home ? `:${requirementOwnerKey(requirementOwnerOf(option.requirement))}` : ''}${option.requirement.kind === 'item' ? `:${option.requirement.status}` : ''}`,
+      // One target can sit on several pages.
+      key: `${tag}${option.requirement.kind}:${'id' in option.requirement ? option.requirement.id : ''}${option.requirement.kind === 'item' ? `:${option.requirement.status}` : ''}`,
       value: option,
       name: option.label,
       breadcrumb: option.breadcrumb,
       disabled: exhausted(option),
     })),
   });
-  // Off-world only the entity's own stats exist to read.
-  const shownStats = statSections.filter((s) => !offWorld || s.own);
+  // Off-world only the host's own page exists to read.
+  const pages = targets.pages.filter((p) => !offWorld || p.own);
   const shownItems = offWorld ? [] : options.items ?? [];
   const worldOptions = options.worldOptions ?? [];
-  const searchable = joinAnd([
-    'traits', 'groups', ...(shownStats.length ? ['stats'] : []), ...(shownItems.length ? ['items'] : []), 'time of day', ...(options.weather ? ['weather'] : []), ...(options.opening ? ['openings'] : []),
-    ...(worldOptions.length ? ['World Options'] : []), ...(offWorld ? [] : ['personas']),
-  ]);
-  // One owner page per home: the world, then Blueprints, then each owner in tree order. Pages key on the owner's
-  // id, not its name; the two fixed keys hold a space, which no id does.
-  const ownerPages = (prefix: string, list: RequirementOption[]): BreadcrumbPickerNode<RequirementOption>[] => {
-    const homes = new Map<string, { heading: string; list: RequirementOption[] }>();
-    for (const option of list) {
-      const id = option.home?.id ?? (option.blueprint ? BLUEPRINTS_PAGE : WORLD_PAGE);
-      const home = homes.get(id) ?? { heading: option.home?.name ?? (option.blueprint ? 'Blueprints' : 'World'), list: [] };
-      home.list.push(option);
-      homes.set(id, home);
-    }
-    const rank = (id: string) => (id === WORLD_PAGE ? 0 : id === BLUEPRINTS_PAGE ? 1 : 2);
-    return [...homes].sort(([a], [b]) => rank(a) - rank(b)).map(([id, home]): BreadcrumbPickerNode<RequirementOption> => ({
-      kind: 'page', key: `${prefix}:${id}`, heading: home.heading, children: [{ kind: 'section', rows: targets('', home.list).rows }],
-    }));
-  };
-  // Off-world only the host's own traits exist to read.
-  const linkedOf = (kind: 'traits' | 'groups') => (offWorld ? [] : options.linked?.[kind] ?? []);
   const category = (key: string, heading: string, children: BreadcrumbPickerNode<RequirementOption>[]): BreadcrumbPickerNode<RequirementOption>[] =>
     (children.length ? [{ kind: 'page', key, heading, children }] : []);
+  const paged = PAGED_CATEGORIES.flatMap(({ key, heading, kind, noun }) => category(key, heading, pages.flatMap((p): BreadcrumbPickerNode<RequirementOption>[] => {
+    const list = p.options.filter((o) => o.requirement.kind === kind);
+    return list.length ? [{ kind: 'page', key: `${key}:${p.key}`, heading: p.heading, children: [{ kind: 'section', ...section(`${p.sectionName} ${noun}`, list, `${p.key}:`) }] }] : [];
+  })));
+  const hasStats = pages.some((p) => p.options.some((o) => o.requirement.kind === 'stat'));
+  const searchable = joinAnd([
+    'traits', 'groups', ...(hasStats ? ['stats'] : []), ...(shownItems.length ? ['items'] : []), 'time of day', ...(options.weather ? ['weather'] : []), ...(options.opening ? ['openings'] : []),
+    ...(worldOptions.length ? ['World Options'] : []), ...(offWorld ? [] : ['personas']),
+  ]);
   const tree: BreadcrumbPickerNode<RequirementOption>[] = [
-    ...category('traits', 'Traits', ownerPages('traits', [...options.traits, ...linkedOf('traits')].map(paged))),
-    ...category('groups', 'Any Trait in a Group', ownerPages('groups', [...options.groups, ...linkedOf('groups')].map(paged))),
-    ...category('stats', 'Stats', shownStats.map((s, i): BreadcrumbPickerNode<RequirementOption> => ({
-      kind: 'page', key: `stats:${i}`, heading: s.owner, children: [{ kind: 'section', ...targets(s.heading, s.options, s.blueprint ? 'blueprint ' : '') }],
-    }))),
+    ...paged,
     ...category('items', 'Items', (['owned', 'equipped'] as const).flatMap((status) => {
       const list = shownItems.filter((o) => o.requirement.kind === 'item' && o.requirement.status === status);
-      return list.length ? [{ kind: 'section' as const, ...targets(status === 'owned' ? 'Owned' : 'Equipped', list) }] : [];
+      return list.length ? [{ kind: 'section' as const, ...section(status === 'owned' ? 'Owned' : 'Equipped', list) }] : [];
     })),
-    ...category('time', 'Time of Day', [{ kind: 'section', ...targets('Time of Day', [TIME_OPTION]) }]),
-    ...(options.weather ? category('weather', 'Weather', [{ kind: 'section', ...targets('Weather', options.weather) }]) : []),
-    ...(options.opening ? category('opening', 'Opening', [{ kind: 'section', ...targets('Opening', options.opening) }]) : []),
-    ...(worldOptions.length ? category('worldOptions', 'World Options', [{ kind: 'section', ...targets('World Options', worldOptions) }]) : []),
-    ...(offWorld ? [] : category('playingAs', 'Playing As', [{ kind: 'section', ...targets('Playing As', options.personas) }])),
+    ...category('time', 'Time of Day', [{ kind: 'section', ...section('Time of Day', [TIME_OPTION]) }]),
+    ...(options.weather ? category('weather', 'Weather', [{ kind: 'section', ...section('Weather', options.weather) }]) : []),
+    ...(options.opening ? category('opening', 'Opening', [{ kind: 'section', ...section('Opening', options.opening) }]) : []),
+    ...(worldOptions.length ? category('worldOptions', 'World Options', [{ kind: 'section', ...section('World Options', worldOptions) }]) : []),
+    ...(offWorld ? [] : category('playingAs', 'Playing As', [{ kind: 'section', ...section('Playing As', options.personas) }])),
   ];
 
   const picker = (key: AddTarget, trigger: ReactElement) => (
@@ -179,7 +158,7 @@ export function RequirementRowsField({
     />
   );
 
-  const ctx: ClauseContext = { options, statSections, placeholders, offWorld, clausesOf, host: clauseHost, onOpen, opens };
+  const ctx: ClauseContext = { options, targets, placeholders, offWorld, clausesOf, host: clauseHost, onOpen, opens };
   const textOf = (requirement: TraitRequirement) => plainText(clauseText(clausesOf(requirement, { host: clauseHost })));
 
   return (

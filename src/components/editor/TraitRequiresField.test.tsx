@@ -28,12 +28,14 @@ const albus: Entity = {
 const mira: Entity = { id: 'mira', name: 'Mira', traits: [trait('squire', { name: 'Squire' })] };
 
 /** The field over a trait whose edits land, so a test reads the sentences the author would see next. */
-function Harness({ trait: initial, offWorld = false, onOpen = () => {}, onRows = () => {}, extra = { traits: [], traitGroups: [] } }: {
+function Harness({ trait: initial, offWorld = false, onOpen = () => {}, onRows = () => {}, extra = { traits: [], traitGroups: [] }, miraExtra = [] }: {
   trait: Trait;
   offWorld?: boolean;
   onOpen?: (r: TraitRequirement) => void;
   onRows?: (rows: TraitRequirementRow[]) => void;
   extra?: { traits: Trait[]; traitGroups: TraitGroup[] };
+  /** More traits of Mira's own. */
+  miraExtra?: Trait[];
 }) {
   const [current, setCurrent] = useState(initial);
   // The store reads the edited trait wherever it lives, as the World Editor's store does.
@@ -41,7 +43,7 @@ function Harness({ trait: initial, offWorld = false, onOpen = () => {}, onRows =
   const world = {
     traits: [...traits, ...extra.traits].map(swap),
     traitGroups: [...traitGroups, ...extra.traitGroups],
-    entities: [albus, { ...mira, traits: mira.traits!.map(swap) }],
+    entities: [albus, { ...mira, traits: [...mira.traits!, ...miraExtra].map(swap) }],
   };
   const store = {
     ...world, placeholders: [], stats: [], gateInput: editorGateInput(world), pinWorld: null, offWorld,
@@ -86,7 +88,7 @@ describe('TraitRequiresField owners', () => {
     expect(option(/^This entity/)).toHaveAttribute('aria-selected', 'true');
   });
 
-  it('lists Blueprint traits on their own page of the add menu, never under World', async () => {
+  it('lists Blueprint traits on their own page of the add menu, never under Global', async () => {
     const user = userEvent.setup();
     // Enough rows that the menu opens on its pages.
     const calm = Array.from({ length: 12 }, (_, i) => trait(`calm${i}`, { name: `Calm ${i}`, groupId: null, order: 2 + i }));
@@ -94,7 +96,9 @@ describe('TraitRequiresField owners', () => {
     openPicker();
     const names = () => screen.getAllByRole('option').map((o) => o.getAttribute('aria-label') ?? o.textContent);
     await user.click(await screen.findByRole('option', { name: /^Traits, / }));
-    expect(names()).toEqual(['World, 12 available, opens a page', 'Blueprints, 3 available, opens a page', 'SquireMira', 'Albus, 2 available, opens a page']);
+    expect(names()).toEqual([
+      'Global, 12 available, opens a page', 'Blueprints, 3 available, opens a page', 'Persona, 2 available, opens a page', 'Albus, 2 available, opens a page', 'SquireMira',
+    ]);
     await user.click(screen.getByRole('option', { name: /^Blueprints, / }));
     expect(names()).toEqual(['PaladinClasses', 'WizardClasses', 'Smite']);
   });
@@ -138,6 +142,27 @@ describe('TraitRequiresField owners', () => {
     expect(rows()).toEqual([{ all: [{ kind: 'trait', id: 'paladin', owner: ALBUS }] }]);
     expect(sentences()).toEqual(['Albus has Paladin and…']);
     expect(document.querySelector('[data-broken]')).toBeNull();
+  });
+
+  // Q42: the Persona page lists what an entity that can be played holds, and a pick reads the player.
+  it('adds a trait from the Persona page as the player’s', async () => {
+    const user = userEvent.setup();
+    const calm = Array.from({ length: 12 }, (_, i) => trait(`calm${i}`, { name: `Calm ${i}`, groupId: null, order: 2 + i }));
+    render(<Harness trait={traits[0]} extra={{ traits: calm, traitGroups: [] }} />);
+    openPicker();
+    await user.click(await screen.findByRole('option', { name: /^Traits, / }));
+    await user.click(screen.getByRole('option', { name: /^Persona, / }));
+    await user.click(option(/^Paladin/));
+    expect(rows()).toEqual([{ all: [{ kind: 'trait', id: 'paladin', owner: { kind: 'you' } }] }]);
+    expect(sentences()).toEqual(['The player has Paladin and…']);
+  });
+
+  // Q43: Mira holds no Paladin, so her own reading is no choice, and she never shows by name.
+  it('leaves the field’s own entity out of a target it does not hold', async () => {
+    const user = userEvent.setup();
+    render(<Harness trait={{ ...mira.traits![0], requires: [{ all: [{ kind: 'trait', id: 'paladin', owner: ALBUS }] }] }} />);
+    await user.click(button('Owner: Albus'));
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['The player', 'Albus']);
   });
 
   it('writes the owner picked, and the sentence names it', async () => {
@@ -201,11 +226,13 @@ describe('TraitRequiresField owners', () => {
     expect(screen.queryByRole('listbox')).toBeNull();
   });
 
+  // Off-world only the host's own page shows, so Mira's field lists her traits alone.
   it('adds a target at once off-world, with the owner as plain text', async () => {
-    render(<Harness trait={mira.traits![0]} offWorld />);
+    render(<Harness trait={mira.traits![0]} miraExtra={[trait('steady', { name: 'Steady' })]} offWorld />);
     openPicker();
-    fireEvent.click(await screen.findByRole('option', { name: /^Brave/ }));
-    expect(button('Target: Brave')).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: /^Brave/ })).toBeNull();
+    fireEvent.click(await screen.findByRole('option', { name: /^Steady/ }));
+    expect(button('Target: Steady')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Owner:/ })).toBeNull();
     expect(screen.queryByRole('listbox')).toBeNull();
   });

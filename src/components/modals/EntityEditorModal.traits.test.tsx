@@ -75,7 +75,7 @@ describe('the library entity Traits tab', () => {
     expect(screen.getByRole('button', { name: 'Target: Wolf' })).not.toHaveAttribute('data-broken');
     await userEvent.click(screen.getByRole('button', { name: 'Add another way' }));
     expect(screen.getByRole('option', { name: /Tamed/ })).toBeInTheDocument();
-    expect(screen.getByText('Any Trait in a Group')).toBeInTheDocument();
+    expect(screen.getByText('Wolf Groups')).toBeInTheDocument();
     expect(screen.queryByText('Playing As')).not.toBeInTheDocument();
   });
 

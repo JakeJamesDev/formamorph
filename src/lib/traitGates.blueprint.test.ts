@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { Entity, PersonaRef, StatRequirement, Trait, TraitGroup, TraitRequirement } from '@/types';
 import { editorGateInput, resolveOwners } from './owners';
-import { requirementStatSections } from './requirementStatOptions';
+import { requirementTargets } from './requirementTargets';
 import { scoped } from './scope';
 import {
-  NO_ACTIVE, clauseText, conditionClauses, gateOf, gateStates, isBlueprintTrait, requirementOptions, ruleStates, type ClauseHost, type GateInput, type GateStat, type GateStatSet,
+  NO_ACTIVE, clauseText, conditionClauses, gateOf, gateStates, isBlueprintTrait, ruleStates, type ClauseHost, type GateInput, type GateStat, type GateStatSet,
 } from './traitGates';
 
 // Blueprints holds the trait Bold, the group Virtues and the stat Courage. Brave, the group Combat and the stat
@@ -155,57 +155,53 @@ describe('a Blueprint target on a Link', () => {
   });
 });
 
-describe('the stat sections on a Blueprint’s own field', () => {
-  const sectionRows = (blueprintHost: boolean) => requirementStatSections(input(), null, blueprintHost).map((s) => ({
-    heading: s.heading, labels: s.options.map((o) => o.label), owner: s.options.map((o) => (o.requirement.kind === 'stat' ? o.requirement.owner : undefined)),
-  }));
+describe('the stat pages on a Blueprint’s own field', () => {
+  const pageRows = (host: ClauseHost) => requirementTargets(input(), host).pages.flatMap((p) => {
+    const stats = p.options.filter((o) => o.requirement.kind === 'stat');
+    return stats.length ? [{ heading: p.heading, labels: stats.map((o) => o.label), owner: stats.map((o) => (o.requirement.kind === 'stat' ? o.requirement.owner : undefined)) }] : [];
+  });
 
   it('offers the Blueprint stats first, each adding a Condition with no owner', () => {
-    const [first, ...rest] = sectionRows(true);
-    expect(first).toEqual({ heading: 'Blueprint Stats', labels: ['Courage', 'Lonely'], owner: [undefined, undefined] });
-    expect(rest.map((s) => s.heading)).toEqual(['Global Stats', 'Persona Stats', 'Mira Stats']);
+    const [first, ...rest] = pageRows(BLUEPRINT);
+    expect(first).toEqual({ heading: 'Blueprints', labels: ['Courage', 'Lonely'], owner: [undefined, undefined] });
+    expect(rest.map((p) => p.heading)).toEqual(['Global', 'Persona', 'Mira']);
     expect(rest[2].owner[0]).toMatchObject({ kind: 'entity', id: 'mira' });
   });
 
   it('offers the Blueprint stats on every other host too, after the global stats, with no owner', () => {
-    const rows = sectionRows(false);
-    expect(rows.map((s) => s.heading)).toEqual(['Global Stats', 'Blueprint Stats', 'Persona Stats', 'Mira Stats']);
-    expect(rows[1]).toEqual({ heading: 'Blueprint Stats', labels: ['Courage', 'Lonely'], owner: [undefined, undefined] });
-    expect(requirementStatSections(input(), 'wren').map((s) => s.heading)).toEqual(['Global Stats', 'Blueprint Stats', 'Persona Stats', 'Mira Stats']);
+    const rows = pageRows(WORLD);
+    expect(rows.map((p) => p.heading)).toEqual(['Global', 'Blueprints', 'Persona', 'Mira']);
+    expect(rows[1]).toEqual({ heading: 'Blueprints', labels: ['Courage', 'Lonely'], owner: [undefined, undefined] });
+    expect(pageRows({ kind: 'entity', id: 'wren', name: 'Wren' }).map((p) => p.heading)).toEqual(['Global', 'Blueprints', 'Persona', 'Mira']);
   });
 
-  it('counts the Blueprint section as the host’s own only on a Blueprint’s own field', () => {
-    const own = (blueprintHost: boolean) => requirementStatSections(input(), null, blueprintHost).filter((s) => s.own).map((s) => s.heading);
-    expect(own(true)).toEqual(['Blueprint Stats', 'Global Stats']);
-    expect(own(false)).toEqual(['Global Stats']);
+  it('counts the Blueprints page as the host’s own only on a Blueprint’s own field', () => {
+    const own = (host: ClauseHost) => requirementTargets(input(), host).pages.filter((p) => p.own).map((p) => p.heading);
+    expect(own(BLUEPRINT)).toEqual(['Blueprints']);
+    expect(own(WORLD)).toEqual(['Global']);
   });
 });
 
-describe('the trait and group options of a Blueprint', () => {
-  const pick = (list: { label: string; blueprint?: true; breadcrumb: string[]; home?: { id: string } }[]) =>
-    list.map((o) => [o.label, o.blueprint ?? false, o.breadcrumb, o.home?.id ?? null]);
+describe('the trait and group targets of a Blueprint', () => {
+  const targets = (host: ClauseHost = WORLD) => requirementTargets(editor(), host, 'oath');
+  const page = (heading: string, kind: 'trait' | 'group') => targets().pages.find((p) => p.heading === heading)?.options
+    .filter((o) => o.requirement.kind === kind).map((o) => [o.label, o.requirement, o.breadcrumb]);
 
-  it('lists a linked trait again under each entity that links it, naming that entity', () => {
-    const linked = requirementOptions(editor(), 'oath').linked!;
-    expect(linked.traits.map((o) => [o.label, o.home?.id, o.requirement, o.breadcrumb])).toEqual([
-      ['Gate', 'mira', { kind: 'trait', id: 'gate', owner: { kind: 'entity', id: 'mira', name: 'Mira' } }, ['Mira']],
-      ['Bold', 'mira', { kind: 'trait', id: 'bold', owner: { kind: 'entity', id: 'mira', name: 'Mira' } }, ['Mira']],
-      ['Gate', 'wren', { kind: 'trait', id: 'gate', owner: { kind: 'entity', id: 'wren', name: 'Wren' } }, ['Wren']],
-      ['Bold', 'wren', { kind: 'trait', id: 'bold', owner: { kind: 'entity', id: 'wren', name: 'Wren' } }, ['Wren']],
+  it('lists a linked trait again on each entity’s page that links it, naming that entity', () => {
+    expect(page('Mira', 'trait')).toEqual([
+      ['Gate', { kind: 'trait', id: 'gate', owner: { kind: 'entity', id: 'mira', name: 'Mira' } }, ['Mira']],
+      ['Bold', { kind: 'trait', id: 'bold', owner: { kind: 'entity', id: 'mira', name: 'Mira' } }, ['Mira']],
     ]);
-    // The first list still holds each trait once, so a swap list never repeats one.
-    expect(requirementOptions(editor(), 'oath').traits.map((o) => o.label).sort()).toEqual(['Bold', 'Brave', 'Gate']);
+    expect(page('Wren', 'trait')?.map(([label]) => label)).toEqual(['Gate', 'Bold']);
+    // The swap list still holds each trait once.
+    expect(targets().swapList.filter((o) => o.requirement.kind === 'trait').map((o) => o.label).sort()).toEqual(['Bold', 'Brave', 'Gate']);
   });
 
-  it('marks a Blueprint trait and group, and no global one', () => {
-    const options = requirementOptions(editor(), 'oath');
-    expect(new Set(pick(options.traits))).toEqual(new Set([
-      ['Brave', false, ['Combat'], null],
-      ['Gate', true, ['Blueprints'], null],
-      ['Bold', true, ['Blueprints', 'Virtues'], null],
-    ]));
-    expect(new Set(pick(options.groups))).toEqual(new Set([
-      ['Combat', false, ['World'], null], ['Blueprints', true, ['World'], null], ['Virtues', true, ['Blueprints'], null],
-    ]));
+  it('lists a Blueprint trait and group on Blueprints, and a global one on Global', () => {
+    const labels = (heading: string, kind: 'trait' | 'group') => page(heading, kind)?.map(([label, , breadcrumb]) => [label, breadcrumb]);
+    expect(labels('Global', 'trait')).toEqual([['Brave', ['Combat']]]);
+    expect(new Set(labels('Blueprints', 'trait'))).toEqual(new Set([['Gate', ['Blueprints']], ['Bold', ['Blueprints', 'Virtues']]]));
+    expect(labels('Global', 'group')).toEqual([['Combat', ['Global']]]);
+    expect(new Set(labels('Blueprints', 'group'))).toEqual(new Set([['Blueprints', ['Global']], ['Virtues', ['Blueprints']]]));
   });
 });

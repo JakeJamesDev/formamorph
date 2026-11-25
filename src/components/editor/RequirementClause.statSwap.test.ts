@@ -5,7 +5,7 @@ import { statSwapped } from './RequirementClause';
 
 const owner = { kind: 'entity' as const, id: 'mira', name: 'Mira' };
 const stat = (id: string, extra: Partial<StatRequirement> = {}): StatRequirement => ({ kind: 'stat', id, operator: '>=', value: 50, unit: 'raw', ...extra });
-const target = (req: StatRequirement): RequirementOption => ({ requirement: req, label: req.id, breadcrumb: [], owners: [] });
+const target = (req: StatRequirement): RequirementOption => ({ requirement: req, label: req.id, breadcrumb: [] });
 
 describe('a stat target swap (Q34)', () => {
   it('keeps a % value, with the owner, comparison and Not', () => {

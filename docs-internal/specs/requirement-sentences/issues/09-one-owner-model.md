@@ -1,6 +1,6 @@
 # 09: One Owner Model for Traits, Groups and Stats
 
-Status: ready-for-agent
+Status: ready-for-human
 Blocked by: None
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -49,14 +49,28 @@ The Requires field answers three questions about a trait, a group and a stat. To
 
 ## Acceptance criteria
 
-- [ ] One module builds the pages and the owner list for traits, groups and stats; the field has no branch on the target's kind for either.
-- [ ] The add menu's pages have the same names and the same order for Traits, Any Trait in a Group, and Stats, on an entity's field, a Global Trait's field and a Blueprint's own field. One test reads the three lists and compares them.
-- [ ] Both menus say Global; no menu says World.
-- [ ] The trait menu has a Persona page, and a pick from it reads "The player has ...".
-- [ ] A pick from each page stores the owner the table gives, for a trait and for a stat, with one test per page.
-- [ ] A trait's and a stat's owner list hold the same owners for the same holders; the no-owner choice follows Q43; the host's entity shows once.
-- [ ] A stored no-owner Condition on a target the host does not hold still shows its current choice selected.
-- [ ] A location's rule and an item's rule keep their sentences and their first page.
-- [ ] The swap list still holds each target once.
-- [ ] The two old shapes are gone from the field's props.
-- [ ] A changelog fragment for the visible changes.
+- [x] One module builds the pages and the owner list for traits, groups and stats; the field has no branch on the target's kind for either. `src/lib/requirementTargets.ts`; the field maps `PAGED_CATEGORIES` over the pages, and the clause reads `owners` by `targetKey`.
+- [x] The add menu's pages have the same names and the same order for Traits, Any Trait in a Group, and Stats, on an entity's field, a Global Trait's field and a Blueprint's own field. One test reads the three lists and compares them. Model test "gives the three kinds the same pages…" (three hosts); field test "gives Traits, Any Trait in a Group and Stats the same pages…".
+- [x] Both menus say Global; no menu says World. Model test "names no menu page World"; the root breadcrumb reads Global; showcase updated.
+- [x] The trait menu has a Persona page, and a pick from it reads "The player has ...". TraitRequiresField test "adds a trait from the Persona page as the player’s".
+- [x] A pick from each page stores the owner the table gives, for a trait and for a stat, with one test per page. Five model tests under "the owner a pick stores"; Q44 hosts in "a location’s and an item’s rule".
+- [x] A trait's and a stat's owner list hold the same owners for the same holders; the no-owner choice follows Q43; the host's entity shows once. Model tests under "the owner list (Q43)"; the Roxanne case in TraitRequiresField "leaves the field’s own entity out…". Guard proved by setting `reads` to always-true: 4 tests went red.
+- [x] A stored no-owner Condition on a target the host does not hold still shows its current choice selected. RowsField test "writes the owner picked…" (Ash first, `aria-selected`); Q45's red target in "marks the target red when the host does not hold it…", proved by disabling the mark.
+- [x] A location's rule and an item's rule keep their sentences and their first page. ImageTagsField.rules tests (Persona / Item Owner first, sentences unchanged); model tests for Q44 pages and owners.
+- [x] The swap list still holds each target once. `traitGates.blueprint.test.ts` "lists a linked trait again…" (swap list each once); RowsField swap test.
+- [x] The two old shapes are gone from the field's props. `statSections` and `requirementStatOptions.ts` removed; `RequirementOption` lost `owners`, `home`, `blueprint`; `RequirementOptions` lost `traits`, `groups`, `linked`.
+- [x] A changelog fragment for the visible changes. `docs-internal/changelog.d/requirement-sentences-09.md`.
+
+## Landed
+
+Rulings Q44 (location and item pages, entity picks name the entity) and Q45 ("Page Kind" section headings, red target for an invalid no-owner reading) came from the spec session during the build.
+
+**Not verified**
+
+- No live preview check of the menu. The field tests read the rendered DOM; no frame was stored.
+
+**For you**
+
+- The add menu in a world with personas: open Requires → Traits on an entity's trait and read the pages (own, Global, Blueprints, Persona, each entity) and the section headings in search ("Mira Traits", "Blueprint Stats").
+- An older Condition that names no owner on a target its entity does not hold now shows a red target ("This trait needs an owner."). Check a real world for how many appear.
+- The unreleased changelog entry "A Blueprint's Requires field now reads its own traits and stats…" still says "apart from World". A ticket branch cannot edit the changelog; it needs "apart from Global".

@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { ADD_FIRST, ADD_TO_ROW, FieldHarness, sentences, writtenRows, type FieldInput } from '@/test/requirementRows';
-import { requirementStatSections } from '@/lib/requirementStatOptions';
 import type { GateStat, GateStatSet } from '@/lib/traitGates';
 import { scoped, type OwnerId } from '@/lib/scope';
 import type { StatRequirement, TraitRequirement, TraitRequirementRow } from '@/types';
@@ -21,7 +20,7 @@ const shared: FieldInput = {
   stats: scoped<GateStatSet>({ rage: S('Rage'), gold: S('Gold') }, { ash: { hunger: S('Hunger'), rage: S('Rage') }, mira: { mood: S('Mood') } }),
 };
 
-/** The field over real stat sections and the real clauses, with edits that land. The host is the world, or `owner`. */
+/** The field over real stat pages and the real clauses, with edits that land. The host is the world, or `owner`. */
 function Harness({ initial = [], owner = null, offWorld = false, onOpen = () => {}, world = input }: {
   initial?: TraitRequirementRow[];
   owner?: OwnerId;
@@ -31,8 +30,8 @@ function Harness({ initial = [], owner = null, offWorld = false, onOpen = () => 
 }) {
   return (
     <FieldHarness
-      input={world} initial={initial} offWorld={offWorld} onOpen={onOpen} options={{ traits: [], groups: [], personas: [] }}
-      statSections={requirementStatSections(world, owner)} host={owner === null ? { kind: 'world' } : { kind: 'entity', id: owner, name: 'Ash' }}
+      input={world} initial={initial} offWorld={offWorld} onOpen={onOpen} options={{ personas: [] }}
+      host={owner === null ? { kind: 'world' } : { kind: 'entity', id: owner, name: 'Ash' }}
     />
   );
 }
@@ -54,7 +53,7 @@ const valueBox = () => screen.getByRole('spinbutton', { name: 'Value' });
 const stat = (operator: '>' | '<' | '>=', value: number, unit: 'raw' | 'percent' = 'raw'): StatRequirement => ({ kind: 'stat', id: 'rage', operator, value, unit });
 const SIX = ['above', 'below', 'at least', 'at most', 'exactly', 'different from'];
 
-// Q29: the picker's global section reads Global Stats.
+// Q41: the picker's global page reads Global.
 describe('a stat Condition in the rows editor', () => {
   it('lists each owner’s stats and places a sentence whose tokens are the target, verb, comparison and value', () => {
     render(<Harness />);

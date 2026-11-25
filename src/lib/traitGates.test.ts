@@ -5,6 +5,7 @@ import {
   underfills, withRequirementOwner, type GateInput, type GateOwner, type GateTree,
 } from './traitGates';
 import { playedEntityIds, scoped, withPart, type OwnerId } from './scope';
+import { requirementTargets } from './requirementTargets';
 
 const T = (id: string, extra: Partial<Trait> = {}): Trait => ({ id, name: id, statChanges: [], ...extra });
 const G = (id: string, extra: Partial<TraitGroup> = {}): TraitGroup => ({ id, name: id, parentId: null, ...extra });
@@ -836,35 +837,37 @@ describe('requirement options', () => {
     entities: [{ id: 'aldric', name: 'Sir Aldric', persona: true }, { id: 'odd', name: 'Odd Wick' }],
   };
   const rows = (list: { label: string; breadcrumb: string[] }[]) => list.map((o) => `${o.label} @ ${o.breadcrumb.join(' › ')}`);
+  /** The swap list of `kind` on a Global Trait's field for `traitId`: each target once, in tree order. */
+  const listed = (gate: Omit<GateInput, 'active' | 'persona'>, traitId: string, kind: 'trait' | 'group') =>
+    requirementTargets(gate, { kind: 'world' }, traitId).swapList.filter((o) => o.requirement.kind === kind);
 
   it('lists every trait in tree order with where it lives, leaving out the trait itself', () => {
-    expect(rows(requirementOptions(input, 'Plate Armor').traits)).toEqual([
-      'Paladin @ Class', 'Knight @ Class', 'Loose @ World', 'Tamed @ Ash › Bond',
+    expect(rows(listed(input, 'Plate Armor', 'trait'))).toEqual([
+      'Paladin @ Class', 'Knight @ Class', 'Loose @ Global', 'Tamed @ Ash › Bond',
     ]);
   });
 
   it('leaves out an exclusive sibling, which can never hold the trait up', () => {
-    expect(rows(requirementOptions(input, 'Paladin').traits)).toEqual([
-      'Plate Armor @ Gear › Heavy', 'Loose @ World', 'Tamed @ Ash › Bond',
+    expect(rows(listed(input, 'Paladin', 'trait'))).toEqual([
+      'Plate Armor @ Gear › Heavy', 'Loose @ Global', 'Tamed @ Ash › Bond',
     ]);
   });
 
-  // Q10: a global target offers no owner; an entity's target offers You and every entity that owns it.
-  it('lists a target once, where the first owner holds it, with owners for an entity target only', () => {
+  // Q10, Q43: a global target offers only no owner; an entity's target offers the entities that hold it.
+  it('lists a target once, where the first owner holds it, with named owners for an entity target only', () => {
     const albus: GateOwner = { id: 'albus', name: 'Albus', groups: [G('Class', { maxPicks: 1 })], traits: [T('Paladin', { groupId: 'Class' }), T('Oath')] };
-    const options = requirementOptions({ ...input, owners: [...input.owners, albus] }, 'Loose');
-    expect(rows(options.traits)).toEqual(['Paladin @ Class', 'Knight @ Class', 'Plate Armor @ Gear › Heavy', 'Tamed @ Ash › Bond', 'Oath @ Albus']);
-    const owners = (label: string) => options.traits.find((o) => o.label === label)?.owners.map((b) => b.name);
-    expect(owners('Paladin')).toEqual([]);
-    expect(owners('Knight')).toEqual([]);
-    expect(owners('Tamed')).toEqual(['Persona', 'Ash']);
-    expect(owners('Oath')).toEqual(['Persona', 'Albus']);
-    expect(options.traits.find((o) => o.label === 'Oath')?.owners[1].owner).toEqual({ kind: 'entity', id: 'albus', name: 'Albus' });
-    expect(options.groups.find((o) => o.label === 'Class')?.owners).toEqual([]);
+    const gate = { ...input, owners: [...input.owners, albus] };
+    expect(rows(listed(gate, 'Loose', 'trait'))).toEqual(['Paladin @ Class', 'Knight @ Class', 'Plate Armor @ Gear › Heavy', 'Tamed @ Ash › Bond', 'Oath @ Albus']);
+    const { owners } = requirementTargets(gate, { kind: 'world' }, 'Loose');
+    expect(owners.get('trait:Paladin')).toEqual([undefined]);
+    expect(owners.get('trait:Knight')).toEqual([undefined]);
+    expect(owners.get('trait:Tamed')).toEqual([{ kind: 'entity', id: 'wolf', name: 'Ash' }]);
+    expect(owners.get('trait:Oath')).toEqual([{ kind: 'entity', id: 'albus', name: 'Albus' }]);
+    expect(owners.get('group:Class')).toEqual([undefined]);
   });
 
   it('leaves out a group that holds only the trait and its exclusive siblings, and keeps one with another way in', () => {
-    const labels = requirementOptions(input, 'Paladin').groups.map((o) => o.label);
+    const labels = listed(input, 'Paladin', 'group').map((o) => o.label);
     expect(labels).not.toContain('Class');
     expect(labels).toContain('Gear');
     // A parent group holds the exclusive one plus a trait of its own, so it can still unlock Paladin.
@@ -876,31 +879,31 @@ describe('requirement options', () => {
       },
       owners: [wolf],
     };
-    expect(requirementOptions(nested, 'Paladin').groups.map((o) => o.label)).toContain('Martial');
+    expect(listed(nested, 'Paladin', 'group').map((o) => o.label)).toContain('Martial');
     // An empty group is offered: it can open the trait once the author fills it.
     const empty = { ...input, global: { ...input.global, groups: [...groups, G('Oaths')] }, owners: [wolf] };
-    expect(requirementOptions(empty, 'Paladin').groups.map((o) => o.label)).toContain('Oaths');
+    expect(listed(empty, 'Paladin', 'group').map((o) => o.label)).toContain('Oaths');
   });
 
   it('lists every group as "any" with its parent path', () => {
-    expect(rows(requirementOptions(input, 'Loose').groups)).toEqual([
-      'Class @ World', 'Gear @ World', 'Heavy @ Gear', 'Bond @ Ash',
+    expect(rows(listed(input, 'Loose', 'group'))).toEqual([
+      'Class @ Global', 'Gear @ Global', 'Heavy @ Gear', 'Bond @ Ash',
     ]);
   });
 
   it('lists only the world personas under playing as', () => {
-    expect(requirementOptions(input, 'Loose').personas).toEqual([
-      { requirement: { kind: 'playingAs', id: 'aldric' }, label: 'Sir Aldric', breadcrumb: ['Persona'], owners: [] },
+    expect(requirementOptions(input).personas).toEqual([
+      { requirement: { kind: 'playingAs', id: 'aldric' }, label: 'Sir Aldric', breadcrumb: ['Persona'] },
     ]);
   });
 
   it('carries the requirement each row adds, and scopes it to a picked owner', () => {
-    const options = requirementOptions(input, 'Loose');
-    expect(options.traits[0].requirement).toEqual({ kind: 'trait', id: 'Paladin' });
-    expect(options.groups[0].requirement).toEqual({ kind: 'group', id: 'Class' });
-    expect(withRequirementOwner(options.traits[0].requirement, { kind: 'you' })).toEqual({ kind: 'trait', id: 'Paladin', owner: { kind: 'you' } });
-    expect(withRequirementOwner(options.traits[0].requirement)).toEqual({ kind: 'trait', id: 'Paladin' });
-    expect(withRequirementOwner(options.personas[0].requirement, { kind: 'you' })).toEqual({ kind: 'playingAs', id: 'aldric' });
+    const [paladin] = listed(input, 'Loose', 'trait');
+    expect(paladin.requirement).toEqual({ kind: 'trait', id: 'Paladin' });
+    expect(listed(input, 'Loose', 'group')[0].requirement).toEqual({ kind: 'group', id: 'Class' });
+    expect(withRequirementOwner(paladin.requirement, { kind: 'you' })).toEqual({ kind: 'trait', id: 'Paladin', owner: { kind: 'you' } });
+    expect(withRequirementOwner(paladin.requirement)).toEqual({ kind: 'trait', id: 'Paladin' });
+    expect(withRequirementOwner(requirementOptions(input).personas[0].requirement, { kind: 'you' })).toEqual({ kind: 'playingAs', id: 'aldric' });
   });
 });
 

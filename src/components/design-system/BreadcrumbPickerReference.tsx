@@ -9,7 +9,7 @@ const TRAIT_SECTIONS: BreadcrumbPickerSection<string>[] = [{
   rows: [
     row('storm', 'Storm Touched by the Long Winter of the Northern Reach and Its Quiet Aftermath', ['Lineage', 'Bloodlines of the Northern Reach', 'Storms']),
     row('owl', 'Night Owl', ['Habits']),
-    row('steady', 'Steady', ['World']),
+    row('steady', 'Steady', ['Global']),
     row('cold', 'Cold Sleeper', ['Habits', 'Rest']),
   ],
 }];
@@ -41,7 +41,7 @@ const page = (key: string, heading: string, children: BreadcrumbPickerNode<strin
 // Over 15 rows, so it opens on its categories. Stats has one owner, so it opens straight into Global.
 const DRILL_TREE: BreadcrumbPickerNode<string>[] = [
   page('traits', 'Traits', [
-    page('traits:world', 'World', [section([row('steady', 'Steady', ['World']), row('restless', 'Restless', ['World']), row('lucky', 'Lucky', ['World'], true)])]),
+    page('traits:global', 'Global', [section([row('steady', 'Steady', ['Global']), row('restless', 'Restless', ['Global']), row('lucky', 'Lucky', ['Global'], true)])]),
     page('traits:rook', 'Rook', [section([
       row('rook-scarred', 'Scarred', ['Rook']), row('rook-wary', 'Wary', ['Rook', 'Habits']),
       row('rook-owl', 'Night Owl', ['Rook', 'Habits']), row('rook-cold', 'Cold Sleeper', ['Rook', 'Habits', 'Rest']),

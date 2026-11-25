@@ -171,7 +171,8 @@ describe('requirements across owners', () => {
     openTraitFieldsTab('Availability');
     fireEvent.click(screen.getByRole('button', { name: 'Add a requirement…' }));
     const list = await screen.findByRole('listbox');
-    const tamed = within(list).getByRole('option', { name: /^Tamed/ });
+    // Tamed sits on Ash's page; its section heading tells it from any other page's row.
+    const tamed = within(within(list).getByRole('group', { name: 'Ash Traits' })).getByRole('option', { name: /^Tamed/ });
     expect(tamed).toHaveTextContent('TamedAsh › Bond');
     fireEvent.click(tamed);
     // A trait picked from Ash's tree names Ash at once (Q40).

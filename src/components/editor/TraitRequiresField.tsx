@@ -4,7 +4,7 @@ import { RequirementRowsField } from '@/components/editor/RequirementRowsField';
 import { conditionClauses, isBlueprintTrait, ownerHolding, requirementOptions, type ClauseHost } from '@/lib/traitGates';
 import { SELF_ENTITY } from '@/lib/portableTraits';
 import { joinAnd, summarizeRequirement } from '@/lib/requirementSummary';
-import { requirementStatSections } from '@/lib/requirementStatOptions';
+import { requirementTargets } from '@/lib/requirementTargets';
 import type { Trait, TraitRequirement, TraitRequirementRow } from '@/types';
 import { Hint } from '@/components/ui/typography';
 
@@ -65,7 +65,7 @@ export function TraitRequiresField({ trait, onChange, onOpen, opens, ownerId, la
   labelAside?: ReactNode;
 }) {
   const { gateInput, placeholders, offWorld } = useTraitStore();
-  const { options, statSections, clausesOf, clauseHost } = useMemo(() => {
+  const { targets, options, clausesOf, clauseHost } = useMemo(() => {
     // A link's owner when the input holds it, else the first owner holding the trait.
     const linked = ownerId !== undefined ? gateInput.owners.find((o) => o.id === ownerId) : undefined;
     const hostOwnerId = linked?.id ?? ownerHolding(gateInput, trait.id)?.id ?? null;
@@ -73,8 +73,8 @@ export function TraitRequiresField({ trait, onChange, onOpen, opens, ownerId, la
     const blueprint = hostOwnerId === null && isBlueprintTrait(gateInput, trait.id);
     const host: ClauseHost = hostOwnerId !== null ? { kind: 'entity', id: hostOwnerId, name: owner?.name } : { kind: blueprint ? 'blueprint' : 'world' };
     return {
-      options: requirementOptions(gateInput, trait.id),
-      statSections: requirementStatSections(gateInput, ownerId ?? hostOwnerId, blueprint),
+      targets: requirementTargets(gateInput, host, trait.id),
+      options: requirementOptions(gateInput),
       clausesOf: selfBound(conditionClauses(gateInput), hostOwnerId),
       clauseHost: host,
     };
@@ -83,8 +83,8 @@ export function TraitRequiresField({ trait, onChange, onOpen, opens, ownerId, la
   return (
     <RequirementRowsField
       rows={trait.requires ?? []}
+      targets={targets}
       options={options}
-      statSections={statSections}
       clausesOf={clausesOf}
       clauseHost={clauseHost}
       placeholders={placeholders}
