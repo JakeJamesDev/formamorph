@@ -1,7 +1,7 @@
 # Spec: Requirement Sentences
 
-Status: ready-for-agent
-Status note: Reopened 2026-11-25 for ticket 09 (Q41 to Q43). Closed before on 2026-11-25 at 26ac4f9ce, tickets 01-08; then 570a7e943, 9cae52df8 and 460e31596 (Q39, Q40).
+Status: done
+Status note: 2026-11-25, tickets 01-09, last landing ec3a3fc43, then fixes 2de3bd8b8 and 789c7a424. Review: 1 gap (off-world trait menu) closed by 789c7a424 (Q46); Standards findings reported. Closed red: lint, 31 errors, all in `worlds-wip/`. Tests green on 2026-11-25. Ticket 08's Test Bench criterion has no test.
 Spec session: requirement-sentences — spec
 Prototype: branch `prototype/requirement-sentences`, commit 7fa4ca1f5, variant A (`/?variant=A#dev?view=mainMenu&modal=worldEditor&tab=traits`). Compared two add controls on the sentence editor (A text tokens, B one button) against the chips (C). A won on 2026-11-24.
 
@@ -77,6 +77,7 @@ Every place that reads a rule as text uses the same wording: the editor, the pla
 | Q43 | A Condition's owner list offers the no-owner choice only when the host's own reading is valid: the host holds the target, the target is global, or the host is a Blueprint and so is the target. This holds for traits, groups and stats. A stored Condition with no owner still shows its current choice. (Q41 to Q43 ruled 2026-11-25, for ticket 09.) |
 | Q44 | A location's rule and an item's rule use the one model too. Location pages: Persona (no owner), Global, Blueprints, each entity. Item pages: Item Owner (no owner), Persona (the pick reads "The player"), each entity. A pick from an entity's page names that entity for traits, groups and stats; this replaces Q40's last sentence. On a location's rule the no-owner choice is valid when the target is global or a playable entity holds it, and "The player" is not a second choice. On an item's rule it is always valid. An item Condition's own owner list is outside Q43. (Spec session, 2026-11-25, from the user's "function the same" intent; ticket 09 question.) |
 | Q45 | In the add menu's flat list and search, a section heading reads "<Page> <Kind>", as the stat sections did: "Global Traits", "Mira Groups", "Blueprint Stats". A stored Condition on a trait, group or stat that has no owner, on a host whose own reading is not valid (the Q43 test), shows its target as a broken token: "This trait needs an owner." This extends Q38 from a Global Trait's field to an entity's field that does not hold the target. The mark changes no gate. (Spec session, 2026-11-25; ticket 09 review question.) |
+| Q46 | Off-world (a library entity's editor), a stat lists only on the host's own page. A trait or group still lists from the world the entity was opened from, once each, with no owner, and never from the Persona page. No target asks for an owner there, because none can be picked. This corrects ticket 09's Keep line, which stated the stat limit for every kind. (Spec session, 2026-11-25, third close review.) |
 
 ### Grammar (Q20)
 
