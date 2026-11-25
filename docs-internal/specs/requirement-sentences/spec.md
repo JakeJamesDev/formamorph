@@ -38,7 +38,7 @@ Every place that reads a rule as text uses the same wording: the editor, the pla
 | Q4 | New wording, unified where possible. |
 | Q5 | One wording everywhere: the editor, the lock line, code cards, update notes. |
 | Q6 | Not lives in the verb token. One click flips it, with no popover. The flip button and the NOT mark go away. |
-| Q7 | The owner is its own token and can change after add. The add flow drops the owner page; a new Condition starts with no owner. |
+| Q7 | The owner is its own token and can change after add. The add flow drops the owner page; a new Condition starts with no owner. A stat picked from an owner's section starts with that owner, as before. |
 | Q8 | The target token opens a swap list with an **Open** button for the target. |
 | Q9 | A small × follows each Condition, always visible. |
 | Q10, Q13 | Add controls are text tokens in the flow: "and…" at the end of each sentence, "or…" after the last row (prototype verdict, variant A). |
@@ -66,6 +66,7 @@ Every place that reads a rule as text uses the same wording: the editor, the pla
 | Q33 | Token popovers in the Requires field are modal in every host. |
 | Q34 | A stat target swap keeps the comparison and Not. A % value stays; a Raw value resets to the new stat's default. A stat owner swap keeps the whole Condition. |
 | Q35 | Tokens take the lighter, muted underline everywhere the shared token shows, the Entity Schedule included. |
+| Q36 | An image rule's "Shown while" summary takes a final period and no colon: "Shown while Paladin is active." |
 
 ### Grammar (Q20)
 
@@ -123,7 +124,7 @@ Brackets mark tokens.
 
 22. As an author, I want an "and…" token at the end of each sentence, so that I add a Condition where I am reading.
 23. As an author, I want an "or…" line after the last row, so that I add another way in the same style.
-24. As an author, I want a new Condition added at once with the host as owner, so that the add flow has one page fewer.
+24. As an author, I want a new Condition added at once with no owner, so that the add flow has one page fewer.
 25. As an author, I want an × after each Condition, so that I remove one with one click.
 26. As an author, I want removing a row's last Condition to remove the row, so that no empty row stays.
 27. As an author, I want a delete button for a whole row, so that I drop a way in one click.
@@ -150,7 +151,7 @@ Brackets mark tokens.
 
 **The field**
 
-- The Requires field keeps its props and its data. Hosts do not change.
+- The Requires field keeps its data. Its text props became a clause builder and a clause host, and every host passes them.
 - Each row renders the clause parts as tokens. A token is underlined text that opens a popover editor; the schedule's token moves to the shared UI components so both features use one.
 - Token types: a flip token (one click, no popover), a list token (a searchable pick list), and an editor token (a popover with controls).
 - The existing per-kind controls for time, weather, Opening, item checks and World Option values move into popovers. They are not rewritten.
