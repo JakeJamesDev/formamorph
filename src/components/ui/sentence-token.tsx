@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 
 /** The look of a sentence token, for a token button that opens something other than a popover. */
 export const SENTENCE_TOKEN_CLASS =
-  'rounded px-0.5 font-medium underline decoration-dotted underline-offset-4 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+  'rounded px-0.5 font-medium underline decoration-dotted decoration-[color:color-mix(in_srgb,currentColor_45%,transparent)] underline-offset-4 hover:bg-accent hover:decoration-current focus-visible:decoration-current focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
 
 /** A muted token, such as an add control at the end of a sentence. */
 export const MUTED_SENTENCE_TOKEN_CLASS = cn(SENTENCE_TOKEN_CLASS, 'font-normal text-muted-foreground');

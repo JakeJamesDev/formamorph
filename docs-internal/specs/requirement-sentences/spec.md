@@ -65,6 +65,7 @@ Every place that reads a rule as text uses the same wording: the editor, the pla
 | Q32 | On an item's image rule, a Condition with no owner reads "The item's owner". |
 | Q33 | Token popovers in the Requires field are modal in every host. |
 | Q34 | A stat target swap keeps the comparison and Not. A % value stays; a Raw value resets to the new stat's default. A stat owner swap keeps the whole Condition. |
+| Q35 | Tokens take the lighter, muted underline everywhere the shared token shows, the Entity Schedule included. |
 
 ### Grammar (Q20)
 
@@ -203,7 +204,7 @@ A good test here reads what the author or player reads and checks what an edit w
 
 **Open points from the prototype.** These are not ruled. The build should raise each one with the spec session.
 
-- **Density.** Almost every word is underlined. A row with three or more Conditions looks busy. The user wants to see a lighter underline before ruling: ticket 02 keeps today's look and stores two comparison frames.
+- **Density.** Almost every word is underlined. A row with three or more Conditions looks busy. Resolved by Q35: the user saw ticket 02's two comparison frames and picked the lighter underline.
 - **Popover in a popover.** The image rule editor already sits in a popover. Token popovers inside it need the modal popover setting, or wheel scroll stops.
 
 ## Prototype
