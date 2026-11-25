@@ -1,6 +1,7 @@
 # Spec: Requirement Sentences
 
-Status: ready-for-agent
+Status: done
+Status note: 2026-11-25, tickets 01-07, last landing b58a5003e, then fix 92e64a0dd. Review: 3 gaps closed by ticket 07; spec text corrected. Closed red: lint, 31 errors, all in `worlds-wip/`. Tests green on 2026-11-25.
 Spec session: requirement-sentences — spec
 Prototype: branch `prototype/requirement-sentences`, commit 7fa4ca1f5, variant A (`/?variant=A#dev?view=mainMenu&modal=worldEditor&tab=traits`). Compared two add controls on the sentence editor (A text tokens, B one button) against the chips (C). A won on 2026-11-24.
 
