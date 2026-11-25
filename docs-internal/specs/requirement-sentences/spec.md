@@ -1,7 +1,7 @@
 # Spec: Requirement Sentences
 
-Status: done
-Status note: 2026-11-25, tickets 01-07, last landing b58a5003e, then fix 92e64a0dd. Review: 3 gaps closed by ticket 07; spec text corrected. Closed red: lint, 31 errors, all in `worlds-wip/`. Tests green on 2026-11-25.
+Status: ready-for-agent
+Status note: Reopened 2026-11-25 for ticket 08 (Q37). Closed before on 2026-11-25 at 6a36d3f81, tickets 01-07.
 Spec session: requirement-sentences — spec
 Prototype: branch `prototype/requirement-sentences`, commit 7fa4ca1f5, variant A (`/?variant=A#dev?view=mainMenu&modal=worldEditor&tab=traits`). Compared two add controls on the sentence editor (A text tokens, B one button) against the chips (C). A won on 2026-11-24.
 
@@ -68,6 +68,7 @@ Every place that reads a rule as text uses the same wording: the editor, the pla
 | Q34 | A stat target swap keeps the comparison and Not. A % value stays; a Raw value resets to the new stat's default. A stat owner swap keeps the whole Condition. |
 | Q35 | Tokens take the lighter, muted underline everywhere the shared token shows, the Entity Schedule included. |
 | Q36 | An image rule's "Shown while" summary takes a final period and no colon: "Shown while Paladin is active." |
+| Q37 | A Blueprint trait, group and stat follow one rule, in the editor and in play. Under Blueprints is not global scope: Q25 does not apply. On a Blueprint's own field, a Condition with no owner on a Blueprint target takes the Q11 subject, "This entity". On a Link it reads the linking entity, and "you" for the played one. (Ruled 2026-11-25.) |
 
 ### Grammar (Q20)
 
@@ -89,7 +90,7 @@ Brackets mark tokens.
 
 - **Item verb (Q21):** owns, doesn't own, has equipped, doesn't have equipped. "Has equipped" is offered only for an item that fits a slot.
 - **Subject:** a named owner reads by name, the persona reads "the player", and no owner follows Q11.
-- **Global scope (Q25):** `[Paladin] [is] active` / `is not`; `[A trait in] [Combat] is active` / `No trait in`; `[Gold] [is] [at least] [5]`. This applies when a Condition with no owner reads global scope: on a world host, and on an entity host whose target is global and not held by the entity.
+- **Global scope (Q25):** `[Paladin] [is] active` / `is not`; `[A trait in] [Combat] is active` / `No trait in`; `[Gold] [is] [at least] [5]`. This applies when a Condition with no owner reads global scope: on a world host whose target is global, and on an entity host whose target is global and not held by the entity. A Blueprint target is never global (Q37).
 - **Capitals:** the first word of a sentence takes a capital. A subject later in the sentence does not.
 
 ## User Stories
