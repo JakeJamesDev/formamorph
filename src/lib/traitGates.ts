@@ -635,6 +635,8 @@ function buildClauseReader(idx: Index): ClauseReader {
         ? { kind: 'named', text: named.name, fixed: false, broken: false }
         : { kind: 'named', text: owner.name || 'a missing entity', fixed: false, broken: !idx.isGlobal(req) };
     }
+    // A target the world does not hold reads the persona on a persona host.
+    if (host.kind === 'persona' && !idx.isGlobal(req)) return player ? { kind: 'you' } : { kind: 'named', text: 'the player', fixed: true, broken: false };
     if (req.kind !== 'item' && from && idx.ownerSet(req, from).has(null)) {
       // A Condition on a world trait, group or stat has no subject in either view (Q25).
       return { kind: 'none' };

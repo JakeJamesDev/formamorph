@@ -142,6 +142,8 @@ describe('the no-owner subject (Q11, Q25)', () => {
     expect(player({ kind: 'trait', id: 'Paladin' }, { host: { kind: 'persona' } })).toBe('Paladin is active');
     expect(author({ kind: 'trait', id: 'Paladin', owner: YOU }, { host: { kind: 'persona' } })).toBe('the player has Paladin');
     expect(player({ kind: 'trait', id: 'Paladin', owner: YOU }, { host: { kind: 'persona' } })).toBe('you have Paladin');
+    expect(author({ kind: 'trait', id: 'Knight' }, { host: { kind: 'persona' } })).toBe('the player has Knight');
+    expect(player({ kind: 'stat', id: 'health', operator: '>=', value: 5, unit: 'raw' }, { host: { kind: 'persona' } })).toBe('your Health is at least 5');
   });
 
   it("reads the item's owner on an item's image rule, a global target included", () => {
