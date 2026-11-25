@@ -68,7 +68,7 @@ Every place that reads a rule as text uses the same wording: the editor, the pla
 | Q34 | A stat target swap keeps the comparison and Not. A % value stays; a Raw value resets to the new stat's default. A stat owner swap keeps the whole Condition. |
 | Q35 | Tokens take the lighter, muted underline everywhere the shared token shows, the Entity Schedule included. |
 | Q36 | An image rule's "Shown while" summary takes a final period and no colon: "Shown while Paladin is active." |
-| Q37 | A Blueprint trait, group and stat follow one rule, in the editor and in play. Under Blueprints is not global scope: Q25 does not apply. On a Blueprint's own field, a Condition with no owner on a Blueprint target takes the Q11 subject, "This entity". On a Link it reads the linking entity, and "you" for the played one. (Ruled 2026-11-25.) |
+| Q37 | A Blueprint trait, group and stat follow one rule, in the editor and in play. Under Blueprints is not global scope: Q25 does not apply. On a Blueprint's own field, a Condition with no owner on a Blueprint target takes the Q11 subject, "This entity". On a Link it reads the linking entity, and "you" for the played one. An item Condition with no owner on a Blueprint's own field reads "This entity" too, because a Link reads the linking entity's items. (Ruled 2026-11-25.) |
 
 ### Grammar (Q20)
 

@@ -82,6 +82,15 @@ describe('a Blueprint target on a Blueprint’s own field (Q37)', () => {
     expect(read(courageReq, { kind: 'persona' })).toBe("The player's Courage is at least 5");
   });
 
+  it('reads an item Condition with no owner as the entity that links the Blueprint, as its Link does', () => {
+    const withItems = { ...input(), worldItems: [{ id: 'lantern', name: 'Lantern' }] };
+    const lantern: TraitRequirement = { kind: 'item', id: 'lantern', status: 'owned' };
+    expect(read(lantern, BLUEPRINT, undefined, withItems)).toBe('This entity owns Lantern');
+    expect(read(lantern, { kind: 'entity', id: 'mira', name: 'Mira' }, undefined, withItems)).toBe('Mira owns Lantern');
+    expect(read({ ...lantern, owner: { kind: 'you' as const } }, BLUEPRINT, undefined, withItems)).toBe('The player owns Lantern');
+    expect(read(lantern, WORLD, undefined, withItems)).toBe('The player owns Lantern');
+  });
+
   it('marks no part of a no-owner Blueprint stat broken, and resolves it on the Blueprint’s own gate', () => {
     expect(conditionClauses(input())(courageReq, { host: BLUEPRINT }).filter((p) => p.broken)).toEqual([]);
     const row = ruleStates(input(), null, gate.requires!)[0];

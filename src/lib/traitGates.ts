@@ -643,7 +643,7 @@ function buildClauseReader(idx: Index): ClauseReader {
 
   const subjectOf = (req: Targeted, host: ClauseHost, from: GateScopeTree | null): ClauseSubject => {
     // An owner-less item Condition on global scope reads the persona; a trait, group or stat reads the world (Q25).
-    const owner = req.owner ?? ((host.kind === 'persona' || host.kind === 'world' || host.kind === 'blueprint') && req.kind === 'item' ? { kind: 'you' as const } : undefined);
+    const owner = req.owner ?? ((host.kind === 'persona' || host.kind === 'world') && req.kind === 'item' ? { kind: 'you' as const } : undefined);
     if (owner?.kind === 'you') return player ? { kind: 'you' } : { kind: 'named', text: 'the player', fixed: true, broken: false };
     // The player's view says "you" for any owner that is the played entity (Q18).
     if (owner && isPlayed(owner.id)) return { kind: 'you' };
@@ -655,8 +655,8 @@ function buildClauseReader(idx: Index): ClauseReader {
     }
     // A target the world does not hold reads the persona on a persona host.
     if (host.kind === 'persona' && !idx.isGlobal(req)) return player ? { kind: 'you' } : { kind: 'named', text: 'the player', fixed: true, broken: false };
-    // On a Blueprint's own field, a Blueprint target reads the entity that links it (Q37).
-    if (host.kind === 'blueprint' && req.kind !== 'item' && idx.isBlueprint(req)) return { kind: 'named', text: 'this entity', fixed: true, broken: false };
+    // On a Blueprint's own field, a Blueprint target and an item read the entity that links it (Q37).
+    if (host.kind === 'blueprint' && (req.kind === 'item' || idx.isBlueprint(req))) return { kind: 'named', text: 'this entity', fixed: true, broken: false };
     if (req.kind !== 'item' && from && idx.ownerSet(req, from).has(null)) {
       // A Condition on a world trait, group or stat has no subject in either view (Q25).
       return { kind: 'none' };
