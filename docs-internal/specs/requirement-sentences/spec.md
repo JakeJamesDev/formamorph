@@ -1,7 +1,7 @@
 # Spec: Requirement Sentences
 
-Status: done
-Status note: 2026-11-25, tickets 01-08, last landing 759ae56e9, then fixes 5d5e75789 and e245774d8. Review: 3 gaps closed by e245774d8 (Q38). Closed red: lint, 31 errors, all in `worlds-wip/`. Tests green on 2026-11-25. Ticket 08's Test Bench criterion has no test.
+Status: ready-for-agent
+Status note: Reopened 2026-11-25 for ticket 09 (Q41 to Q43). Closed before on 2026-11-25 at 26ac4f9ce, tickets 01-08; then 570a7e943, 9cae52df8 and 460e31596 (Q39, Q40).
 Spec session: requirement-sentences — spec
 Prototype: branch `prototype/requirement-sentences`, commit 7fa4ca1f5, variant A (`/?variant=A#dev?view=mainMenu&modal=worldEditor&tab=traits`). Compared two add controls on the sentence editor (A text tokens, B one button) against the chips (C). A won on 2026-11-24.
 
@@ -72,6 +72,9 @@ Every place that reads a rule as text uses the same wording: the editor, the pla
 | Q38 | On a Global Trait's field, a Condition with no owner on a Blueprint target keeps the Q25 sentence, and its target is a broken token: "This trait needs an owner." The Owner list in the target popover (Q31) fixes it. A Blueprint stat that no entity has is a broken token when the Condition names an owner: "No entity has this stat." (Ruled 2026-11-25, at the second close review.) |
 | Q39 | The add menu lists Blueprint traits, groups and stats on a **Blueprints** page, on every host. **World** holds only global ones. A pick from Blueprints adds the Condition with no owner. An entity's page keeps its own traits and its stats, linked ones included. (Ruled 2026-11-25, after the close; built in the commit that adds this line.) |
 | Q40 | An entity's page in the add menu also lists the Blueprint traits and groups the entity links, as its stat page lists linked stats. A pick there names that entity: "Albus has Paladin". The same holds for an entity's own trait or group picked on another host: the pick names the entity that holds it, never the field's own entity. A pick from the host's own page names no owner. This amends Q7; the Blueprints page and the World page still add with no owner. A location's rule and an item's rule keep no owner on every pick, because there it reads the player or the item's owner. In a world small enough for the flat list, a linked trait shows once per page it is on, told apart by its path. (Ruled 2026-11-25.) |
+| Q41 | The add menu names the world's own page **Global** for traits, groups and stats. No menu says World. |
+| Q42 | The trait and group menus have a **Persona** page, as the stat menu has. A pick there reads "The player has Female". |
+| Q43 | A Condition's owner list offers the no-owner choice only when the host's own reading is valid: the host holds the target, the target is global, or the host is a Blueprint and so is the target. This holds for traits, groups and stats. A stored Condition with no owner still shows its current choice. (Q41 to Q43 ruled 2026-11-25, for ticket 09.) |
 
 ### Grammar (Q20)
 
