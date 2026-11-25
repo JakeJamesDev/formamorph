@@ -192,7 +192,10 @@ describe('the trait and group targets of a Blueprint', () => {
       ['Gate', { kind: 'trait', id: 'gate', owner: { kind: 'entity', id: 'mira', name: 'Mira' } }, ['Mira']],
       ['Bold', { kind: 'trait', id: 'bold', owner: { kind: 'entity', id: 'mira', name: 'Mira' } }, ['Mira']],
     ]);
-    expect(page('Wren', 'trait')?.map(([label]) => label)).toEqual(['Gate', 'Bold']);
+    expect(page('Wren', 'trait')).toEqual([
+      ['Gate', { kind: 'trait', id: 'gate', owner: { kind: 'entity', id: 'wren', name: 'Wren' } }, ['Wren']],
+      ['Bold', { kind: 'trait', id: 'bold', owner: { kind: 'entity', id: 'wren', name: 'Wren' } }, ['Wren']],
+    ]);
     // The swap list still holds each trait once.
     expect(targets().swapList.filter((o) => o.requirement.kind === 'trait').map((o) => o.label).sort()).toEqual(['Bold', 'Brave', 'Gate']);
   });

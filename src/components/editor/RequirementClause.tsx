@@ -129,8 +129,8 @@ export function RequirementClause({ requirement: req, edit, ctx, first }: {
   first: boolean;
 }) {
   const view: ClauseView = { host: ctx.host, sentenceStart: first };
-  // A Condition with no owner on a target its host does not read alone needs an owner (Q45).
-  const needsOwner = !requirementOwnerOf(req) && !readsWithNoOwner(ctx.targets, req);
+  // A Condition with no owner on a target its host does not read alone needs an owner (Q45). Off-world none can be picked.
+  const needsOwner = !ctx.offWorld && !requirementOwnerOf(req) && !readsWithNoOwner(ctx.targets, req);
   const parts = ctx.clausesOf(req, view).map((p) => (needsOwner && p.role === 'target' && !p.broken ? { ...p, broken: true as const, why: 'owner' as const } : p));
   const text = (t: string) => <PlaceholderText text={t} placeholders={ctx.placeholders} />;
   const plain = (t: string) => labelPlaceholders(t, ctx.placeholders);

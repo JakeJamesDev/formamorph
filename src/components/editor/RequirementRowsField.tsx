@@ -15,7 +15,7 @@ import {
   type ClauseHost, type ClausePart, type ClauseView, type RequirementOption, type RequirementOptions,
 } from '@/lib/traitGates';
 import { joinAnd } from '@/lib/requirementSummary';
-import type { PagedKind, RequirementTargets } from '@/lib/requirementTargets';
+import type { PagedKind, RequirementPage, RequirementTargets } from '@/lib/requirementTargets';
 import type { Placeholder, TraitRequirement, TraitRequirementRow } from '@/types';
 import { Hint } from '@/components/ui/typography';
 
@@ -116,17 +116,32 @@ export function RequirementRowsField({
       disabled: exhausted(option),
     })),
   });
-  // Off-world only the host's own page exists to read.
-  const pages = targets.pages.filter((p) => !offWorld || p.own);
+  /** A page's rows of one kind. Off-world a stat reads the host's own page alone; a trait or group still reads
+   *  the world the entity was opened from, once each and with no owner, and never the persona. */
+  const rowsOf = (kind: PagedKind) => {
+    const seen = new Set<string>();
+    return (p: RequirementPage): RequirementOption[] => {
+      const list = p.options.filter((o) => o.requirement.kind === kind);
+      if (!offWorld) return list;
+      if (kind === 'stat') return p.own ? list : [];
+      if (p.owner?.kind === 'you') return [];
+      return list.flatMap((o): RequirementOption[] => {
+        const id = 'id' in o.requirement ? o.requirement.id ?? '' : '';
+        if (seen.has(id)) return [];
+        seen.add(id);
+        return [{ ...o, requirement: { kind, id } }];
+      });
+    };
+  };
   const shownItems = offWorld ? [] : options.items ?? [];
   const worldOptions = options.worldOptions ?? [];
   const category = (key: string, heading: string, children: BreadcrumbPickerNode<RequirementOption>[]): BreadcrumbPickerNode<RequirementOption>[] =>
     (children.length ? [{ kind: 'page', key, heading, children }] : []);
-  const paged = PAGED_CATEGORIES.flatMap(({ key, heading, kind, noun }) => category(key, heading, pages.flatMap((p): BreadcrumbPickerNode<RequirementOption>[] => {
-    const list = p.options.filter((o) => o.requirement.kind === kind);
+  const paged = PAGED_CATEGORIES.flatMap(({ key, heading, kind, noun }) => category(key, heading, targets.pages.map(rowsOf(kind)).flatMap((list, i): BreadcrumbPickerNode<RequirementOption>[] => {
+    const p = targets.pages[i];
     return list.length ? [{ kind: 'page', key: `${key}:${p.key}`, heading: p.heading, children: [{ kind: 'section', ...section(`${p.sectionName} ${noun}`, list, `${p.key}:`) }] }] : [];
   })));
-  const hasStats = pages.some((p) => p.options.some((o) => o.requirement.kind === 'stat'));
+  const hasStats = targets.pages.map(rowsOf('stat')).some((list) => list.length > 0);
   const searchable = joinAnd([
     'traits', 'groups', ...(hasStats ? ['stats'] : []), ...(shownItems.length ? ['items'] : []), 'time of day', ...(options.weather ? ['weather'] : []), ...(options.opening ? ['openings'] : []),
     ...(worldOptions.length ? ['World Options'] : []), ...(offWorld ? [] : ['personas']),

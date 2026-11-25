@@ -226,15 +226,23 @@ describe('TraitRequiresField owners', () => {
     expect(screen.queryByRole('listbox')).toBeNull();
   });
 
-  // Off-world only the host's own page shows, so Mira's field lists her traits alone.
+  // Off-world a trait still reads the world the entity was opened from, and every pick stores no owner.
   it('adds a target at once off-world, with the owner as plain text', async () => {
     render(<Harness trait={mira.traits![0]} miraExtra={[trait('steady', { name: 'Steady' })]} offWorld />);
     openPicker();
-    expect(screen.queryByRole('option', { name: /^Brave/ })).toBeNull();
-    fireEvent.click(await screen.findByRole('option', { name: /^Steady/ }));
-    expect(button('Target: Steady')).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('option', { name: /^Brave/ }));
+    expect(button('Target: Brave')).toBeInTheDocument();
+    expect(rows()).toEqual([{ all: [{ kind: 'trait', id: 'brave' }] }]);
     expect(screen.queryByRole('button', { name: /^Owner:/ })).toBeNull();
     expect(screen.queryByRole('listbox')).toBeNull();
+    fireEvent.click(button(ADD_TO_ROW));
+    const names = screen.getAllByRole('option').map((o) => o.textContent);
+    // Each trait once: the host's own, the world's, and a Blueprint one; no Persona rows.
+    expect(names.filter((n) => /^(Steady|Paladin|Brave)/.test(n ?? ''))).toEqual(['SteadyMira', 'BraveGlobal', 'PaladinBlueprints › Classes']);
+    fireEvent.click(screen.getByRole('option', { name: /^Paladin/ }));
+    expect(rows()).toEqual([{ all: [{ kind: 'trait', id: 'brave' }, { kind: 'trait', id: 'paladin' }] }]);
+    // Off-world no owner can be picked, so no target asks for one.
+    expect(document.querySelector('[data-broken]')).toBeNull();
   });
 });
 

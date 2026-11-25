@@ -93,6 +93,7 @@ const groups: TraitGroup[] = [
 ];
 const traits = [T('brave', 'Brave', { groupId: 'combat' }), T('bold', 'Bold', { groupId: 'virtues' })];
 const link = (id: string, originalId: string) => ({ id, originalId, kind: 'trait' as const, originalName: originalId, groupId: null, order: 9 });
+// Only the fields the owner resolver reads.
 const entities = [
   {
     id: 'mira', name: 'Mira', persona: true, traitLinks: [link('l1', 'bold')],
