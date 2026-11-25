@@ -83,6 +83,25 @@ describe('TraitRequiresField owners', () => {
     expect(sentences()).toEqual(['This entity has Paladin and…']);
     await user.click(button('Owner: This entity'));
     expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['This entity', 'The player', 'Albus']);
+    expect(option(/^This entity/)).toHaveAttribute('aria-selected', 'true');
+  });
+
+  // A Global Trait's Condition on a Blueprint trait names no one (Q25), so it needs an owner from the target popover (Q31, Q37).
+  it('marks a Blueprint target with no owner on a Global Trait, and takes the owner in the target popover', async () => {
+    const user = userEvent.setup();
+    render(<Harness trait={{ ...traits[0], requires: [{ all: [{ kind: 'trait', id: 'paladin' }] }] }} />);
+    expect(sentences()).toEqual(['Paladin is active and…']);
+    const target = button('Target: Paladin');
+    expect(target).toHaveAttribute('data-broken');
+    expect(target).toHaveAttribute('aria-description', 'This trait needs an owner.');
+    await user.click(target);
+    expect(screen.getAllByRole('button', { pressed: false }).map((b) => b.textContent).filter((t) => ['The player', 'Albus'].includes(t ?? ''))).toEqual(['The player', 'Albus']);
+    expect(button('No owner')).toHaveAttribute('aria-pressed', 'true');
+    expect(button('Open Paladin')).toBeEnabled();
+    await user.click(button('Albus'));
+    expect(rows()).toEqual([{ all: [{ kind: 'trait', id: 'paladin', owner: ALBUS }] }]);
+    expect(sentences()).toEqual(['Albus has Paladin and…']);
+    expect(document.querySelector('[data-broken]')).toBeNull();
   });
 
   it('writes the owner picked, and the sentence names it', async () => {

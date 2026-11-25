@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Entity, PersonaRef, StatRequirement, Trait, TraitGroup, TraitRequirement } from '@/types';
-import { resolveOwners } from './owners';
+import { editorGateInput, resolveOwners } from './owners';
 import { requirementStatSections } from './requirementStatOptions';
 import { scoped } from './scope';
 import {
@@ -28,10 +28,14 @@ const gate = T('gate', 'Gate', {
   groupId: 'bp',
   requires: [{ all: [reqs.bold, courageReq, reqs.brave, goldReq] }],
 });
-const traits = [T('brave', 'Brave', { groupId: 'combat' }), T('bold', 'Bold', { groupId: 'virtues' }), gate];
-const blueprintStats: GateStatSet = { courage: stat('Courage') };
+// Oath is a Global Trait whose rule names Blueprint targets with no owner.
+const oath = T('oath', 'Oath', { requires: [{ all: [courageReq, reqs.bold] }] });
+const traits = [T('brave', 'Brave', { groupId: 'combat' }), T('bold', 'Bold', { groupId: 'virtues' }), gate, oath];
+// No entity links Lonely.
+const blueprintStats: GateStatSet = { courage: stat('Courage'), lonely: stat('Lonely') };
 const stats = scoped<GateStatSet>({ gold: stat('Gold') }, { mira: { courage: stat('Courage') }, wren: {} });
 const link = (id: string, originalId: string) => ({ id, originalId, kind: 'trait' as const, originalName: originalId, groupId: null, order: 9 });
+// Only the fields the owner resolver reads.
 const entities = [
   { id: 'mira', name: 'Mira', persona: true, traits: [], traitLinks: [link('l1', 'gate'), link('l2', 'bold')] },
   { id: 'wren', name: 'Wren', traits: [], traitLinks: [link('l3', 'gate'), link('l4', 'bold')] },
@@ -41,6 +45,9 @@ function input(persona: PersonaRef = { source: 'none' }, reader?: 'player'): Gat
   const { gate: resolved } = resolveOwners({ traits, traitGroups: groups, entities }, persona);
   return { ...resolved, active: NO_ACTIVE, stats, blueprintStats, ...(reader ? { reader } : {}) };
 }
+
+// The editor's input: its global tree holds the Blueprint traits too.
+const editor = (): GateInput => editorGateInput({ traits, traitGroups: groups, entities }, stats, blueprintStats);
 
 const BLUEPRINT: ClauseHost = { kind: 'blueprint' };
 const WORLD: ClauseHost = { kind: 'world' };
@@ -93,8 +100,36 @@ describe('a Blueprint target on a Blueprint’s own field (Q37)', () => {
 
   it('marks no part of a no-owner Blueprint stat broken, and resolves it on the Blueprint’s own gate', () => {
     expect(conditionClauses(input())(courageReq, { host: BLUEPRINT }).filter((p) => p.broken)).toEqual([]);
-    const row = ruleStates(input(), null, gate.requires!)[0];
+    const row = gateOf(gateStates(editor()), null, 'gate')!.rows[0];
     expect(row.conditions.map((c) => c.unresolved)).toEqual([false, false, false, false]);
+  });
+
+  it('leaves a no-owner Blueprint stat unresolved on a Global Trait’s gate and on a loose rule, as play does', () => {
+    expect(gateOf(gateStates(editor()), null, 'oath')!.rows[0].conditions.map((c) => c.unresolved)).toEqual([true, false]);
+    expect(ruleStates(editor(), null, [{ all: [courageReq] }])[0].conditions[0].unresolved).toBe(true);
+  });
+
+  it('marks a no-owner Blueprint target broken on a Global Trait’s field: it needs an owner', () => {
+    const marks = (req: TraitRequirement, host: ClauseHost) =>
+      conditionClauses(input())(req, { host }).filter((p) => p.broken).map((p) => [p.role, p.text, p.why]);
+    expect(marks(reqs.bold, WORLD)).toEqual([['target', 'Bold', 'owner']]);
+    expect(marks(reqs.virtues, WORLD)).toEqual([['target', 'Virtues', 'owner']]);
+    expect(marks(courageReq, WORLD)).toEqual([['target', 'Courage', 'owner']]);
+    expect(marks({ kind: 'trait', id: 'bold', owner: { kind: 'you' } }, WORLD)).toEqual([]);
+    expect(marks(reqs.brave, WORLD)).toEqual([]);
+    expect(marks(goldReq, WORLD)).toEqual([]);
+    expect(marks(reqs.bold, BLUEPRINT)).toEqual([]);
+  });
+
+  it('marks a Blueprint stat no entity links broken wherever a Condition names an owner for it', () => {
+    const lonely: StatRequirement = { ...courageReq, id: 'lonely' };
+    const mira = { kind: 'entity', id: 'mira', name: 'Mira' } as const;
+    const marks = (req: TraitRequirement, host: ClauseHost) =>
+      conditionClauses(input())(req, { host }).filter((p) => p.broken).map((p) => [p.role, p.text, p.why]);
+    expect(marks({ ...lonely, owner: mira }, BLUEPRINT)).toEqual([['target', 'Lonely', 'unlinked']]);
+    expect(marks(lonely, { kind: 'entity', id: 'mira', name: 'Mira' })).toEqual([['target', 'Lonely', 'unlinked']]);
+    expect(marks(lonely, BLUEPRINT)).toEqual([]);
+    expect(marks({ ...courageReq, owner: mira }, BLUEPRINT)).toEqual([]);
   });
 
   it('says whether a trait is a Blueprint trait', () => {
@@ -127,7 +162,7 @@ describe('the stat sections on a Blueprint’s own field', () => {
 
   it('offers the Blueprint stats first, each adding a Condition with no owner', () => {
     const [first, ...rest] = sectionRows(true);
-    expect(first).toEqual({ heading: 'Blueprint Stats', labels: ['Courage'], owner: [undefined] });
+    expect(first).toEqual({ heading: 'Blueprint Stats', labels: ['Courage', 'Lonely'], owner: [undefined, undefined] });
     expect(rest.map((s) => s.heading)).toEqual(['Global Stats', 'Persona Stats', 'Mira Stats']);
     expect(rest[2].owner[0]).toMatchObject({ kind: 'entity', id: 'mira' });
   });

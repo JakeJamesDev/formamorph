@@ -69,6 +69,8 @@ const OPTION_VALUE_REASON: Record<'choice' | 'boolean' | 'number', string> = {
 
 /** Why `part` of `req` is broken, as its tooltip says it. `optionType` is a World Option's type now. */
 function brokenReason(req: TraitRequirement, part: ClausePart, optionType: keyof typeof OPTION_VALUE_REASON = 'choice'): string {
+  if (part.why === 'owner') return `This ${TARGET_NOUN[req.kind]} needs an owner.`;
+  if (part.why === 'unlinked') return 'No entity has this stat.';
   if (part.role === 'subject') return 'This owner no longer exists.';
   if (part.role === 'value') return OPTION_VALUE_REASON[optionType];
   if (part.role === 'set') {
@@ -274,7 +276,7 @@ export function RequirementClause({ requirement: req, edit, ctx, first }: {
             {ctx.opens(req) && (
               <div className="border-b p-1.5">
                 <Button
-                  type="button" size="sm" variant="outline" className="h-7 w-full" disabled={!!reason} aria-label={`Open ${plain(part.text)}`}
+                  type="button" size="sm" variant="outline" className="h-7 w-full" disabled={!!reason && !part.why} aria-label={`Open ${plain(part.text)}`}
                   onClick={() => { close(); ctx.onOpen(req); }}
                 >Open</Button>
               </div>
@@ -387,7 +389,7 @@ function OptionClause({ requirement: req, parts, edit, ctx }: {
         header={(close) => ctx.opens(req) && (
           <div className="border-b p-1.5">
             <Button
-              type="button" size="sm" variant="outline" className="h-7 w-full" disabled={!!reason} aria-label={`Open ${plain(part.text)}`}
+              type="button" size="sm" variant="outline" className="h-7 w-full" disabled={!!reason && !part.why} aria-label={`Open ${plain(part.text)}`}
               onClick={() => { close(); ctx.onOpen(req); }}
             >Open</Button>
           </div>

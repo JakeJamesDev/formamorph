@@ -361,20 +361,22 @@ function index(input: GateInput) {
     if (req.kind === 'item' || isGlobal(req)) return false;
     return req.kind === 'stat' ? !!input.blueprintStats?.[req.id] : inWorld[req.kind].has(req.id);
   };
-  /** The stat a stat Condition on `from` reads in `read`: the first scope of the id in its owner set. Null when
+  /** The stat a stat Condition on `host`'s gate reads in `read`: the first scope of the id in its owner set. Null when
    *  no scope in the set has it. */
-  const statOf = (req: StatRequirement, from: GateScopeTree, read: GateStats | undefined = stats): GateStat | null => {
-    for (const ownerId of ownerSet(req, from)) {
+  const statOf = (req: StatRequirement, host: Located<{ id: string }>, read: GateStats | undefined = stats): GateStat | null => {
+    for (const ownerId of ownerSet(req, host.owner)) {
       const stat = statsIn(read, ownerId)?.[req.id];
       if (stat) return stat;
     }
-    // A Blueprint's own field reads its stat with no owner, though no scope on it holds one.
-    const blueprint = from.id === null && req.owner === undefined ? input.blueprintStats?.[req.id] : undefined;
-    return blueprint && isBlueprint(req) ? blueprint : null;
+    // A Blueprint trait's own gate reads its stat with no owner, though no scope on it holds one.
+    const own = host.owner.id === null && req.owner === undefined && inWorld.trait.has(host.item.id) && !global.traits.has(host.item.id);
+    return (own && isBlueprint(req) && input.blueprintStats?.[req.id]) || null;
   };
+  /** Whether no scope holds stat `id`: a Blueprint stat no entity links. */
+  const unlinkedStat = (id: string): boolean => !!input.blueprintStats?.[id] && !(stats && scopedEntries(stats).some(([, set]) => id in set));
   const options = new Map(valuedOptions(input.worldOptions).map((option) => [option.id, option]));
   return {
-    owners, traitNames, groupNames, hiddenTraits, statNames, entities, global, isGlobal, isBlueprint, ownerSet, traitsBelow, statOf, itemNames, itemNameFor, itemHeld, persona: input.persona, played, reader: input.reader, globalTree: globalScopeTree(input.global),
+    owners, traitNames, groupNames, hiddenTraits, statNames, entities, global, isGlobal, isBlueprint, unlinkedStat, ownerSet, traitsBelow, statOf, itemNames, itemNameFor, itemHeld, persona: input.persona, played, reader: input.reader, globalTree: globalScopeTree(input.global),
     daypart: input.daypart ?? OPENING_DAYPART, weather: input.weather ?? 'clear', options, optionValues: input.optionValues,
     opening: input.opening ?? null, openingLabels: input.openings && openingLabelMap(input.openings),
   };
@@ -453,10 +455,10 @@ function compares(reading: number, operator: StatRequirement['operator'], value:
   }
 }
 
-/** Whether a stat Condition on `from` holds: its stat resolves and is not inert, and it compares, or fails to
+/** Whether a stat Condition on `host`'s gate holds: its stat resolves and is not inert, and it compares, or fails to
  *  under Not. */
-function statHolds(req: StatRequirement, from: GateScopeTree, idx: Index, read?: GateStats): boolean {
-  const stat = idx.statOf(req, from, read);
+function statHolds(req: StatRequirement, host: Located<{ id: string }>, idx: Index, read?: GateStats): boolean {
+  const stat = idx.statOf(req, host, read);
   if (!stat || stat.inert) return false;
   return compares(statReading(stat, req.unit), req.operator, req.value) !== !!req.not;
 }
@@ -493,7 +495,7 @@ function optionHolds(req: OptionRequirement, idx: Index): boolean {
 /** Whether one Condition holds for `trait` against `activeIn`, a stat one in `read`: its target is on, or off
  *  under Not. */
 function requirementHolds(req: TraitRequirement, trait: Located<{ id: string }>, activeIn: ActiveIn, idx: Index, read?: GateStats): boolean {
-  if (req.kind === 'stat') return statHolds(req, trait.owner, idx, read);
+  if (req.kind === 'stat') return statHolds(req, trait, idx, read);
   if (req.kind === 'option') return optionHolds(req, idx);
   if (req.kind === 'time') return heldDayparts(req).includes(idx.daypart);
   if (req.kind === 'weather') return heldWeatherKinds(req).includes(idx.weather);
@@ -563,11 +565,13 @@ function isUnresolved(req: TraitRequirement, idx: Index): boolean {
 /** What a clause part is. `subject` is an owner; `word` is fixed text, such as "It" or "is active". */
 export type ClauseRole = 'subject' | 'verb' | 'target' | 'comparison' | 'value' | 'checks' | 'set' | 'word';
 
-/** One part of a clause. `broken` marks what an unresolved Condition lacks; `attach` joins with no space ("'s"). */
+/** One part of a clause. `broken` marks what an unresolved Condition lacks, and `why` says what when the part
+ *  still exists; `attach` joins with no space ("'s"). */
 export interface ClausePart {
   role: ClauseRole;
   text: string;
   broken?: true;
+  why?: 'owner' | 'unlinked';
   attach?: true;
 }
 
@@ -704,8 +708,12 @@ function buildClauseReader(idx: Index): ClauseReader {
     const subject = subjectOf(req, host, from);
     const you = subject.kind === 'you';
     const fixedStart = you || (subject.kind === 'named' && subject.fixed);
+    // A Blueprint target with no subject reads global scope, where no one holds it (Q37).
+    const ownerless = subject.kind === 'none' && idx.isBlueprint(req);
+    const flawed = (target: ClausePart, why: ClausePart['why'] | false): ClausePart => (why && !target.broken ? { ...target, broken: true, why } : target);
     if (req.kind === 'stat') {
-      const name = part('target', idx.statNames.get(req.id) ?? req.name ?? 'a missing stat', !idx.statNames.has(req.id));
+      const unlinked = idx.unlinkedStat(req.id) && !(host.kind === 'blueprint' && !req.owner);
+      const name = flawed(part('target', idx.statNames.get(req.id) ?? req.name ?? 'a missing stat', !idx.statNames.has(req.id)), ownerless ? 'owner' : unlinked && 'unlinked');
       return {
         fixedStart,
         parts: [...subjectParts(subject, true), name, isVerb(req.not), part('comparison', COMPARISON_WORDS[req.operator]), part('value', statValue(req))],
@@ -724,7 +732,7 @@ function buildClauseReader(idx: Index): ClauseReader {
       };
     }
     const known = req.kind === 'trait' ? idx.traitNames.get(req.id) : idx.groupNames.get(req.id);
-    const name = part('target', known ?? req.name ?? (req.kind === 'trait' ? 'a missing trait' : 'a missing group'), known === undefined);
+    const name = flawed(part('target', known ?? req.name ?? (req.kind === 'trait' ? 'a missing trait' : 'a missing group'), known === undefined), ownerless && 'owner');
     if (subject.kind === 'none') {
       // A no-owner Condition on global scope names no one: "Paladin is active", "No trait in Combat is active" (Q25).
       return req.kind === 'trait'
@@ -822,7 +830,7 @@ function rowStatesOf(
 ): RowState[] {
   return rows.map((row): RowState => {
     const conditions = row.all.map((req): ConditionState => {
-      const stat = req.kind === 'stat' ? idx.statOf(req, host.owner, read) : null;
+      const stat = req.kind === 'stat' ? idx.statOf(req, host, read) : null;
       const unresolved = isUnresolved(req, idx) || (req.kind === 'stat' && (!stat || !!stat.inert));
       // An item held only as a hidden Item Instance stays out of the player's line (Q63, Q115).
       const hidden = req.kind === 'trait' ? idx.hiddenTraits.has(req.id)
