@@ -188,7 +188,7 @@ describe('Media tab image panel location rules', () => {
     const bench = open('simple', locationWorld());
     fireEvent.click(card('Locations', 'stack'));
     fireEvent.click(tile('Image 2'));
-    fireEvent.click(within(framed()!).getByRole('button', { name: 'Add Requirement' }));
+    fireEvent.click(within(framed()!).getByRole('button', { name: 'Add a requirement…' }));
 
     expect(await screen.findByText('Persona Stats')).toBeInTheDocument();
     // Persona Stats lists first; Odd Wick Stats offers the same stat under its name.
@@ -199,7 +199,7 @@ describe('Media tab image panel location rules', () => {
     // Stored with no owner: a location rule's owner-less Condition reads the played persona.
     expect(second.requires).toEqual([{ all: [expect.objectContaining({ kind: 'stat', id: 'health' })] }]);
     expect(second.requires![0].all[0]).not.toHaveProperty('owner');
-    expect(within(framed()!).getByText(/^Persona: Health/)).toBeInTheDocument();
+    expect(within(framed()!).getByRole('button', { name: /^Edit The player's Health is at least/ })).toBeInTheDocument();
   });
 });
 
@@ -224,7 +224,7 @@ describe('Media tab image panel modes and parents', () => {
     expect(framed()).toHaveTextContent(/^Image 1/);
     expect(unlinkFramed()).toBeInTheDocument();
     expect(within(framed()!).queryByRole('button', { name: 'Replace' })).toBeNull();
-    expect(within(framed()!).getByRole('button', { name: 'Add Requirement' })).toBeInTheDocument();
+    expect(within(framed()!).getByRole('button', { name: 'Add a requirement…' })).toBeInTheDocument();
     expect(inPanel().getByRole('button', { name: 'Go to Marsh' })).toBeInTheDocument();
   });
 

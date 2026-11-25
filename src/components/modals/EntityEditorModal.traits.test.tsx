@@ -69,11 +69,11 @@ describe('the library entity Traits tab', () => {
     await openTraits();
     await userEvent.click(screen.getByText('Oath'));
     await userEvent.click(screen.getByRole('tab', { name: 'Availability' }));
-    const chip = within(document.querySelector<HTMLElement>('[data-requirement-row]')!).getByText('Paladin').closest('[data-unresolved]');
-    expect(chip).not.toBeNull();
-    // "Playing as" the entity itself points inside it, so it reads resolved.
-    expect(screen.getByRole('button', { name: 'playing as Wolf' }).closest('[data-unresolved]')).toBeNull();
-    await userEvent.click(screen.getByRole('button', { name: 'Or Another Way' }));
+    const paladin = within(document.querySelector<HTMLElement>('[data-requirement-row]')!).getByRole('button', { name: 'Target: Paladin' });
+    expect(paladin).toHaveAttribute('data-broken');
+    // A persona Condition on the entity itself points inside it, so it reads resolved.
+    expect(screen.getByRole('button', { name: 'Target: Wolf' })).not.toHaveAttribute('data-broken');
+    await userEvent.click(screen.getByRole('button', { name: 'Add another way' }));
     expect(screen.getByRole('option', { name: /Tamed/ })).toBeInTheDocument();
     expect(screen.getByText('Any Trait in a Group')).toBeInTheDocument();
     expect(screen.queryByText('Playing As')).not.toBeInTheDocument();

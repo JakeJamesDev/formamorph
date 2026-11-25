@@ -33,13 +33,13 @@ A new trait goes to the top level of the list. Drag it to put it in a group.
 
 1. Select the trait.
 2. Open the **Availability** tab.
-3. Under **Requires**, select **Add Requirement**.
-4. Pick a target in the **Traits**, **Any Trait in a Group** or **Playing As** list.
-5. Pick whose trait counts: **Same Owner**, **Persona**, or an entity. A **Playing As** target skips this step, and so does a target that only one owner can have.
-6. Optional: to need a second target as well, select **And** in the same row and pick it. The trait then needs both.
-7. Optional: to open the trait another way, select **Or Another Way** and pick a target for the new row. Any one row is enough.
+3. Under **Requires**, select **Add a requirement…**.
+4. Pick a target in the **Traits**, **Any Trait in a Group** or **Playing As** list. The row now reads as a sentence, such as *Mira has Knight*.
+5. Optional: to change whose trait counts, select the name at the start of the sentence and pick another owner. With no name at the start, as in *Paladin is active*, select the trait's name and pick the owner at the top of its list.
+6. Optional: to need a second target as well, select **and…** at the end of the sentence and pick it. The trait then needs both.
+7. Optional: to open the trait another way, select **or…** below the rows and pick a target for the new row. Any one row is enough.
 
-To remove a target, select the **×** on its chip. To remove a whole row, select the **×** at the end of the row.
+To remove a condition, select the **×** after it. To remove a whole row, select the trash can at the end of the row.
 
 ## How to Set a Pick Count
 <!-- keywords: limit, cap, how many, choose one, max, min, exactly one, radio, multiple, mutually exclusive, single choice, one of, at least two, force selection, mandatory, slots, required choice -->
@@ -297,12 +297,14 @@ During the game:
 
 A **row** is one way to open the trait. It holds when every condition in it holds, so a row means **and**. The trait opens when any one row holds, so rows mean **or**.
 
-- **Add Requirement** adds the first condition. It opens a search with these lists: **Traits**, **Any Trait in a Group**, **Stats** with a page for each owner, **Items**, **Time of Day**, **Weather** (while the world allows two or more kinds), **Opening** (while the world has an opening), **World Options** and **Playing As**. In a large world, the search opens on those lists with a count beside each. Select a list, then an owner, to see its targets. Type in the search to find a target in every list.
-- **And** (in a row) adds another condition to that row.
-- **Or Another Way** (below the rows) adds a new row.
-- The **X** at the end of a row removes the whole row. Remove the last condition in a row, and the row goes too.
+- **Add a requirement…** adds the first condition. It opens a search with these lists: **Traits**, **Any Trait in a Group**, **Stats** with a page for each owner, **Items**, **Time of Day**, **Weather** (while the world allows two or more kinds), **Opening** (while the world has an opening), **World Options** and **Playing As**. In a large world, the search opens on those lists with a count beside each. Select a list, then an owner, to see its targets. Type in the search to find a target in every list.
+- **and…** (at the end of a sentence) adds another condition to that row.
+- **or…** (below the rows) adds a new row.
+- The trash can at the end of a row removes the whole row. Remove the last condition in a row, and the row goes too.
 
-For example, two rows read *Knight and Heavy Build*, then *Mercenary*. The trait opens for a Knight with Heavy Build, and it opens for a Mercenary.
+Each row reads as one sentence, with **or** on its own line between rows. A long row breaks after an **and**, so each condition stays on one line.
+
+For example, two rows read *Mira has Knight and Mira has Heavy Build*, then *Mira has Mercenary*. The trait opens for a Knight with Heavy Build, and it opens for a Mercenary.
 
 ### Conditions
 
@@ -315,20 +317,25 @@ A **condition** checks one target. A target is one of these:
 - The [time of day](#time-conditions)
 - A [World Option](#world-option-conditions)
 
-Select a condition to open its target. A [stat condition](#stat-conditions), a time condition or a World Option condition has nowhere to open, so it shows its controls instead.
+Each underlined word in a sentence opens what it names:
 
-Select **Require it to be off** on a condition's chip to make it **Not**. A Not condition shows a **NOT** mark and a dashed border, and it holds while its target is off. Select the button again to require the target instead.
+- **The owner** at the start lists who the condition reads: no owner, the player, or an entity that has the target.
+- **The verb** flips the condition to **Not** in one click: *has* becomes *doesn't have*, *is* becomes *is not*. Select it again to require the target instead.
+- **The target** lists the other targets of the same kind to swap to. **Open** at the top goes to the target.
+- A [stat](#stat-conditions), [item](#item-conditions), [time](#time-conditions), weather, opening or [World Option](#world-option-conditions) condition is one underlined phrase. Select it to open its controls and its **Not** button.
+
+A Not condition holds while its target is off.
 
 | Not condition | Holds when |
 |---|---|
-| *not Paladin* | The owner doesn't have Paladin on |
-| *not any Class* | No trait in the Class group is on |
-| *not playing as Sir Aldric* | The player plays any other persona |
-| *Ash: not Tamed* | Ash doesn't have Tamed on |
+| *Mira doesn't have Paladin* | Mira doesn't have Paladin on |
+| *Mira has no trait in Class* | No trait in Mira's Class group is on |
+| *The player is not Sir Aldric* | The player plays any other persona |
+| *Ash doesn't have Tamed* | Ash doesn't have Tamed on |
 
-For example, one row reads *Knight and not Paladin*, and a second row reads *Mercenary*. The trait opens for a Knight who isn't a Paladin, and for a Mercenary.
+For example, one row reads *Mira has Knight and Mira doesn't have Paladin*, and a second row reads *Mira has Mercenary*. The trait opens for a Knight who isn't a Paladin, and for a Mercenary.
 
-A trait's own state never counts toward its own requirements. A condition whose target is gone never holds, so the trait stays locked. The chip reads red under its saved name.
+A trait's own state never counts toward its own requirements. A condition whose target is gone never holds, so the trait stays locked. Its name reads red under its saved name, with a warning icon. Point at it to see why.
 
 > 💡 **Two traits can exclude each other.** Give each one a *not* condition for the other. The pick made first stays on, and the later trait turns off with a notice. It returns when the first pick goes.
 
@@ -341,7 +348,7 @@ A trait's own state never counts toward its own requirements. A condition whose 
 A **stat condition** compares an owner's stat to a number. *Berserk* requires *Rage >= 80*, so it opens at 80 Rage or more.
 
 1. Open the trait's **Availability** tab.
-2. Under **Requires**, select **Add Requirement**, then pick a stat from a **Stats** list.
+2. Under **Requires**, select **Add a requirement…**, then pick a stat from a **Stats** list.
 3. Pick the **Operator**, type the **Value**, and pick **Raw** or **%**.
 
 | Choice | What it does |
@@ -350,12 +357,12 @@ A **stat condition** compares an owner's stat to a number. *Berserk* requires *R
 | **Raw** | Compares the number in the stat's own units. *Gold > 100* |
 | **%** | Compares the share of the stat's range, from its min to its max. *Health < 20%* keeps working when you change the max. |
 
-- **Not** works like on any condition. *not Health = 0* is one chip.
+- **Not** works like on any condition. *Health is not exactly 0* is one condition.
 - Add the same stat twice in one row for a range. *Rage >= 20* and *Rage < 80* are two conditions.
 - To check another owner's stat, pick that owner, as with a trait. The list holds that owner's own stats.
 - **=** and **≠** compare the number the stat bar shows, rounded. A bar that reads 20 matches *= 20*.
 - A stat with the same min and max reads 0%, so a **%** condition on it is always 0%. Use **Raw** or widen the range.
-- A stat that's switched off, or gone, never holds. The chip reads red under its saved name.
+- A stat that's switched off, or gone, never holds. The condition reads red under its saved name.
 
 #### On the Enter World dialog
 
@@ -398,15 +405,15 @@ An **item condition** holds while an owner has an item. It reads one of two stat
 *Cursed* is an Automatic trait that requires the *Cursed Ring*, owned. It turns on when the ring joins the inventory and off when the ring leaves.
 
 1. Open the trait's **Availability** tab.
-2. Under **Requires**, select **Add Requirement**, then pick **Items**.
+2. Under **Requires**, select **Add a requirement…**, then pick **Items**.
 3. Pick the item from **Owned** or **Equipped**, then pick the owner.
 
-An item chip also has two optional checks. They narrow the condition to one copy that passes every check:
+An item condition also has two optional checks. They narrow the condition to one copy that passes every check:
 
 - **State** holds only for a copy with that State word, such as *lit*. Case and spaces at the ends don't matter. A blank State checks nothing.
 - **Identity** holds only for an **Identified** or an **Unidentified** copy. **Any** checks nothing.
 
-The chip reads the checks in parentheses: *owning Lantern (lit)*, or *equipping Ring (lit, unidentified)*. A lantern can grant *Darkvision* only while its State is *lit*.
+The sentence reads the checks in parentheses: *The player owns Lantern (lit)*, or *The player has equipped Ring (lit, unidentified)*. A lantern can grant *Darkvision* only while its State is *lit*.
 
 The player reads an unidentified item's Unidentified Name in the lock line while the owner has no visible identified copy of it.
 
@@ -421,7 +428,7 @@ In an item's image rule, a condition with no owner reads the owner of that copy.
 A **time condition** checks the story's time of day. *Night Hunter* requires *evening or night*, so it opens when the evening starts.
 
 1. Open the trait's **Availability** tab.
-2. Under **Requires**, select **Add Requirement**, then pick **Time of Day**.
+2. Under **Requires**, select **Add a requirement…**, then pick **Time of Day**.
 3. Turn on each time of day that counts: **Night**, **Dawn**, **Morning**, **Midday**, **Afternoon** or **Evening**.
 
 | Time of day | On a 24-hour day |
@@ -434,7 +441,7 @@ A **time condition** checks the story's time of day. *Night Hunter* requires *ev
 | 🌆 Evening | 17:00 to 20:00 |
 
 - The narration's time of day uses the same split, so the condition matches what the story says.
-- The chip starts with no time of day on, in red, and never holds while it stays empty. Select **Require it to be off** to make it **Not**. *Not night* holds in every other time of day.
+- The condition starts with no time of day on, in red, and never holds while it stays empty. Select **Change to "is not"** in its controls to make it **Not**. *It is not night* holds in every other time of day.
 - A row holds one time condition. It never checks the day number or an hour.
 - The game checks once per turn, after the turn's time passes, like a [stat condition](#when-the-game-checks). With the AI clock off, each turn is one hour.
 - Outside play, the [Test Bench](#test-bench-checks) reads the time the story opens at, which is morning.
@@ -446,10 +453,10 @@ A **time condition** checks the story's time of day. *Night Hunter* requires *ev
 A **weather condition** checks the world's current weather. *Awning Up* requires *rain or storm*, so it opens while it rains or storms. It shows only while the world's **Weather** is on.
 
 1. Open the trait's **Availability** tab.
-2. Under **Requires**, select **Add Requirement**, then pick **Weather**.
-3. Turn on each kind that counts. The chip lists **Clear** and the kinds the world allows.
+2. Under **Requires**, select **Add a requirement…**, then pick **Weather**.
+3. Select the condition, then turn on each kind that counts. The list holds **Clear** and the kinds the world allows.
 
-- The chip starts with no kind on, in red, and never holds while it stays empty. Select **Require it to be off** to make it **Not**. *Not Rain or Storm* holds in every other weather, **Clear** included.
+- The condition starts with no kind on, in red, and never holds while it stays empty. Select **Change to "is not"** in its controls to make it **Not**. *The weather is not Rain or Storm* holds in every other weather, **Clear** included.
 - A row holds one weather condition.
 - It checks the world's weather, not what the player feels. A player in a Sheltered location still holds it.
 - The game checks once per turn, after the turn's weather is set.
@@ -463,14 +470,14 @@ A **weather condition** checks the world's current weather. *Awning Up* requires
 An **opening condition** checks which opening started the game. *Hunted* requires the *ambush* opening, so a game that starts with the ambush has it from page one.
 
 1. Open the trait's **Availability** tab.
-2. Under **Requires**, select **Add Requirement**, then pick **Opening**.
-3. Open the chip's list and check each opening that counts, or select **Select All**. The list shows every opening in the world: the world's own first, then each entity's, then each location's. An opening with no name shows as *Aki · Opening 2*. In a world with more than 8 openings, the list opens on the owners: select one to see its openings.
+2. Under **Requires**, select **Add a requirement…**, then pick **Opening**.
+3. Select the condition, open its list and check each opening that counts, or select **Select All**. The list shows every opening in the world: the world's own first, then each entity's, then each location's. An opening with no name shows as *Aki · Opening 2*. In a world with more than 8 openings, the list opens on the owners: select one to see its openings.
 
-- **Select All** checks every opening, or clears them all when they're already checked. With none checked, the chip turns red and the condition never holds. Select **Require it to be off** to make it **Not**. *Not ambush* holds after every other start, and in a game that started with no opening.
+- **Select All** checks every opening, or clears them all when they're already checked. With none checked, the condition turns red and never holds. Select **Change to "is not"** in its controls to make it **Not**. *The opening is not ambush* holds after every other start, and in a game that started with no opening.
 - A row holds one opening condition.
 - It holds for the whole game, not just page one. A page-one re-roll that draws another opening checks it again.
 - Players never see it in a trait's requirement line. A trait locked by it alone reads **Locked**.
-- If you delete an opening the condition lists, the chip turns red. The next change to its list removes the deleted opening.
+- If you delete an opening the condition lists, the condition turns red. The next change to its list removes the deleted opening.
 - Outside play, it reads the **Opening** picked in the [Test Bench](#test-bench-checks), or no opening.
 - The same condition works on image visibility rules, so a character's art can change with the route.
 
@@ -481,10 +488,10 @@ An **opening condition** checks which opening started the game. *Hunted* require
 A **World Option condition** checks an Option from the [Options tab](World-Editor-Options). *Lantern Glow* requires *Lanterns Lit is on*, so it opens while that Option is on.
 
 1. Open the trait's **Availability** tab.
-2. Under **Requires**, select **Add Requirement**, then pick an Option under **World Options**.
-3. Set what it checks on the chip:
+2. Under **Requires**, select **Add a requirement…**, then pick an Option under **World Options**.
+3. Select the condition and set what it checks:
 
-| Option type | The chip checks | Reads as |
+| Option type | The condition checks | Reads as |
 |---|---|---|
 | Choice | One value, picked from the list | *Reply Length is Short* |
 | On or Off | On; **Require it to be off** checks off | *Lanterns Lit is on* |
@@ -548,7 +555,7 @@ The entity's **Traits** tab is the **Traits** tab for that entity alone. It show
 
 - Select a row to edit it in place. The **Traits** back row returns to the list.
 - Drag rows, links included, to reorder and nest them inside the entity.
-- A **Requires** chip opens its target when the entity holds it. A world trait or a persona reads as plain text there.
+- A **Requires** target shows **Open** when the entity holds it. A world trait or a persona has nowhere to open there.
 - To link a trait or move one to another entity, use the World Editor's **Traits** tab.
 
 An entity's active traits describe it to the AI, the same way the player's do. When the player plays the entity as a [persona](Persona-Authoring), its traits are the persona's.

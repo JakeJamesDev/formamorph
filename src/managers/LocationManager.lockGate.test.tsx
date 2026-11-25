@@ -28,7 +28,7 @@ describe("a location's Lock gate on the Presence tab", () => {
     const [enabled, unlocked] = document.querySelectorAll('[data-host-gate]');
     expect(enabled.textContent).toMatch(/^Enabled/);
     expect(unlocked.textContent).toMatch(/never locked/);
-    expect(unlocked.textContent).toMatch(/Night/);
+    expect(unlocked.textContent).toMatch(/It is night/);
   });
 
   it('shows the Locked Text the location stores, after the Unlocked rows', async () => {

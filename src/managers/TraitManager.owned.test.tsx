@@ -169,15 +169,19 @@ describe('requirements across owners', () => {
     const { ctx } = renderTraitsTab(WORLD, 'advanced');
     fireEvent.click(treeRow('Beast Tamer')!);
     openTraitFieldsTab('Availability');
-    fireEvent.click(screen.getByRole('button', { name: 'Add Requirement' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add a requirement…' }));
     const list = await screen.findByRole('listbox');
     const tamed = within(list).getByRole('option', { name: /^Tamed/ });
     expect(tamed).toHaveTextContent('TamedAsh › Bond');
     fireEvent.click(tamed);
-    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Same OwnerWhoever has the trait', 'Persona', 'Ash']);
-    fireEvent.click(screen.getByRole('option', { name: /^Ash/ }));
+    expect(ctx().traits.find((t) => t.id === 't-tamer')?.requires).toEqual([{ all: [{ kind: 'trait', id: 't-tamed' }] }]);
+    // On a world trait the Condition reads global scope and names no one, so its owner sits in the target popover (Q25).
+    fireEvent.click(await screen.findByRole('button', { name: 'Target: Tamed' }));
+    expect(screen.getByRole('button', { name: 'No owner' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'The player' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Ash' }));
     expect(ctx().traits.find((t) => t.id === 't-tamer')?.requires)
       .toEqual([{ all: [{ kind: 'trait', id: 't-tamed', owner: { kind: 'entity', id: 'ash', name: 'Ash' } }] }]);
-    expect(screen.getByRole('button', { name: 'Ash: Tamed' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Owner: Ash' })).toBeInTheDocument();
   });
 });

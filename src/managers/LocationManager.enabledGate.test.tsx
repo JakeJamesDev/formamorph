@@ -31,6 +31,6 @@ describe("a location's Enabled gate on the Presence tab", () => {
   it('shows the rows the location stores', async () => {
     mount([{ all: [{ kind: 'time', dayparts: ['night'] }] }]);
     await screen.findByText('Enabled');
-    expect(document.querySelector('[data-host-gate]')?.textContent).toMatch(/Night/);
+    expect(document.querySelector('[data-host-gate]')?.textContent).toMatch(/It is night/);
   });
 });

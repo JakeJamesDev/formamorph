@@ -1,7 +1,8 @@
 import { useMemo, type ReactNode } from 'react';
 import { useTraitStore } from '@/contexts/TraitStoreContext';
 import { RequirementRowsField } from '@/components/editor/RequirementRowsField';
-import { conditionTexts, gateOf, gateStates, ownerHolding, requirementOptions } from '@/lib/traitGates';
+import { conditionClauses, ownerHolding, requirementOptions, type ClauseHost } from '@/lib/traitGates';
+import { SELF_ENTITY } from '@/lib/portableTraits';
 import { joinAnd, summarizeRequirement } from '@/lib/requirementSummary';
 import { requirementStatSections } from '@/lib/requirementStatOptions';
 import type { Trait, TraitRequirement, TraitRequirementRow } from '@/types';
@@ -39,9 +40,20 @@ export function RequirementSummaryText({ rows, name }: { rows: TraitRequirementR
   );
 }
 
+/** `clausesOf` reading a library entity's portable self-reference as the entity that holds the trait. */
+const selfBound = (clausesOf: ReturnType<typeof conditionClauses>, ownerId: string | null): ReturnType<typeof conditionClauses> =>
+  (ownerId === null ? clausesOf : (req, view) => {
+    if (req.kind === 'playingAs' && req.id === SELF_ENTITY) return clausesOf({ ...req, id: ownerId }, view);
+    if ('owner' in req && req.owner?.kind === 'entity' && req.owner.id === SELF_ENTITY) {
+      // The spread loses the union's discriminant link; the kind and its fields are unchanged.
+      return clausesOf({ ...req, owner: { ...req.owner, id: ownerId } } as TraitRequirement, view);
+    }
+    return clausesOf(req, view);
+  });
+
 /**
  * The trait panel's Requires field: the trait's Requirement Rows over the trait store. `ownerId` names the
- * owner whose gate the chips read, for a link whose rows differ from its original's; without it, the first
+ * owner whose sentences the rows read, for a link whose rows differ from its original's; without it, the first
  * owner holding the trait.
  */
 export function TraitRequiresField({ trait, onChange, onOpen, opens, ownerId, labelAside }: {
@@ -53,24 +65,27 @@ export function TraitRequiresField({ trait, onChange, onOpen, opens, ownerId, la
   labelAside?: ReactNode;
 }) {
   const { gateInput, placeholders, offWorld } = useTraitStore();
-  const { states, options, statSections, textOf } = useMemo(() => {
-    const gates = gateStates(gateInput);
-    const hostOwnerId = ownerHolding(gateInput, trait.id)?.id ?? null;
-    const gate = (ownerId !== undefined ? gateOf(gates, ownerId, trait.id) : undefined) ?? gateOf(gates, hostOwnerId, trait.id);
+  const { options, statSections, clausesOf, clauseHost } = useMemo(() => {
+    // A link's owner when the input holds it, else the first owner holding the trait.
+    const linked = ownerId !== undefined ? gateInput.owners.find((o) => o.id === ownerId) : undefined;
+    const hostOwnerId = linked?.id ?? ownerHolding(gateInput, trait.id)?.id ?? null;
+    const owner = hostOwnerId === null ? undefined : gateInput.owners.find((o) => o.id === hostOwnerId);
+    const host: ClauseHost = hostOwnerId === null ? { kind: 'world' } : { kind: 'entity', id: hostOwnerId, name: owner?.name };
     return {
-      states: gate?.rows ?? [], options: requirementOptions(gateInput, trait.id),
+      options: requirementOptions(gateInput, trait.id),
       statSections: requirementStatSections(gateInput, ownerId ?? hostOwnerId),
-      textOf: conditionTexts(gateInput),
+      clausesOf: selfBound(conditionClauses(gateInput), hostOwnerId),
+      clauseHost: host,
     };
   }, [gateInput, trait.id, ownerId]);
 
   return (
     <RequirementRowsField
       rows={trait.requires ?? []}
-      states={states}
       options={options}
       statSections={statSections}
-      textOf={textOf}
+      clausesOf={clausesOf}
+      clauseHost={clauseHost}
       placeholders={placeholders}
       offWorld={offWorld}
       onChange={onChange}

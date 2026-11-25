@@ -1,75 +1,60 @@
 import { describe, expect, it } from 'vitest';
-import { useState } from 'react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { TooltipProvider } from '@/components/ui/tooltip';
-import { RequirementRowsField } from './RequirementRowsField';
-import { conditionTexts, ruleStates, type GateInput } from '@/lib/traitGates';
-import { NO_ACTIVE } from '@/lib/traitGates';
+import { ADD_FIRST, ADD_TO_ROW, FieldHarness, sentences, writtenRows } from '@/test/requirementRows';
 import type { TraitRequirementRow } from '@/types';
 
-const input: GateInput = { global: { traits: [], groups: [] }, owners: [], active: NO_ACTIVE, entities: [], persona: { source: 'none' } };
-const textOf = conditionTexts(input);
-
-/** The field over the real rule text and the real row states, with edits that land. */
-function Harness({ initial = [], offWorld = false }: { initial?: TraitRequirementRow[]; offWorld?: boolean }) {
-  const [rows, setRows] = useState(initial);
-  return (
-    <TooltipProvider>
-      <RequirementRowsField
-        rows={rows} states={ruleStates(input, null, rows)} placeholders={[]} offWorld={offWorld}
-        options={{ traits: [], groups: [], personas: [] }}
-        textOf={textOf} onChange={setRows} onOpen={() => {}}
-      />
-      <output data-testid="rows">{JSON.stringify(rows)}</output>
-    </TooltipProvider>
-  );
-}
-
-const rows = (): TraitRequirementRow[] => JSON.parse(screen.getByTestId('rows').textContent!);
+const field = (initial: TraitRequirementRow[] = [], offWorld = false) => render(<FieldHarness initial={initial} offWorld={offWorld} />);
 const pickTime = async (button: string) => {
   fireEvent.click(screen.getByRole('button', { name: button }));
   fireEvent.click(await screen.findByRole('option', { name: /^Time of Day/ }));
 };
+/** Opens the Condition's token, whose popover holds the daypart toggles. */
+const openToken = () => fireEvent.click(screen.getByRole('button', { name: /^Edit It is/ }));
 const daypart = (name: string) => within(screen.getByRole('toolbar', { name: 'Time of day' })).getByRole('button', { name });
 
 describe('a time Condition in the rows editor', () => {
-  it('adds an empty, red chip with no owner page, on and off world', async () => {
+  it('adds an empty, broken token with no owner page, on and off world', async () => {
     for (const offWorld of [false, true]) {
-      const { unmount } = render(<Harness offWorld={offWorld} />);
-      await pickTime('Add Requirement');
-      expect(rows()).toEqual([{ all: [{ kind: 'time', dayparts: [] }] }]);
+      const { unmount } = field([], offWorld);
+      await pickTime(ADD_FIRST);
+      expect(writtenRows()).toEqual([{ all: [{ kind: 'time', dayparts: [] }] }]);
+      const token = screen.getByRole('button', { name: 'Edit It is pick a time' });
+      expect(token).toHaveAttribute('data-broken');
+      expect(token).toHaveAccessibleDescription('No time of day is picked.');
+      openToken();
       expect(daypart('Night')).toHaveAttribute('aria-pressed', 'false');
-      expect(screen.getByRole('toolbar', { name: 'Time of day' }).closest('[data-unresolved]')).not.toBeNull();
       unmount();
     }
   });
 
-  it('edits the dayparts in clock order and lets the last one go off', async () => {
-    render(<Harness initial={[{ all: [{ kind: 'time', dayparts: ['night'] }] }]} />);
+  it('edits the dayparts in clock order and lets the last one go off', () => {
+    field([{ all: [{ kind: 'time', dayparts: ['night'] }] }]);
+    openToken();
     expect(daypart('Night')).toBeEnabled();
     fireEvent.click(daypart('Evening'));
-    expect(rows()).toEqual([{ all: [{ kind: 'time', dayparts: ['night', 'evening'] }] }]);
-    expect(screen.getByRole('group', { name: 'evening or night' })).toBeInTheDocument();
+    expect(writtenRows()).toEqual([{ all: [{ kind: 'time', dayparts: ['night', 'evening'] }] }]);
+    expect(sentences()).toEqual(['It is evening or night and…']);
     fireEvent.click(daypart('Night'));
-    expect(rows()).toEqual([{ all: [{ kind: 'time', dayparts: ['evening'] }] }]);
+    expect(writtenRows()).toEqual([{ all: [{ kind: 'time', dayparts: ['evening'] }] }]);
     fireEvent.click(daypart('Evening'));
-    expect(rows()).toEqual([{ all: [{ kind: 'time', dayparts: [] }] }]);
+    expect(writtenRows()).toEqual([{ all: [{ kind: 'time', dayparts: [] }] }]);
   });
 
   it('flips to Not and back, keeping its dayparts, and edits them while negated', () => {
-    render(<Harness initial={[{ all: [{ kind: 'time', dayparts: ['night'] }] }]} />);
-    fireEvent.click(screen.getByRole('button', { name: /to be off$/ }));
-    expect(rows()).toEqual([{ all: [{ kind: 'time', dayparts: ['night'], not: true }] }]);
-    expect(screen.getByText('NOT')).toBeInTheDocument();
+    field([{ all: [{ kind: 'time', dayparts: ['night'] }] }]);
+    openToken();
+    fireEvent.click(screen.getByRole('button', { name: 'Change to “is not”' }));
+    expect(writtenRows()).toEqual([{ all: [{ kind: 'time', dayparts: ['night'], not: true }] }]);
+    expect(sentences()).toEqual(['It is not night and…']);
     fireEvent.click(daypart('Dawn'));
-    expect(rows()).toEqual([{ all: [{ kind: 'time', dayparts: ['night', 'dawn'], not: true }] }]);
-    fireEvent.click(screen.getByRole('button', { name: /instead$/ }));
-    expect(rows()[0].all[0]).not.toHaveProperty('not');
+    expect(writtenRows()).toEqual([{ all: [{ kind: 'time', dayparts: ['night', 'dawn'], not: true }] }]);
+    fireEvent.click(screen.getByRole('button', { name: 'Change to “is”' }));
+    expect(writtenRows()[0].all[0]).not.toHaveProperty('not');
   });
 
   it('a row takes one time Condition', async () => {
-    render(<Harness initial={[{ all: [{ kind: 'time', dayparts: ['night'] }] }]} />);
-    fireEvent.click(screen.getByRole('button', { name: 'And' }));
+    field([{ all: [{ kind: 'time', dayparts: ['night'] }] }]);
+    fireEvent.click(screen.getByRole('button', { name: ADD_TO_ROW }));
     expect(await screen.findByRole('option', { name: /^Time of Day/ })).toHaveAttribute('aria-disabled', 'true');
   });
 });

@@ -63,7 +63,7 @@ describe('the Requires field', () => {
     const { ctx } = renderTraitsTab(WORLD, 'advanced');
     selectTrait('Lamp-Lit');
     expect(within(requiresField()).queryByText(/any one of these/)).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Add Requirement' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add a requirement…' }));
 
     const list = await screen.findByRole('listbox');
     expect(within(list).getByText('Traits')).toBeInTheDocument();
@@ -78,13 +78,13 @@ describe('the Requires field', () => {
     fireEvent.click(paladin);
     expect(screen.queryByRole('option', { name: /^Same Owner/ })).toBeNull();
     expect(traitRequires(ctx, 't-loose')).toEqual([{ all: [{ kind: 'trait', id: 't-paladin' }] }]);
-    expect(within(requiresField()).getByRole('button', { name: 'Paladin' })).toBeInTheDocument();
+    expect(within(requiresField()).getByRole('button', { name: 'Target: Paladin' })).toBeInTheDocument();
   });
 
   it('adds another way as a row joined by "or", and filters the picker by name', async () => {
     const { ctx } = renderTraitsTab(WORLD, 'advanced');
     selectTrait('Plate Armor');
-    fireEvent.click(screen.getByRole('button', { name: 'Or Another Way' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add another way' }));
     const list = await screen.findByRole('listbox');
     // A one-chip row already listed stays in place and reads disabled.
     expect(within(list).getByRole('option', { name: /^Paladin/ })).toHaveAttribute('aria-disabled', 'true');
@@ -109,24 +109,27 @@ describe('the Requires field', () => {
     } as Partial<World>);
     renderTraitsTab(world, 'advanced');
     selectTrait('Plate Armor');
-    fireEvent.click(screen.getByRole('button', { name: 'Or Another Way' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add another way' }));
     expect(within(await screen.findByRole('listbox')).getByRole('option', { name: /^Paladin/ })).toHaveAttribute('aria-disabled', 'true');
   });
 
   it('removes a requirement, and leaves the field absent once the last one goes', () => {
     const { ctx } = renderTraitsTab(WORLD, 'advanced');
     selectTrait('Plate Armor');
-    fireEvent.click(screen.getByRole('button', { name: 'Remove Paladin' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Paladin is active' }));
     expect(traitRequires(ctx, 't-plate')).toBeUndefined();
-    expect(within(requiresField()).queryByRole('button', { name: 'Paladin' })).toBeNull();
+    expect(within(requiresField()).queryByRole('button', { name: 'Target: Paladin' })).toBeNull();
   });
 
-  it('reads an unresolved requirement red under its stored name, with nothing to open', () => {
+  it('reads an unresolved requirement red under its stored name, with nothing to open', async () => {
     renderTraitsTab(WORLD, 'advanced');
     selectTrait('Guild Mark');
-    const chip = within(requiresField().querySelector<HTMLElement>('[data-requirement-row]')!).getByText('Thief').closest('[data-unresolved]');
-    expect(chip).toHaveClass('text-destructive');
-    expect(within(requiresField()).queryByRole('button', { name: 'Thief' })).toBeNull();
-    expect(within(requiresField()).getByRole('button', { name: 'Remove Thief' })).toBeInTheDocument();
+    const target = within(requiresField()).getByRole('button', { name: 'Target: Thief' });
+    expect(target).toHaveClass('text-destructive');
+    expect(target).toHaveAccessibleDescription('This trait no longer exists.');
+    fireEvent.click(target);
+    expect(await screen.findByRole('button', { name: 'Open Thief' })).toBeDisabled();
+    // The open popover hides the rest of the page.
+    expect(screen.getByRole('button', { name: /^Remove .*Thief/, hidden: true })).toBeInTheDocument();
   });
 });

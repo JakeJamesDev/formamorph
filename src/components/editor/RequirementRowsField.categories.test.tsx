@@ -1,13 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { useState } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { TooltipProvider } from '@/components/ui/tooltip';
-import { RequirementRowsField } from './RequirementRowsField';
+import { ADD_FIRST, FieldHarness, type FieldInput } from '@/test/requirementRows';
 import { requirementStatSections } from '@/lib/requirementStatOptions';
-import type { GateInput, GateStat, GateStatSet, RequirementOption, RequirementOptions, RowState } from '@/lib/traitGates';
+import type { GateStat, GateStatSet, RequirementOption, RequirementOptions } from '@/lib/traitGates';
 import { scoped, type OwnerId } from '@/lib/scope';
-import type { TraitRequirement, TraitRequirementRow } from '@/types';
 
 const S = (name: string): GateStat => ({ name, value: 10, min: 0, max: 100 });
 const ash = { id: 'ash', name: 'Ash' };
@@ -22,12 +19,12 @@ const traits = [
   ...Array.from({ length: 3 }, (_, i) => trait(`m${i}`, `Mira Trait ${i}`, ['Mira'], mira)),
 ];
 const personas: RequirementOption[] = [{ requirement: { kind: 'playingAs', id: 'mira' }, label: 'Mira', breadcrumb: ['Persona'], owners: [] }];
-const input: Pick<GateInput, 'owners' | 'entities' | 'stats'> = {
+const input: FieldInput = {
+  global: { traits: [], groups: [] },
   owners: [],
   entities: [ash, mira],
   stats: scoped<GateStatSet>({ rage: S('Rage'), gold: S('Gold') }, { ash: { hunger: S('Hunger'), thirst: S('Thirst') }, mira: { mood: S('Mood'), joy: S('Joy') } }),
 };
-const textOf = (r: TraitRequirement) => r.id ?? '';
 
 function Harness({ choices = { traits, groups: [], personas }, host = 'ash', offWorld = false, stats = true }: {
   choices?: RequirementOptions;
@@ -35,19 +32,7 @@ function Harness({ choices = { traits, groups: [], personas }, host = 'ash', off
   offWorld?: boolean;
   stats?: boolean;
 }) {
-  const [rows, setRows] = useState<TraitRequirementRow[]>([]);
-  const states: RowState[] = rows.map((row) => ({
-    holds: false, conditions: row.all.map((r) => ({ text: textOf(r), clause: textOf(r), holds: false, unresolved: false, hidden: false })),
-  }));
-  return (
-    <TooltipProvider>
-      <RequirementRowsField
-        rows={rows} states={states} options={choices} statSections={stats ? requirementStatSections(input, host) : []}
-        textOf={textOf} placeholders={[]} offWorld={offWorld} onChange={setRows} onOpen={() => {}}
-      />
-      <output data-testid="rows">{JSON.stringify(rows)}</output>
-    </TooltipProvider>
-  );
+  return <FieldHarness input={input} options={choices} offWorld={offWorld} statSections={stats ? requirementStatSections(input, host) : []} />;
 }
 
 const items = () => screen.getAllByRole('option').map((o) => o.getAttribute('aria-label') ?? o.textContent);
@@ -55,7 +40,7 @@ const opens = (name: string, count: number) => `${name}, ${count} available, ope
 const pageRow = (name: string) => screen.getByRole('option', { name: new RegExp(`^${name}, \\d+ available, opens a page$`) });
 const openPicker = async () => {
   const user = userEvent.setup();
-  await user.click(screen.getByRole('button', { name: 'Add Requirement' }));
+  await user.click(screen.getByRole('button', { name: ADD_FIRST }));
   return user;
 };
 
@@ -105,29 +90,35 @@ describe('the Requires picker categories', () => {
 
   it('shows only the categories that have targets off-world', async () => {
     const many = { ...input, stats: scoped<GateStatSet>({}, { ash: Object.fromEntries(Array.from({ length: 16 }, (_, i) => [`s${i}`, S(`Stat ${i}`)])) }) };
-    const Off = () => (
-      <TooltipProvider>
-        <RequirementRowsField
-          rows={[]} states={[]} options={{ traits: [], groups: [], personas: [] }} statSections={requirementStatSections(many, 'ash')}
-          textOf={textOf} placeholders={[]} offWorld onChange={() => {}} onOpen={() => {}}
-        />
-      </TooltipProvider>
-    );
-    render(<Off />);
+    render(<FieldHarness input={many} options={{ traits: [], groups: [], personas: [] }} statSections={requirementStatSections(many, 'ash')} offWorld />);
     await openPicker();
     expect(items()).toEqual([opens('Stats', 16), 'Time of Day']);
   });
 
-  it('returns from the owner choice page to the drilled page', async () => {
+  it('adds a trait at once from a drilled page, with no owner page', async () => {
     render(<Harness />);
     const user = await openPicker();
     await user.click(pageRow('Traits'));
     await user.click(pageRow('Ash'));
     fireEvent.click(screen.getByRole('option', { name: /^Ash Trait 1/ }));
+    expect(screen.queryByRole('button', { name: 'Back to targets' })).toBeNull();
+    expect(JSON.parse(screen.getByTestId('rows').textContent!)).toEqual([{ all: [{ kind: 'trait', id: 'a1' }] }]);
+  });
+
+  it('returns from an item’s owner page to the drilled page', async () => {
+    const lamp: RequirementOption = {
+      requirement: { kind: 'item', id: 'lamp', status: 'owned' }, label: 'Lantern', breadcrumb: [],
+      owners: [{ owner: { kind: 'you' }, name: 'Persona' }, { owner: { kind: 'entity', id: 'ash', name: 'Ash' }, name: 'Ash' }],
+    };
+    const rope: RequirementOption = { ...lamp, requirement: { kind: 'item', id: 'rope', status: 'owned' }, label: 'Rope' };
+    render(<Harness choices={{ traits, groups: [], personas, items: [lamp, rope] }} />);
+    const user = await openPicker();
+    await user.click(pageRow('Items'));
+    fireEvent.click(screen.getByRole('option', { name: /^Lantern/ }));
     expect(screen.getByRole('button', { name: 'Back to targets' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Back to targets' }));
-    expect(items()).toEqual(Array.from({ length: 5 }, (_, i) => `Ash Trait ${i}Bond`));
-    expect(screen.getByText('Traits › Ash')).toBeInTheDocument();
+    expect(items()).toEqual(['Lantern', 'Rope']);
+    expect(screen.getByText('Items', { selector: '*:not([role=option] *)' })).toBeInTheDocument();
   });
 
   it('keeps a small picker as today’s flat list', async () => {

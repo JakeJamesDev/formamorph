@@ -166,22 +166,26 @@ describe('the entity Traits tab as a mirror', () => {
     expect(mirrorRows().map((r) => r.textContent)).toEqual(['Bond', 'Tamed', 'Beast Tamer', 'Wild3', 'Pack Sense']);
   });
 
-  it('opens a Requires chip the entity holds, and reads one it does not as plain text', () => {
+  it('opens a Requires target the entity holds, and offers no Open for one it does not', async () => {
     renderEntitiesTab(WORLD, 'advanced');
     openMirror('Ash');
     const field = () => screen.getByRole('group', { name: 'Requires' });
     fireEvent.click(rowNamed('Wild')!);
     openTraitFieldsTab('Availability');
-    // Paladin is a world trait: named, never a button, and the details stay open.
-    expect(within(field().querySelector<HTMLElement>('[data-requirement-row]')!).getByText('Paladin')).toBeInTheDocument();
-    expect(within(field()).queryByRole('button', { name: 'Paladin' })).toBeNull();
-    fireEvent.click(within(field()).getByRole('button', { name: 'Beast Tamer' }));
+    // Paladin is a world trait: its target lists swaps but has nowhere to open, and the details stay open.
+    fireEvent.click(within(field()).getByRole('button', { name: 'Target: Paladin' }));
+    await screen.findByRole('listbox');
+    expect(screen.queryByRole('button', { name: 'Open Paladin' })).toBeNull();
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
+    fireEvent.click(within(field()).getByRole('button', { name: 'Target: Beast Tamer' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Open Beast Tamer' }));
     openTraitFieldsTab('Details');
     expect(screen.getByText(/^Linked from/)).toBeInTheDocument();
     openTraitFieldsTab('Availability');
     fireEvent.click(backArrow()!);
     fireEvent.click(rowNamed('Wild')!);
-    fireEvent.click(within(field()).getByRole('button', { name: 'Tamed' }));
+    fireEvent.click(within(field()).getByRole('button', { name: 'Target: Tamed' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Open Tamed' }));
     openTraitFieldsTab('Details');
     expect(screen.getByLabelText('Name')).toHaveTextContent('Tamed');
   });

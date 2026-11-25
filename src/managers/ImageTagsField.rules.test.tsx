@@ -85,12 +85,13 @@ describe('Gallery Visibility rules on a location', () => {
   it('names the persona as the owner of a Condition with no owner, once', async () => {
     render(<Harness initial={[{ data: A }, { data: B }]} host={LOCATION_RULE_HOST} />);
     fireEvent.click(ruleOf('Image 2'));
-    fireEvent.click(await screen.findByRole('button', { name: 'Add Requirement' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Add a requirement…' }));
     fireEvent.click(await screen.findByRole('option', { name: /^Healed/ }));
 
-    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Persona', 'Wren']);
-    fireEvent.click(screen.getByRole('option', { name: 'Persona' }));
+    expect(screen.queryByRole('button', { name: 'Back to targets' })).toBeNull();
     expect(stored()[1].requires).toEqual([{ all: [{ kind: 'trait', id: 'healed' }] }]);
+    fireEvent.click(await screen.findByRole('button', { name: 'Owner: The player' }));
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['The player', 'Wren']);
   });
 
   it("reads a Condition with no owner as the persona's on the rule button, and gives no cover warning", () => {
@@ -103,15 +104,16 @@ describe('Gallery Visibility rules on a location', () => {
 describe('Gallery Visibility rules on an item', () => {
   const LAMP_HOST: RuleHost = { kind: 'item', id: 'lamp' };
 
-  it('names the Item Owner as the owner of a Condition with no owner, and offers Persona and each entity by name', async () => {
+  it("names the item's owner as the owner of a Condition with no owner, and offers the player and each entity by name", async () => {
     render(<Harness initial={[{ data: A }, { data: B }]} host={LAMP_HOST} />);
     fireEvent.click(ruleOf('Image 2'));
-    fireEvent.click(await screen.findByRole('button', { name: 'Add Requirement' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Add a requirement…' }));
     fireEvent.click(await screen.findByRole('option', { name: /^Healed/ }));
 
-    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Item Owner', 'Persona', 'Wren']);
-    fireEvent.click(screen.getByRole('option', { name: 'Item Owner' }));
+    expect(screen.queryByRole('button', { name: 'Back to targets' })).toBeNull();
     expect(stored()[1].requires).toEqual([{ all: [{ kind: 'trait', id: 'healed' }] }]);
+    fireEvent.click(await screen.findByRole('button', { name: "Owner: The item's owner" }));
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(["The item's owner", 'The player', 'Wren']);
   });
 
   it('names the framed image’s rule on its rule button', () => {
@@ -125,7 +127,7 @@ describe('Gallery Visibility rules', () => {
   it('opens the rows editor from the frame’s rule button and stores the rule on that image only', async () => {
     render(<Harness initial={[{ data: A }, { data: B }, { data: C }]} />);
     fireEvent.click(ruleOf('Image 2'));
-    fireEvent.click(await screen.findByRole('button', { name: 'Add Requirement' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Add a requirement…' }));
     fireEvent.click(await screen.findByRole('option', { name: /^Health/ }));
 
     expect(stored()).toEqual([
@@ -138,7 +140,7 @@ describe('Gallery Visibility rules', () => {
   it('drops the field when the last row is removed', async () => {
     render(<Harness initial={[{ data: A }, { data: B, requires: lowHealth }]} />);
     fireEvent.click(ruleOf(/^Image 2/));
-    fireEvent.click(await screen.findByRole('button', { name: /^Remove row/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Delete row: / }));
 
     expect(stored()).toEqual([{ data: A }, { data: B }]);
     expect(stored()[1]).not.toHaveProperty('requires');
@@ -192,7 +194,7 @@ describe('Gallery Visibility rules', () => {
   it('keeps the entity editor dialog open while the popover is used', async () => {
     render(<Harness initial={[{ data: A }, { data: B }]} inDialog />);
     fireEvent.click(ruleOf('Image 2'));
-    fireEvent.click(await screen.findByRole('button', { name: 'Add Requirement' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Add a requirement…' }));
     fireEvent.click(await screen.findByRole('option', { name: /^Health/ }));
 
     expect(screen.getByRole('dialog', { name: 'Wren' })).toBeInTheDocument();

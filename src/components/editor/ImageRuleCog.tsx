@@ -12,7 +12,7 @@ import { TraitStoreContext } from '@/contexts/TraitStoreContext';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import { locationRuleStates } from '@/lib/imageVisibility';
 import { itemHostStatSections, personaHostStatSections, requirementStatSections } from '@/lib/requirementStatOptions';
-import { conditionTexts, requirementOptions, ruleStates, type GateInput, type RequirementOptions } from '@/lib/traitGates';
+import { conditionClauses, requirementOptions, ruleStates, type ClauseHost, type GateInput, type RequirementOptions } from '@/lib/traitGates';
 import { ruleText, shownWhileLine } from '@/lib/traitGateLine';
 import { cn } from '@/lib/utils';
 import type { TraitRequirementRow } from '@/types';
@@ -59,7 +59,10 @@ const withoutPersonaOwner = (options: RequirementOptions): RequirementOptions =>
 };
 
 /** What an owner-less Condition reads, where it is not the host itself. */
-const HOST_NAMES: Partial<Record<RuleHost['kind'], string>> = { location: 'Persona', item: 'Item Owner' };
+const HOST_NAMES: Partial<Record<RuleHost['kind'], string>> = { location: 'The player', item: "The item's owner" };
+
+const ITEM_CLAUSE_HOST: ClauseHost = { kind: 'item' };
+const PERSONA_CLAUSE_HOST: ClauseHost = { kind: 'persona' };
 
 /** A rule target has nowhere to open in the gallery. */
 const noop = () => {};
@@ -86,22 +89,25 @@ export function HostRuleRows({ host, rows, onChange, label = 'Visibility Rule', 
     if (!source) return null;
     // No trait is the host, so nothing is left out of the targets.
     const options = requirementOptions(source.gateInput, '');
-    const states = hostRuleStates(source.gateInput, host, rows);
-    if (host.kind === 'entity') return { states, options, statSections: requirementStatSections(source.gateInput, host.id) };
-    if (host.kind === 'item') return { states, options, statSections: itemHostStatSections(source.gateInput) };
-    return { states, options: withoutPersonaOwner(options), statSections: personaHostStatSections(source.gateInput) };
-  }, [source, host, rows]);
-  const textOf = useMemo(() => source && conditionTexts(source.gateInput), [source]);
-  if (!source || !read || !textOf) return null;
+    const clausesOf = conditionClauses(source.gateInput);
+    if (host.kind === 'entity') {
+      const name = source.gateInput.owners.find((o) => o.id === host.id)?.name;
+      const clauseHost: ClauseHost = { kind: 'entity', id: host.id, name };
+      return { options, clausesOf, clauseHost, statSections: requirementStatSections(source.gateInput, host.id) };
+    }
+    if (host.kind === 'item') return { options, clausesOf, clauseHost: ITEM_CLAUSE_HOST, statSections: itemHostStatSections(source.gateInput) };
+    return { options: withoutPersonaOwner(options), clausesOf, clauseHost: PERSONA_CLAUSE_HOST, statSections: personaHostStatSections(source.gateInput) };
+  }, [source, host]);
+  if (!source || !read) return null;
   return (
     <RequirementRowsField
       label={label}
       hint={hint}
       rows={rows}
-      states={read.states}
       options={read.options}
       statSections={read.statSections}
-      textOf={textOf}
+      clausesOf={read.clausesOf}
+      clauseHost={read.clauseHost}
       hostName={HOST_NAMES[host.kind]}
       placeholders={source.placeholders}
       offWorld={source.offWorld}

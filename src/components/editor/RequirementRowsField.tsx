@@ -1,29 +1,24 @@
-import { useId, useState, type ReactElement, type ReactNode } from 'react';
-import { ArrowLeftRight, Plus, X } from 'lucide-react';
+import { Fragment, useId, useState, type ReactElement, type ReactNode } from 'react';
+import { Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Tip } from '@/components/ui/tooltip';
 import {
   BreadcrumbPicker, BreadcrumbPickerHeader, BreadcrumbPickerList, type BreadcrumbPickerNode, type BreadcrumbPickerRow, type BreadcrumbPickerSection,
 } from '@/components/ui/breadcrumb-picker';
+import { MUTED_SENTENCE_TOKEN_CLASS } from '@/components/ui/sentence-token';
 import PlaceholderText from '@/components/prompt/PlaceholderText';
-import { StatConditionControls } from '@/components/editor/StatConditionControls';
-import { TimeConditionControls } from '@/components/editor/TimeConditionControls';
-import { WeatherConditionControls } from '@/components/editor/WeatherConditionControls';
-import { OpeningConditionControls } from '@/components/editor/OpeningConditionControls';
-import { ItemConditionControls } from '@/components/editor/ItemConditionControls';
-import { OptionConditionControls } from '@/components/editor/OptionConditionControls';
+import { RequirementClause, type ClauseContext } from '@/components/editor/RequirementClause';
 import { labelPlaceholders } from '@/lib/placementLetters';
 import {
-  requirementOwnerKey, requirementOwnerOf, flipped, itemChecks, sameRequirement, statTail, withRequirementOwner,
-  type ConditionState, type RequirementOwnerOption, type RequirementOption, type RequirementOptions, type RowState,
+  clauseText, requirementOwnerKey, requirementOwnerOf, sameRequirement, withRequirementOwner,
+  type ClauseHost, type ClausePart, type ClauseView, type RequirementOwnerOption, type RequirementOption, type RequirementOptions,
 } from '@/lib/traitGates';
 import { soleOwnerRequirement } from '@/lib/requirementOwners';
 import { joinAnd } from '@/lib/requirementSummary';
 import type { RequirementStatSection } from '@/lib/requirementStatOptions';
-import { cn } from '@/lib/utils';
 import type { Placeholder, TraitRequirement, TraitRequirementRow } from '@/types';
-import { Hint, Meta } from '@/components/ui/typography';
+import { Hint } from '@/components/ui/typography';
 
 /** The picker's one time row: a time Condition starts with no daypart, unresolved until one is on. */
 const TIME_OPTION: RequirementOption = { requirement: { kind: 'time', dayparts: [] }, label: 'Time of Day', breadcrumb: [], owners: [] };
@@ -32,42 +27,27 @@ const TIME_OPTION: RequirementOption = { requirement: { kind: 'time', dayparts: 
 type AddTarget = number | 'new';
 
 /**
- * The Requires field over plain data: Requirement Rows, each a bordered line of chips joined by "and", the
- * rows joined by "or". **And** adds a Condition to its row, **Or Another Way** adds a row, and removing a
- * row's last chip removes the row (Q6). Picking a target opens a second page for the owner: the same
- * owner, Persona, or an entity that owns it. Off-world, or for a global target, it is added at once. A chip
- * opens its target, unless `opens` says the host has nowhere to open it, when it
- * reads as plain text; a chip whose target is gone reads red under its stored name. Each chip flips between
- * plain and Not; a Not chip shows a NOT mark and a dashed border.
+ * The Requires field over plain data: each Requirement Row is one sentence of Conditions joined by "and", the
+ * rows joined by "or" lines. Each Condition is one box of tokens with its × and its "and", so a box that does
+ * not fit moves to the next line whole (Q22). "and…" adds a Condition to its row, "or…" adds a row, and
+ * removing a row's last Condition removes the row. A new Condition starts with no owner (Q7); an item still asks
+ * which owner on the picker's owner page.
  *
- * A stat Condition has its own chip: the stat's name, then a segmented operator, the number and a Raw / %
- * toggle, all editable in place. It reads as plain text, since a stat has nowhere to open, and an edit that
- * would repeat another Condition in the row is held back. The same stat can sit in a row twice, once as a
- * floor and once as a ceiling.
+ * An edit never repeats another Condition in its row, nor turns a one-Condition row into a copy of another; a
+ * list row or a flip that would is disabled. The same stat can sit in a row twice, once as a floor and once as
+ * a ceiling. A row holds one time, one weather and one Opening Condition at most.
  *
- * A time Condition's chip is a toggle per daypart. It starts with none on and reads red until one is, and it takes Not. A row holds one at most.
- *
- * A weather Condition's chip is a toggle per kind the world allows. It starts with none on and reads red until one is, and it takes Not. It is offered
- * while the world's weather can change, and a row holds one at most.
- *
- * An Opening Condition's chip picks Openings from a grouped list, and it takes Not. It starts with none picked and
- * reads red until one is, as a key whose Opening is gone does. It is offered while the world has an Opening, and a
- * row holds one at most.
- *
- * A World Option Condition's chip edits a choice's value or a number's comparison in place; a number has no
- * Not. A boolean's chip reads "on" or "off" and flips between them.
- *
- * The host supplies everything the rows read: `states` the rows' evaluated state in the same order, `options`
- * the targets an author can add, `statSections` the stats by owner, and `textOf` the rule text of one Condition.
+ * The host supplies what the rows read: `options` the targets an author can add, `statSections` the stats by
+ * owner, `clausesOf` a Condition's clause parts and `clauseHost` the record a Condition with no owner reads.
  */
 export function RequirementRowsField({
-  rows, states, options, statSections = [], textOf, placeholders, offWorld = false, onChange, onOpen, opens = () => true, label = 'Requires', labelAside, hint, hostName,
+  rows, options, statSections = [], clausesOf, clauseHost, placeholders, offWorld = false, onChange, onOpen, opens = () => true, label = 'Requires', labelAside, hint, hostName,
 }: {
   rows: TraitRequirementRow[];
-  states: readonly RowState[];
   options: RequirementOptions;
   statSections?: readonly RequirementStatSection[];
-  textOf: (requirement: TraitRequirement) => string;
+  clausesOf: (requirement: TraitRequirement, view?: ClauseView) => ClausePart[];
+  clauseHost: ClauseHost;
   placeholders: readonly Placeholder[];
   offWorld?: boolean;
   onChange: (rows: TraitRequirementRow[]) => void;
@@ -113,11 +93,10 @@ export function RequirementRowsField({
   };
   const replaceCondition = (rowIndex: number, index: number, next: TraitRequirement) => onChange(rows.map((row, i) =>
     (i === rowIndex ? { all: row.all.map((req, j) => (j === index ? next : req)) } : row)));
-  // A stat row names its owner in the section it sits in, so it needs no owner page. What a playing-as row,
-  // an off-world row and a global target add at once; any other target asks which owner first.
+  // Every kind but an item adds at once with no owner, a stat with the owner of its section. An item asks which
+  // owner first, unless off-world or it has one choice.
   const atOnce = (option: RequirementOption) =>
-    (option.requirement.kind === 'playingAs' || option.requirement.kind === 'stat' || option.requirement.kind === 'time' || option.requirement.kind === 'weather' || option.requirement.kind === 'opening' || option.requirement.kind === 'option' || offWorld
-      ? option.requirement : soleOwnerRequirement(option));
+    (option.requirement.kind !== 'item' || offWorld ? option.requirement : soleOwnerRequirement(option));
   const pick = (option: RequirementOption) => {
     const requirement = atOnce(option);
     if (requirement) add(requirement);
@@ -130,6 +109,7 @@ export function RequirementRowsField({
     if (option.requirement.kind === 'weather') return taken.some((r) => r.kind === 'weather');
     if (option.requirement.kind === 'opening') return taken.some((r) => r.kind === 'opening');
     const requirement = atOnce(option);
+    if (requirement && option.requirement.kind !== 'item') return listed(requirement);
     if (requirement) return [requirement, ...option.owners.map((o) => withRequirementOwner(requirement, o.owner))].some(listed);
     return listed(option.requirement) && option.owners.every((o) => listed(withRequirementOwner(option.requirement, o.owner)));
   };
@@ -193,7 +173,7 @@ export function RequirementRowsField({
       key: requirementOwnerKey(choice?.owner),
       value: requirement,
       name: choice?.name ?? hostName ?? 'Same Owner',
-      hint: choice || hostName ? undefined : option.requirement.kind === 'item' ? 'Whoever has the item' : 'Whoever has the trait',
+      hint: choice || hostName ? undefined : 'Whoever has the item',
       disabled: listed(requirement),
     };
   };
@@ -213,121 +193,6 @@ export function RequirementRowsField({
     </div>
   );
 
-  const chip = (
-    requirement: TraitRequirement,
-    state: ConditionState | undefined,
-    edit: { remove: () => void; replace: (next: TraitRequirement) => void; accepts: (next: TraitRequirement) => boolean },
-  ) => {
-    // The rule reads "not Paladin"; a Not chip shows its target, "Paladin", behind the NOT mark.
-    const ruleLabel = labelPlaceholders(state?.text ?? '', placeholders);
-    const targetText = requirement.not ? textOf(flipped(requirement)) : state?.text ?? '';
-    const targetLabel = labelPlaceholders(targetText, placeholders);
-    const unresolved = !!state?.unresolved;
-    const mark = requirement.not && <><span className="text-meta font-semibold tracking-wide">NOT</span>{' '}</>;
-    // A stat chip shows the stat's name, with the comparison in its controls rather than in the text.
-    const stat = requirement.kind === 'stat' ? requirement : null;
-    const tail = stat ? ` ${statTail(stat)}` : '';
-    const statName = targetText.endsWith(tail) ? targetText.slice(0, targetText.length - tail.length) : targetText;
-    // An item chip shows the item's name, with its State and identity checks in their controls.
-    const item = requirement.kind === 'item' && !unresolved ? requirement : null;
-    const itemTail = item ? itemChecks(item) : '';
-    const itemName = itemTail && targetText.endsWith(itemTail) ? targetText.slice(0, targetText.length - itemTail.length) : targetText;
-    // A time chip is its daypart toggles behind the NOT mark.
-    const time = requirement.kind === 'time' ? requirement : null;
-    // A World Option chip edits a choice's value or a number's comparison in place; a boolean's text says on or off.
-    // A weather chip is its kind toggles behind the NOT mark.
-    const weatherReq = requirement.kind === 'weather' && options.weatherKinds ? requirement : null;
-    // An Opening chip is its grouped pick list behind the NOT mark.
-    const openingReq = requirement.kind === 'opening' && options.openings ? requirement : null;
-    const optionReq = requirement.kind === 'option' ? requirement : null;
-    const optionDef = optionReq && !unresolved ? worldOptions.find((o) => o.requirement.id === optionReq.id)?.worldOption : undefined;
-    const optionEdits = optionReq && optionDef && optionDef.type !== 'boolean' ? { req: optionReq, def: optionDef } : null;
-    const grouped = stat || time || weatherReq || openingReq || item || optionEdits;
-    // A number Option Condition flips by its operator, so it has no Not toggle.
-    const flips = optionReq?.operator === undefined;
-    return (
-      <span
-        role={grouped ? 'group' : undefined}
-        aria-label={grouped ? ruleLabel : undefined}
-        data-unresolved={unresolved || undefined}
-        data-not={requirement.not || undefined}
-        className={cn(
-          'inline-flex max-w-full items-center gap-0.5 rounded-full border bg-secondary py-0.5 pl-2.5 pr-1 text-label',
-          grouped && 'flex-wrap gap-y-1',
-          (time || weatherReq) && 'flex-nowrap rounded-2xl',
-          requirement.not && 'border-dashed',
-          unresolved && 'border-destructive text-destructive',
-        )}
-      >
-        {time ? (
-          <>{mark}<TimeConditionControls requirement={time} accepts={edit.accepts} onChange={edit.replace} /></>
-        ) : weatherReq ? (
-          <>{mark}<WeatherConditionControls requirement={weatherReq} kinds={options.weatherKinds ?? []} accepts={edit.accepts} onChange={edit.replace} /></>
-        ) : openingReq ? (
-          <>{mark}<OpeningConditionControls requirement={openingReq} groups={options.openings ?? []} accepts={edit.accepts} onChange={edit.replace} /></>
-        ) : optionEdits ? (
-          <>
-            <span className="min-w-0 truncate">
-              {mark}<PlaceholderText text={optionEdits.def.type === 'choice' ? `${optionEdits.def.name} is` : optionEdits.def.name} placeholders={placeholders} />
-            </span>
-            <span className="ml-1.5 inline-flex items-center gap-1.5 text-foreground">
-              <OptionConditionControls option={optionEdits.def} requirement={optionEdits.req} accepts={edit.accepts} onChange={edit.replace} />
-            </span>
-          </>
-        ) : optionReq ? (
-          <span className="min-w-0 truncate"><PlaceholderText text={state?.text ?? ''} placeholders={placeholders} /></span>
-        ) : stat ? (
-          <>
-            <span className="min-w-0 truncate">{mark}<PlaceholderText text={statName} placeholders={placeholders} /></span>
-            <span className="ml-1.5 inline-flex items-center gap-1.5 text-foreground">
-              <StatConditionControls
-                requirement={stat}
-                accepts={edit.accepts}
-                onChange={edit.replace}
-              />
-            </span>
-          </>
-        ) : item ? (
-          <>
-            <span className="min-w-0 truncate">{mark}<PlaceholderText text={itemName} placeholders={placeholders} /></span>
-            <span className="ml-1.5 inline-flex items-center gap-1.5 text-foreground">
-              <ItemConditionControls requirement={item} accepts={edit.accepts} onChange={edit.replace} />
-            </span>
-          </>
-        ) : unresolved || requirement.kind === 'item' || requirement.kind === 'weather' || requirement.kind === 'opening' || !opens(requirement) ? (
-          <span className="min-w-0 truncate">{mark}{targetLabel}</span>
-        ) : (
-          <button
-            type="button"
-            className="min-w-0 truncate rounded-sm hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-            onClick={() => onOpen(requirement)}
-          >
-            {mark}<PlaceholderText text={targetText} placeholders={placeholders} />
-          </button>
-        )}
-        {flips && <Tip tip={requirement.not ? 'Require it instead' : 'Require it to be off'}>
-          <button
-            type="button"
-            aria-label={requirement.not ? `Require ${targetLabel} instead` : `Require ${targetLabel} to be off`}
-            aria-pressed={!!requirement.not}
-            disabled={!edit.accepts(flipped(requirement))}
-            className="shrink-0 rounded-full p-0.5 hover:bg-muted disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-            onClick={() => edit.replace(flipped(requirement))}
-          >
-            <ArrowLeftRight className="h-3 w-3" aria-hidden />
-          </button>
-        </Tip>}
-        <button
-          type="button"
-          aria-label={`Remove ${ruleLabel}`}
-          className="shrink-0 rounded-full p-0.5 hover:bg-muted hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-          onClick={edit.remove}
-        >
-          <X className="h-3 w-3" aria-hidden />
-        </button>
-      </span>
-    );
-  };
   const picker = (key: AddTarget, trigger: ReactElement) => (
     <BreadcrumbPicker
       tree={tree}
@@ -343,53 +208,67 @@ export function RequirementRowsField({
     />
   );
 
+  const ctx: ClauseContext = { options, placeholders, offWorld, clausesOf, host: clauseHost, onOpen, opens };
+  const textOf = (requirement: TraitRequirement) => plainText(clauseText(clausesOf(requirement, { host: clauseHost })));
+
   return (
     <div className="space-y-2" role="group" aria-labelledby={labelId}>
       <div className="flex items-center gap-2"><Label id={labelId}>{label}</Label>{labelAside}</div>
       {hint && <Hint>{hint}</Hint>}
       {rows.length > 0 && (
-        <div>
+        <ul className="space-y-0.5">
           {rows.map((row, i) => {
-            const rowText = labelPlaceholders(states[i]?.conditions.map((c) => c.text).join(' and ') ?? '', placeholders);
+            const rowText = row.all.map(textOf).join(' and ');
             return (
               // Rows have no ids; an index key remounts nothing that holds state.
-              <div key={i}>
-                {i > 0 && <Meta as="div" className="py-1 text-center">or</Meta>}
-                <div data-requirement-row="" className="flex flex-wrap items-center gap-1.5 rounded-md border bg-background p-1.5">
-                  {row.all.map((requirement, j) => (
-                    <span key={`${requirement.kind}:${requirement.id}:${requirementOwnerKey(requirementOwnerOf(requirement))}:${j}`} className="inline-flex max-w-full items-center gap-1.5">
-                      {j > 0 && <Meta>and</Meta>}
-                      {chip(requirement, states[i]?.conditions[j], {
-                        remove: () => removeCondition(i, j),
-                        replace: (next) => replaceCondition(i, j, next),
-                        accepts: (next) => canReplace(i, j, next),
-                      })}
-                    </span>
-                  ))}
-                  {picker(i, (
-                    <Button type="button" size="xs" variant="ghost" className="h-7 gap-1">
-                      <Plus className="h-3.5 w-3.5" aria-hidden />And
+              <li key={i}>
+                {i > 0 && <div className="pl-1 text-label leading-7 text-muted-foreground">or</div>}
+                <div data-requirement-row="" className="flex items-start gap-1 rounded px-1 py-0.5 text-label leading-7 hover:bg-muted/40">
+                  <p className="min-w-0 flex-1">
+                    {row.all.map((requirement, j) => (
+                      // One box per Condition: a box that does not fit moves to the next line whole, its "and" with it.
+                      <Fragment key={`${requirement.kind}:${'id' in requirement ? requirement.id : ''}:${requirementOwnerKey(requirementOwnerOf(requirement))}:${j}`}>
+                      {j > 0 && ' '}
+                      <span data-clause="" className="inline-block max-w-full align-top">
+                        <RequirementClause
+                          requirement={requirement} ctx={ctx} first={j === 0}
+                          edit={{ replace: (next) => replaceCondition(i, j, next), accepts: (next) => canReplace(i, j, next) }}
+                        />
+                        <button
+                          type="button" aria-label={`Remove ${textOf(requirement)}`}
+                          className="ml-0.5 inline-flex rounded-full p-0.5 align-middle text-muted-foreground hover:bg-muted hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                          onClick={() => removeCondition(i, j)}
+                        >
+                          <X className="h-3 w-3" aria-hidden />
+                        </button>
+                        {j < row.all.length - 1 ? ' and' : (
+                          <>{' '}{picker(i, <button type="button" aria-label="Add a condition to this row" className={MUTED_SENTENCE_TOKEN_CLASS}>and…</button>)}</>
+                        )}
+                      </span>
+                      </Fragment>
+                    ))}
+                  </p>
+                  <Tip tip="Delete this row">
+                    <Button
+                      type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
+                      aria-label={`Delete row: ${rowText}`} onClick={() => onChange(rows.filter((_, k) => k !== i))}
+                    >
+                      <Trash2 className="h-4 w-4" aria-hidden />
                     </Button>
-                  ))}
-                  <button
-                    type="button"
-                    aria-label={`Remove row ${rowText}`}
-                    className="ml-auto shrink-0 rounded-sm p-1 text-muted-foreground hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-                    onClick={() => onChange(rows.filter((_, k) => k !== i))}
-                  >
-                    <X className="h-3.5 w-3.5" aria-hidden />
-                  </button>
+                  </Tip>
                 </div>
-              </div>
+              </li>
             );
           })}
-        </div>
+        </ul>
       )}
-      {picker('new', (
-        <Button type="button" size="sm" variant="outline" className="h-7 gap-1">
-          <Plus className="h-3.5 w-3.5" aria-hidden />{rows.length ? 'Or Another Way' : 'Add Requirement'}
-        </Button>
-      ))}
+      <div className="pl-1 text-label leading-7">
+        {picker('new', (
+          <button type="button" aria-label={rows.length ? 'Add another way' : undefined} className={MUTED_SENTENCE_TOKEN_CLASS}>
+            {rows.length ? 'or…' : 'Add a requirement…'}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

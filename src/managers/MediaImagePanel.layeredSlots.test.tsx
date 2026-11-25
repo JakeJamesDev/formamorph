@@ -122,7 +122,7 @@ describe('A Layered Image in an entity gallery slot', () => {
     expect(framed()).toHaveTextContent(new RegExp(`^Fen Rig·Layered Image·2 Layers·${size}`));
     const actions = within(framed()).getAllByRole('button').map((b) => b.textContent);
     expect(actions.slice(0, 2)).toEqual(['Download', 'Edit Layers']);
-    expect(within(framed()).getByRole('button', { name: 'Add Requirement' })).toBeInTheDocument();
+    expect(within(framed()).getByRole('button', { name: 'Add a requirement…' })).toBeInTheDocument();
     // The action row's Edit Layers is the only one; the gallery leaves its own to the host.
     expect(panel().querySelectorAll('[data-edit-layers]')).toHaveLength(1);
   });

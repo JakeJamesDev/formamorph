@@ -612,8 +612,9 @@ export interface ClausePart {
   attach?: true;
 }
 
-/** The record a Condition with no owner sits on. An entity's id lets a Condition on global scope drop its subject (Q25). */
-export type ClauseHost = { kind: 'entity'; id?: string; name?: string } | { kind: 'world' } | { kind: 'persona' };
+/** The record a Condition with no owner sits on. An entity's id lets a Condition on global scope drop its subject (Q25).
+ *  An item's image rule reads the owner of its Item Instance. */
+export type ClauseHost = { kind: 'entity'; id?: string; name?: string } | { kind: 'world' } | { kind: 'persona' } | { kind: 'item' };
 
 export interface ClauseView {
   /** Default: an entity with no name. */
@@ -676,7 +677,7 @@ function buildClauseReader(idx: Index): ClauseReader {
   /** The scope a Condition on `host` reads from; null for an entity with no id. */
   const fromOf = (host: ClauseHost): GateScopeTree | null => {
     if (host.kind === 'world' || host.kind === 'persona') return idx.globalTree;
-    if (host.id === undefined) return null;
+    if (host.kind === 'item' || host.id === undefined) return null;
     return idx.owners.get(host.id)?.owner ?? { id: host.id, name: host.name ?? '', traits: [], groups: [] };
   };
 
@@ -696,6 +697,7 @@ function buildClauseReader(idx: Index): ClauseReader {
       return { kind: 'none' };
     }
     if (host.kind === 'entity' && host.id !== undefined && isPlayed(host.id)) return { kind: 'you' };
+    if (host.kind === 'item') return { kind: 'named', text: "the item's owner", fixed: true, broken: false };
     const name = host.kind === 'entity' ? host.name : undefined;
     return name ? { kind: 'named', text: name, fixed: false, broken: false } : { kind: 'named', text: 'this entity', fixed: true, broken: false };
   };

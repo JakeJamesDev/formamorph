@@ -698,7 +698,7 @@ The gate on a trait: a list of Requirement Rows. The trait is available when it 
 _Avoid_: prerequisite, lock (a Locked trait is one whose gate fails), rule (a rule is Test Bench's word)
 
 **Requirement Row**:
-One alternative in a Requirement. A row holds when every Condition in it holds ("and"). Rows join by "or". A row has at least one Condition; removing the last one removes the row. The editor adds a Condition to a row with **And** and a row with **Or Another Way**.
+One alternative in a Requirement. A row holds when every Condition in it holds ("and"). Rows join by "or". A row has at least one Condition; removing the last one removes the row. The editor reads each row as one sentence. The muted "and…" at the end of a sentence adds a Condition to that row, and the muted "or…" after the last row adds a row.
 _Avoid_: clause, branch, group (a group is a trait group)
 
 **Condition**:

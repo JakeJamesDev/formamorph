@@ -82,7 +82,7 @@ describe('Media tab Map Background', () => {
     const bench = open();
     fireEvent.click(section().querySelector<HTMLElement>('[data-media-card="stack"]')!);
     fireEvent.click(inPanel().getByRole('button', { name: 'Image 2' }));
-    fireEvent.click(within(framed()!).getByRole('button', { name: 'Add Requirement' }));
+    fireEvent.click(within(framed()!).getByRole('button', { name: 'Add a requirement…' }));
 
     expect(await screen.findByText('Persona Stats')).toBeInTheDocument();
     fireEvent.click((await screen.findAllByRole('option', { name: /^Health/ }))[0]);

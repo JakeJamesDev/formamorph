@@ -185,7 +185,7 @@ describe('the Media tab image panel and the editor', () => {
       expect(framed()).toHaveTextContent(/^Image 5/);
 
       // The new image holds the selection, so an edit to it returns here on undo.
-      fireEvent.click(within(framed()!).getByRole('button', { name: 'Add Requirement' }));
+      fireEvent.click(within(framed()!).getByRole('button', { name: 'Add a requirement…' }));
       fireEvent.click(await screen.findByRole('option', { name: /^Health/ }));
       openEditorTab(/^Overview$/);
       await undo();
@@ -198,7 +198,7 @@ describe('the Media tab image panel and the editor', () => {
     it('shows a rule set in the panel on the Profile tab', async () => {
       const bench = open();
       fireEvent.click(card('Entities', 'stack'));
-      fireEvent.click(inPanel().getByRole('button', { name: 'Add Requirement' }));
+      fireEvent.click(inPanel().getByRole('button', { name: 'Add a requirement…' }));
       fireEvent.click(await screen.findByRole('option', { name: /^Health/ }));
       expect(wick(bench).images![0].requires).toHaveLength(1);
 
@@ -213,7 +213,7 @@ describe('the Media tab image panel and the editor', () => {
       fireEvent.click(inPanel().getByRole('button', { name: 'Go to Odd Wick' }));
       fireEvent.click(screen.getByRole('button', { name: 'Image 2, has a Visibility rule' }));
       fireEvent.click(frameRule());
-      fireEvent.click(await screen.findByRole('button', { name: /^Remove row/ }));
+      fireEvent.click(await screen.findByRole('button', { name: /^Delete row: / }));
       expect(wick(bench).images![1].requires).toBeUndefined();
       fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
 
@@ -221,8 +221,8 @@ describe('the Media tab image panel and the editor', () => {
       fireEvent.click(card('Entities', 'stack'));
       fireEvent.click(tile('Image 2'));
 
-      expect(within(framed()!).queryByRole('button', { name: /^Remove row/ })).toBeNull();
-      expect(within(framed()!).getByRole('button', { name: 'Add Requirement' })).toBeInTheDocument();
+      expect(within(framed()!).queryByRole('button', { name: /^Delete row: / })).toBeNull();
+      expect(within(framed()!).getByRole('button', { name: 'Add a requirement…' })).toBeInTheDocument();
     });
 
     it("hides the frame's rule button in the panel, which edits the rule itself, and keeps it on the Profile tab", () => {
@@ -230,7 +230,7 @@ describe('the Media tab image panel and the editor', () => {
       fireEvent.click(card('Entities', 'stack'));
       fireEvent.click(tile(/^Image 2/));
       expect(panel()!.querySelector('[data-image-rule-button]')).toBeNull();
-      expect(within(framed()!).getByRole('button', { name: /^Remove row/ })).toBeInTheDocument();
+      expect(within(framed()!).getByRole('button', { name: /^Delete row: / })).toBeInTheDocument();
 
       fireEvent.click(inPanel().getByRole('button', { name: 'Go to Odd Wick' }));
       fireEvent.click(screen.getByRole('button', { name: 'Image 2, has a Visibility rule' }));

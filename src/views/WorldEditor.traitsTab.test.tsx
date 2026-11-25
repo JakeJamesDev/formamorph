@@ -256,14 +256,15 @@ describe('a requirement that opens an entity', () => {
   const selectedRowText = () => document.querySelector('[data-editor-row-selected]')?.textContent;
 
   describe('the Requires field', () => {
-    it('opens the target trait from its chip', () => {
+    it('opens the target trait from its target token', async () => {
       renderWorldEditorBench(WORLD, 'advanced');
       selectTrait('Plate Armor');
-      fireEvent.click(within(requiresField()).getByRole('button', { name: 'Paladin' }));
+      fireEvent.click(within(requiresField()).getByRole('button', { name: 'Target: Paladin' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Open Paladin' }));
       expect(selectedRowText()).toBe('Paladin');
     });
 
-    it('opens a group chip\'s group and a playing-as chip\'s entity', () => {
+    it('opens a group Condition\'s group and a persona Condition\'s entity', async () => {
       const world = benchEditorWorld({
         ...WORLD,
         traits: WORLD.traits.map((t) => (t.id === 't-plate'
@@ -272,11 +273,13 @@ describe('a requirement that opens an entity', () => {
       } as Partial<World>);
       renderWorldEditorBench(world, 'advanced');
       selectTrait('Plate Armor');
-      fireEvent.click(within(requiresField()).getByRole('button', { name: 'any Class' }));
+      fireEvent.click(within(requiresField()).getByRole('button', { name: 'Target: Class' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Open Class' }));
       expect(selectedRowText()).toBe('Class');
 
       selectTrait('Plate Armor');
-      fireEvent.click(within(requiresField()).getByRole('button', { name: 'playing as Sir Aldric' }));
+      fireEvent.click(within(requiresField()).getByRole('button', { name: 'Target: Sir Aldric' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Open Sir Aldric' }));
       expect(screen.getByRole('tab', { name: /Entities/ })).toHaveAttribute('aria-selected', 'true');
       expect(selectedRowText()).toContain('Sir Aldric');
     });
@@ -414,12 +417,13 @@ describe('owned traits and the Entities tab', () => {
   });
 
   describe('requirements across owners', () => {
-    it('reads a world requirement on an owned trait by name, and opens it', () => {
+    it('reads a world requirement on an owned trait by name, and opens it', async () => {
       renderWorldEditorBench(WORLD, 'advanced');
       openTab(/Traits/);
       fireEvent.click(treeRow('Wild')!);
       openTraitFieldsTab('Availability');
-      fireEvent.click(screen.getByRole('button', { name: 'Paladin' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Target: Paladin' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Open Paladin' }));
       expect(selectedRowText()).toBe('Paladin');
     });
   });

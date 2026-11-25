@@ -1,78 +1,68 @@
 import { describe, expect, it } from 'vitest';
-import { useState } from 'react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { TooltipProvider } from '@/components/ui/tooltip';
-import { RequirementRowsField } from './RequirementRowsField';
-import { conditionTexts, requirementOptions, ruleStates, NO_ACTIVE, type GateInput } from '@/lib/traitGates';
+import { ADD_FIRST, ADD_TO_ROW, EMPTY_INPUT, FieldHarness, sentences, writtenRows } from '@/test/requirementRows';
+import type { GateInput } from '@/lib/traitGates';
 import type { TraitRequirementRow } from '@/types';
 
-const base: GateInput = { global: { traits: [], groups: [] }, owners: [], active: NO_ACTIVE, entities: [], persona: { source: 'none' } };
-
-/** The field over the real rule text, the real options and the real row states, with edits that land. */
-function Harness({ initial = [], kinds }: { initial?: TraitRequirementRow[]; kinds?: GateInput['weatherKinds'] }) {
-  const input: GateInput = { ...base, ...(kinds && { weatherKinds: kinds }) };
-  const [rows, setRows] = useState(initial);
-  return (
-    <TooltipProvider>
-      <RequirementRowsField
-        rows={rows} states={ruleStates(input, null, rows)} placeholders={[]} options={requirementOptions(input, 'a')}
-        textOf={conditionTexts(input)} onChange={setRows} onOpen={() => {}}
-      />
-      <output data-testid="rows">{JSON.stringify(rows)}</output>
-    </TooltipProvider>
-  );
-}
-
-const rows = (): TraitRequirementRow[] => JSON.parse(screen.getByTestId('rows').textContent!);
-const kind = (name: string) => within(screen.getByRole('toolbar', { name: 'Weather' })).getByRole('button', { name });
 const ALLOWED = ['clear', 'rain', 'storm'] as const;
+
+/** The field over the real clauses and options, with the world's weather kinds when it has any. */
+const field = (initial: TraitRequirementRow[] = [], kinds?: GateInput['weatherKinds']) =>
+  render(<FieldHarness input={{ ...EMPTY_INPUT, ...(kinds && { weatherKinds: kinds }) }} initial={initial} />);
+/** Opens the Condition's token, whose popover holds the kind toggles. */
+const openToken = () => fireEvent.click(screen.getByRole('button', { name: /^Edit The weather/ }));
+const kind = (name: string) => within(screen.getByRole('toolbar', { name: 'Weather' })).getByRole('button', { name });
 
 describe('a weather Condition in the rows editor', () => {
   it('is offered only while Weather is on', async () => {
-    const { unmount } = render(<Harness />);
-    fireEvent.click(screen.getByRole('button', { name: 'Add Requirement' }));
+    const { unmount } = field();
+    fireEvent.click(screen.getByRole('button', { name: ADD_FIRST }));
     expect(screen.queryByRole('option', { name: /^Weather/ })).toBeNull();
     unmount();
-    render(<Harness kinds={ALLOWED} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Add Requirement' }));
+    field([], ALLOWED);
+    fireEvent.click(screen.getByRole('button', { name: ADD_FIRST }));
     expect(await screen.findByRole('option', { name: /^Weather/ })).toBeInTheDocument();
   });
 
-  it('adds an empty, red chip with no owner page, listing only the allowed kinds', async () => {
-    render(<Harness kinds={ALLOWED} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Add Requirement' }));
+  it('adds an empty, broken token with no owner page, listing only the allowed kinds', async () => {
+    field([], ALLOWED);
+    fireEvent.click(screen.getByRole('button', { name: ADD_FIRST }));
     fireEvent.click(await screen.findByRole('option', { name: /^Weather/ }));
-    expect(rows()).toEqual([{ all: [{ kind: 'weather', kinds: [] }] }]);
+    expect(writtenRows()).toEqual([{ all: [{ kind: 'weather', kinds: [] }] }]);
+    const token = screen.getByRole('button', { name: 'Edit The weather is pick the weather' });
+    expect(token).toHaveAccessibleDescription('No weather is picked.');
+    openToken();
     expect(kind('Rain')).toHaveAttribute('aria-pressed', 'false');
-    expect(screen.getByRole('toolbar', { name: 'Weather' }).closest('[data-unresolved]')).not.toBeNull();
     expect(within(screen.getByRole('toolbar', { name: 'Weather' })).queryByRole('button', { name: 'Snow' })).toBeNull();
   });
 
   it('edits the kinds in list order and lets the last one go off', () => {
-    render(<Harness kinds={ALLOWED} initial={[{ all: [{ kind: 'weather', kinds: ['storm'] }] }]} />);
+    field([{ all: [{ kind: 'weather', kinds: ['storm'] }] }], ALLOWED);
+    openToken();
     expect(kind('Storm')).toBeEnabled();
     fireEvent.click(kind('Clear'));
-    expect(rows()).toEqual([{ all: [{ kind: 'weather', kinds: ['clear', 'storm'] }] }]);
+    expect(writtenRows()).toEqual([{ all: [{ kind: 'weather', kinds: ['clear', 'storm'] }] }]);
     fireEvent.click(kind('Storm'));
-    expect(rows()).toEqual([{ all: [{ kind: 'weather', kinds: ['clear'] }] }]);
+    expect(writtenRows()).toEqual([{ all: [{ kind: 'weather', kinds: ['clear'] }] }]);
     fireEvent.click(kind('Clear'));
-    expect(rows()).toEqual([{ all: [{ kind: 'weather', kinds: [] }] }]);
+    expect(writtenRows()).toEqual([{ all: [{ kind: 'weather', kinds: [] }] }]);
   });
 
   it('flips to Not and back, keeping its kinds, and edits them while negated', () => {
-    render(<Harness kinds={ALLOWED} initial={[{ all: [{ kind: 'weather', kinds: ['rain'] }] }]} />);
-    fireEvent.click(screen.getByRole('button', { name: /to be off$/ }));
-    expect(rows()).toEqual([{ all: [{ kind: 'weather', kinds: ['rain'], not: true }] }]);
-    expect(screen.getByText('NOT')).toBeInTheDocument();
+    field([{ all: [{ kind: 'weather', kinds: ['rain'] }] }], ALLOWED);
+    openToken();
+    fireEvent.click(screen.getByRole('button', { name: 'Change to “is not”' }));
+    expect(writtenRows()).toEqual([{ all: [{ kind: 'weather', kinds: ['rain'], not: true }] }]);
+    expect(sentences()).toEqual(['The weather is not Rain and…']);
     fireEvent.click(kind('Storm'));
-    expect(rows()).toEqual([{ all: [{ kind: 'weather', kinds: ['rain', 'storm'], not: true }] }]);
-    fireEvent.click(screen.getByRole('button', { name: /instead$/ }));
-    expect(rows()[0].all[0]).not.toHaveProperty('not');
+    expect(writtenRows()).toEqual([{ all: [{ kind: 'weather', kinds: ['rain', 'storm'], not: true }] }]);
+    fireEvent.click(screen.getByRole('button', { name: 'Change to “is”' }));
+    expect(writtenRows()[0].all[0]).not.toHaveProperty('not');
   });
 
   it('a row takes one weather Condition', async () => {
-    render(<Harness kinds={ALLOWED} initial={[{ all: [{ kind: 'weather', kinds: ['rain'] }] }]} />);
-    fireEvent.click(screen.getByRole('button', { name: 'And' }));
+    field([{ all: [{ kind: 'weather', kinds: ['rain'] }] }], ALLOWED);
+    fireEvent.click(screen.getByRole('button', { name: ADD_TO_ROW }));
     expect(await screen.findByRole('option', { name: /^Weather/ })).toHaveAttribute('aria-disabled', 'true');
   });
 });

@@ -22,6 +22,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **See live weather through a Weather Mask while you paint it, and open any mask from the Media tab.** Pick Rain, Snow, Storm or Bright Sun to check the mask. The Media tab's Edit button opens the brush editor over an image that uses the mask.
     - **Each location image in the World Editor now has a Weather Mask button that holds every mask action.** Paint, upload, choose or remove a mask there. Show Mask tints the image blue where the weather shows.
     - **Zoom in with the mouse wheel while you paint a Weather Mask, and switch tools with B and E.** Ctrl+wheel sizes the brush, a middle-button drag pans, and 0 or Fit shows the whole image.
+  - **The World Editor's Requires field reads each row as a sentence.** Select an owner, a verb or a target to change it in place. A new condition starts with no owner.
 
 ### Minor Changes
 

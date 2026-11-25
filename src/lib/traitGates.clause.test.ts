@@ -140,6 +140,12 @@ describe('the no-owner subject (Q11, Q25)', () => {
     expect(author({ kind: 'trait', id: 'Paladin' }, { host: { kind: 'persona' } })).toBe('the player has Paladin');
     expect(player({ kind: 'trait', id: 'Paladin' }, { host: { kind: 'persona' } })).toBe('you have Paladin');
   });
+
+  it("reads the item's owner on an item's image rule, a global target included", () => {
+    expect(author({ kind: 'trait', id: 'Paladin' }, { host: { kind: 'item' }, sentenceStart: true })).toBe("The item's owner has Paladin");
+    expect(author({ kind: 'stat', id: 'gold', operator: '>=', value: 5, unit: 'raw' }, { host: { kind: 'item' } })).toBe("the item's owner's Gold is at least 5");
+    expect(author({ kind: 'item', id: 'lantern', status: 'owned' }, { host: { kind: 'item' } })).toBe("the item's owner owns Lantern");
+  });
 });
 
 describe('the Condition clause, player view (Q18)', () => {

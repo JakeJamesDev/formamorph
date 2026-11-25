@@ -686,7 +686,7 @@ It differs from the Searchable Group Picker. That pattern is a Dialog for an unb
 - **Search.** The search field always shows. It matches a row's name and its full breadcrumb, with no sorting.
 - **Rows.** Rows keep the order of the matching editor tab. A group is never a row. It shows only as a breadcrumb segment.
 - **Hint.** A row can carry a right-aligned hint that is not a location. A hint never collapses and has no tooltip.
-- **Caller page.** A caller can replace the list with its own page, such as Add Requirement's owner page.
+- **Caller page.** A caller can replace the list with its own page, such as the Requires field's owner page for an item.
 - **Check column.** A picker with a value reserves a check column. Every row that holds the value shows a check.
 
 ### Drill-down
@@ -730,7 +730,7 @@ Arrow keys move through rows, Enter picks the row or opens a page, and Escape cl
 | --- | --- |
 | Trigger, popover, list, rows, collapse and tooltip | `BreadcrumbPicker` in [`breadcrumb-picker.tsx`](../src/components/ui/breadcrumb-picker.tsx) |
 | Code Template slots | `StatCodeTemplateDialog` in [`StatCodeTemplateDialog.tsx`](../src/components/modals/StatCodeTemplateDialog.tsx) |
-| Add Requirement (reference build) | [`TraitRequiresField.tsx`](../src/components/editor/TraitRequiresField.tsx) |
+| The Requires field's add picker (reference build) | [`TraitRequiresField.tsx`](../src/components/editor/TraitRequiresField.tsx) |
 | Isolated reference | [`BreadcrumbPickerReference.tsx`](../src/components/design-system/BreadcrumbPickerReference.tsx) |
 
 Open `#dev?modal=designSystem&tab=breadcrumb-picker`. The reference uses sample traits and local state. It never reads or writes a world.
@@ -1896,11 +1896,18 @@ Open `#dev?modal=designSystem&tab=connection-widget` for both values of the mark
 - 🔗 **Look.** A dotted-underline button in the sentence's own text, with an accent fill on hover and a focus ring.
 - 💬 **Editor.** A click opens a popover with that part's editor. It aligns to the token's start, standard or wide.
 - 🏷️ **Label.** The button's spoken label names the part and its value, such as *Time: Morning*.
+- 🔁 **Flip.** A yes-or-no part, such as *has* / *doesn't have*, flips on one click with no popover.
+- 📋 **List.** A part picked from a list opens a searchable pick list; a pick closes it.
+- ⚠️ **Broken.** A part that points at nothing reads red with a warning icon, and its tooltip says why.
+- 🪟 **Modal.** The Requires field's token popovers are always modal, so the wheel scrolls them inside another popover or a dialog.
+- ➕ **Muted.** An add control in the sentence, such as *and…*, uses the muted token look.
 
 | Need | Component |
 | --- | --- |
 | Token with its popover | `SentenceToken` in [`sentence-token.tsx`](../src/components/ui/sentence-token.tsx) |
-| Token look on another button | `SENTENCE_TOKEN_CLASS` in [`sentence-token.tsx`](../src/components/ui/sentence-token.tsx) |
+| Token that flips | `SentenceFlipToken` in [`sentence-token.tsx`](../src/components/ui/sentence-token.tsx) |
+| Token with a pick list | `SentenceListToken` in [`sentence-token.tsx`](../src/components/ui/sentence-token.tsx) |
+| Token look on another button | `SENTENCE_TOKEN_CLASS`, `MUTED_SENTENCE_TOKEN_CLASS` in [`sentence-token.tsx`](../src/components/ui/sentence-token.tsx) |
 
 Open `#dev?modal=designSystem&tab=routine-sentences` to see it in the routine sentences.
 
