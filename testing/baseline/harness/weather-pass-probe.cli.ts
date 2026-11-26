@@ -12,6 +12,7 @@
 //   noTraps  — the text request with the trap line ablated: the in-batch control that weighs that line
 //   alt      — the schema request with the system prompt read from --alt <file>, for iterating a candidate
 //   altText  — the text request with the --alt prompt
+//   wide     — the schema request offering every kind: the control for a long offer crowding the older cases
 //
 // Cases: `change` cases have a right new kind; `hold` cases (traps and quiet scenes) want the weather unchanged.
 // The `open-` cases are the page-one read: no weather before the passage, and Clear when the scene shows none.
@@ -32,6 +33,7 @@ import { emptyTurnMaterial } from '@/lib/turnPipeline/turnPlan';
 import { TEST_PROMPTS, testInput } from '@/lib/turnPipeline/turnTestInputs';
 import { PROMPT_SAMPLER_PINS } from '@/lib/promptSamplers';
 import type { ChatMessage, WeatherKind } from '@/types';
+import { ALL_WEATHER_KINDS } from '@/lib/weather';
 
 const args = process.argv.slice(2);
 const argVal = (flag: string, fallback: string) => {
@@ -46,7 +48,7 @@ const only = argVal('--only', '');
 const SEED = 424242;
 const TRAP_LINE = /^- Weather in a figure of speech.*\n/m;
 
-type Arm = 'schema' | 'text' | 'noTraps' | 'alt' | 'altText';
+type Arm = 'schema' | 'text' | 'noTraps' | 'alt' | 'altText' | 'wide';
 const ALT = argVal('--alt', '');
 const ALT_PROMPT = ALT ? readFileSync(ALT, 'utf8').trimEnd() : '';
 const ARMS: Arm[] = argVal('--arms', '') ? (argVal('--arms', '').split(',') as Arm[]) : ['schema', 'text', 'noTraps', ...(ALT ? ['alt' as const, 'altText' as const] : [])];
@@ -56,6 +58,9 @@ const isAltArm = (arm: Arm) => arm === 'alt' || arm === 'altText';
 type Case = { id: string; kind: 'change' | 'hold'; current: WeatherKind | null; offered: WeatherKind[]; action: string; narration: string; expect: WeatherKind };
 const ALL: WeatherKind[] = ['clear', 'rain', 'snow', 'storm', 'brightSun'];
 const NIGHT: WeatherKind[] = ['clear', 'rain', 'snow', 'storm'];
+const FULL: WeatherKind[] = [...ALL_WEATHER_KINDS];
+/** The `wide` arm's offer: every kind, without Bright Sun where the case is at night. */
+const widened = (offered: readonly WeatherKind[]) => FULL.filter((k) => k !== 'brightSun' || offered.includes('brightSun'));
 const CASES: Case[] = [
   { id: 'rain-starts', kind: 'change', current: 'clear', offered: ALL, expect: 'rain', action: 'I keep walking toward the mill.',
     narration: 'The first drops strike the dust of the road, then more, until a steady rain is drumming on your hood and running off the brim. The mill wheel ahead turns grey behind the falling water.' },
@@ -89,6 +94,31 @@ const CASES: Case[] = [
     narration: 'The guard at the gate looks you over. "Storm coming tonight, they say," he grunts, and waves you through into the quiet market square.' },
   { id: 'sun-at-night', kind: 'hold', current: 'clear', offered: NIGHT, expect: 'clear', action: 'I look up at the sky.',
     narration: 'The stars are out, hard and bright, and the moon throws your shadow across the courtyard. The night air is still and cool.' },
+  // The newer kinds, always offered in full: each has a scene that shows it and a near miss that does not.
+  { id: 'blizzard-starts', kind: 'change', current: 'snow', offered: FULL, expect: 'blizzard', action: 'I push on toward the ridge hut.',
+    narration: 'The wind rises to a howl. Snow drives sideways into your face, so thick you cannot see the poles marking the trail, and every gust shoves you a step off the path.' },
+  { id: 'hail-starts', kind: 'change', current: 'rain', offered: FULL, expect: 'hail', action: 'I run for the barn.',
+    narration: 'The rain turns hard and white. Pellets of ice bounce off the yard and rattle on the tin roof, stinging your hands as you sprint for the barn door.' },
+  { id: 'fog-rolls-in', kind: 'change', current: 'clear', offered: FULL, expect: 'fog', action: 'I follow the shore path.',
+    narration: 'A grey fog rolls in off the water. Within minutes the far bank is gone, the lighthouse is a smudge, and you can barely see the path a few steps ahead.' },
+  { id: 'sandstorm-hits', kind: 'change', current: 'clear', offered: FULL, expect: 'sandstorm', action: 'I keep the camels moving.',
+    narration: 'A brown wall rises on the horizon and races toward the caravan. Then it is on you: sand hisses through the air, stinging your eyes, and the sun dims to a dull coin.' },
+  { id: 'ash-falls', kind: 'change', current: 'clear', offered: FULL, expect: 'ashfall', action: 'I look toward the mountain.',
+    narration: 'The mountain rumbles. Grey flakes start drifting down over the village, coating the roofs and the well, and the air tastes of cinders.' },
+  { id: 'leaves-fall', kind: 'change', current: 'clear', offered: FULL, expect: 'fallingLeaves', action: 'I walk through the orchard.',
+    narration: 'A cool breeze moves through the orchard and the trees let go. Red and gold leaves whirl down all around you, skittering across the path and settling in drifts.' },
+  { id: 'gentle-snow', kind: 'change', current: 'clear', offered: FULL, expect: 'snow', action: 'I step out into the courtyard.',
+    narration: 'Snow is falling softly over the courtyard, large flakes drifting straight down in the windless air and settling on the fountain.' },
+  { id: 'thunder-rain', kind: 'change', current: 'clear', offered: FULL, expect: 'storm', action: 'I head down to the docks.',
+    narration: 'Thunder rolls over the harbor and lightning flickers behind the clouds. Rain lashes the docks and the moored boats strain at their ropes.' },
+  { id: 'dust-kicked', kind: 'hold', current: 'clear', offered: FULL, expect: 'clear', action: 'I watch the cart go.',
+    narration: 'The cart rattles off down the dry road, its wheels kicking up a trail of dust that hangs a moment in the still air and settles.' },
+  { id: 'one-leaf', kind: 'hold', current: 'clear', offered: FULL, expect: 'clear', action: 'I sit on the bench.',
+    narration: 'You sit on the stone bench. A single leaf twirls down from the oak and lands at your feet. The garden is quiet and the sky is clear.' },
+  { id: 'campfire-smoke', kind: 'hold', current: 'clear', offered: FULL, expect: 'clear', action: 'I build up the fire.',
+    narration: 'You feed another log to the fire. Smoke curls up past the tent and drifts away under a sky full of stars.' },
+  { id: 'cold-breath', kind: 'hold', current: 'clear', offered: FULL, expect: 'clear', action: 'I wait by the gate.',
+    narration: 'Your breath fogs in the cold morning air while you wait. The sky is pale and cloudless over the frosted fields.' },
 ];
 
 const prompts = (arm: Arm) => ({
@@ -97,8 +127,10 @@ const prompts = (arm: Arm) => ({
   weatherUser: defaultWeatherUserPrompt,
 });
 
+const offerOf = (arm: Arm, c: Case) => (arm === 'wide' ? widened(c.offered) : c.offered);
+
 function request(arm: Arm, c: Case) {
-  const input = testInput({ prompts: prompts(arm), isGameStarted: c.current !== null, weather: { current: c.current ?? 'clear', offered: c.offered, startWeatherSet: false } }, { weatherTextPass: isTextArm(arm) });
+  const input = testInput({ prompts: prompts(arm), isGameStarted: c.current !== null, weather: { current: c.current ?? 'clear', offered: offerOf(arm, c), startWeatherSet: false } }, { weatherTextPass: isTextArm(arm) });
   const material = { ...emptyTurnMaterial({ action: c.action, effectiveAction: c.action, turnId: c.id, baseCtx: {}, destinations: [] }), narration: c.narration };
   const built = weatherPass.buildRequest(input, material);
   const messages = [{ role: 'system', content: built.systemPrompt }, ...built.messages] as ChatMessage[];
@@ -128,10 +160,10 @@ async function complete(arm: Arm, c: Case, seed: number): Promise<string> {
 }
 
 /** The World Weather the commit leaves: the pass's answer when it is offered, else the current weather. */
-const resulting = (raw: string, c: Case): { weather: WeatherKind; invalid: boolean } => {
+const resulting = (raw: string, c: Case, offered: readonly WeatherKind[]): { weather: WeatherKind; invalid: boolean } => {
   const answer = weatherPass.parseResponse(raw, emptyTurnMaterial({ action: '', effectiveAction: '', turnId: '', baseCtx: {}, destinations: [] }));
   const named = /no change|"shown"\s*:\s*"no"|^\W*no\b/i.test(raw) || answer !== null;
-  return { weather: answer && c.offered.includes(answer) ? answer : c.current ?? 'clear', invalid: !named || (answer !== null && !c.offered.includes(answer)) };
+  return { weather: answer && offered.includes(answer) ? answer : c.current ?? 'clear', invalid: !named || (answer !== null && !offered.includes(answer)) };
 };
 
 type Result = { arm: Arm; case: string; run: number; raw: string; weather: WeatherKind; invalid: boolean; ok: boolean };
@@ -146,7 +178,7 @@ await Promise.all(Array.from({ length: pool }, async () => {
     const { arm, c, run } = jobs[next++];
     try {
       const raw = await complete(arm, c, SEED + run);
-      const { weather, invalid } = resulting(raw, c);
+      const { weather, invalid } = resulting(raw, c, offerOf(arm, c));
       const ok = weather === c.expect;
       results.push({ arm, case: c.id, run, raw, weather, invalid, ok });
       console.log(`[${arm}] ${c.id} #${run} ${ok ? 'ok' : 'MISS'} -> ${weather}${invalid ? ' INVALID' : ''}${args.includes('--show') ? ` · ${JSON.stringify(raw)}` : ''}`);
