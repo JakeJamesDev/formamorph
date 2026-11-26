@@ -8,13 +8,13 @@ import { zipSync } from 'fflate';
 import { BUILDS, CUDA_ASSETS, bumpPin, cudaAssetsOf, fetchLlamaServer, listAssets, platformsFromArgs, readPin, verifyCudaPin, zipUnpackedSize } from './fetchLlamaServer.mjs';
 
 // The asset names of the pinned tag's real release, recorded with the API. A pin bump re-records this file.
-const recorded = async () => JSON.parse(await readFile(path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures', 'llamaServerAssets.b12199.json'), 'utf8'));
+const recorded = async () => JSON.parse(await readFile(path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures', 'llamaServerAssets.b12756.json'), 'utf8'));
 
 const json = (status, body) => new Response(JSON.stringify(body), { status });
 
 describe('asset-name mapping', () => {
   it('pins the tag the recorded asset list was taken from', async () => {
-    expect(await readPin()).toBe('b12199');
+    expect(await readPin()).toBe('b12756');
   });
 
   it('maps every desktop build to an asset the pinned release has', async () => {

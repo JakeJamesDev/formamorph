@@ -1,12 +1,12 @@
 {
-  "tag": "b12199",
+  "tag": "b12756",
   "cuda": {
     "assets": [
       {
-        "name": "llama-b12199-bin-win-cuda-13.5-x64.zip",
-        "digest": "sha256:1cb9b561b0d62b3ecc48ecbff2003fa656bdbbf71bead919ae92110df7f961a5",
-        "size": 170781058,
-        "unpackedSize": 224502557
+        "name": "llama-b12756-bin-win-cuda-13.5-x64.zip",
+        "digest": "sha256:20a5e815e517b58129459479991300aa247ff4dd19133d51f4b3e072833c1afc",
+        "size": 226921365,
+        "unpackedSize": 283653917
       },
       {
         "name": "cudart-llama-bin-win-cuda-13.5-x64.zip",

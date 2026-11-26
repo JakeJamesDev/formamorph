@@ -2,7 +2,7 @@
 
 All notable changes to Formamorph. This fork's first line is **2.0.0** — a full TypeScript rebuild of the upstream JavaScript app ([FieryLionite's Formamorph](https://fierylion.itch.io/formamorph), ~v1.2) — with feature parity as the baseline plus new features on top.
 
-> ✅ **3.0.0 – 3.8.0 are released** (collapsed below). Releases 2.0.0 – 2.19.x are in [Changelog-v2](Changelog-v2). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **3.8.0** — the latest released version.
+> ✅ **3.0.0 – 3.9.0 are released** (collapsed below). Releases 2.0.0 – 2.19.x are in [Changelog-v2](Changelog-v2). New work lands under **🚧 In Progress** — an unnumbered section, so changes accumulate without pinning a version. When a batch earns a release its section is marked **Released** and collapsed, and a fresh In Progress opens. `package.json` reads **3.9.0** — the latest released version.
 
 Each release groups changes as **Major** / **Minor**, then **Added** / **Removed** / **Fixed**, and within those by audience: 👤 user-facing · 🛠️ developer tooling · ⚙️ backend. Where two or more additions touch the same feature, they sit together under that feature's name. Fixes sit under the part of the app they touch, such as **In Game** or **World Editor**.
 
@@ -10,7 +10,12 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 ## 🚧 In Progress
 
-_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.8.0** (just released below)._
+_Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.9.0** (just released below)._
+
+---
+
+<details>
+<summary><strong>✅ 3.9.0 — Released 2026-11-25</strong> — Weather with Weather Masks — Requirement Sentences — Layered Images — Opening names and times — character diaries in Memories (click to expand)</summary>
 
 ### Major Changes
 
@@ -18,12 +23,29 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **👤 User-facing**
   - **Weather:**
+    - **Every world now has weather, and locations can be Sheltered.** Pick one kind for weather that never changes, such as endless rain, or several to let the story change it. There are 11 kinds, from Fog to Sandstorm. New worlds start Clear. Openings can set their own Weather.
+    - **The current weather now shows behind the game panels.** Each kind has its own motion over the location image, such as wind-driven storm rain, swirling blizzard snow or drifting fog, except in Sheltered locations. Turn it off with Weather Background in Display settings.
+    - **An icon beside the in-game clock now shows the current weather.** Clear shows a sun by day and a moon at night. Hover the clock to read the weather's name, and whether you are sheltered from it.
+    - **The AI now changes a world's weather when the story does, and tells the narrator the weather every turn.** In a world with two or more kinds, the AI picks the new weather from them after each turn. Bright Sun turns Clear at nightfall. With no Default Weather, the AI reads the start weather from page one.
+    - **Scripts can read and set the weather with `world.weather`.** A set from an item or switch script between turns changes the weather at once; a set during a turn lands when the turn ends. A kind the world doesn't allow stops the script with an error.
+    - **Traits and image Visibility rules can now require the weather.** Pick Weather under Add Requirement, then turn on the kinds that count. Require it to be off makes it Not. It shows while the world allows two or more kinds.
+    - **A short effect now plays over the game when the weather changes.** Raindrops run down the screen, a blizzard whites it out, a dust wall sweeps across or the sun breaks through, then it stops. Turn it off with **Weather Foreground** in Display settings.
+    - **A location's background image can carry a Weather Mask, a grayscale image that sets where the weather shows over it.** Day and night images can share one. The Media tab lists masks.
+    - **Each location image in the World Editor has a Weather Mask button that holds every mask action.** In Advanced mode, paint, upload, choose or remove a mask there. Show Mask tints the image blue where the weather shows.
     - **Paint a Weather Mask over a location's background image in the World Editor.** Paint opens the image full screen with a brush, eraser, soft edge, fill, clear and invert. Edit reopens a mask; a shared mask changes for every image that uses it.
     - **See live weather through a Weather Mask while you paint it, and open any mask from the Media tab.** Pick any weather to check the mask. The Media tab's Edit button opens the brush editor over an image that uses the mask.
-    - **Each location image in the World Editor now has a Weather Mask button that holds every mask action.** Paint, upload, choose or remove a mask there. Show Mask tints the image blue where the weather shows.
     - **Zoom in with the mouse wheel while you paint a Weather Mask, and switch tools with B and E.** Ctrl+wheel sizes the brush, a middle-button drag pans, and 0 or Fit shows the whole image.
-  - **The World Editor's Requires field reads each row as a sentence.** Select an owner, a verb or a target to change it in place. A new condition starts with no owner.
-  - **Item, time, weather and Opening requirements in the Requires field read as sentences with tokens.** An item has an owner, a verb with four forms, a target and its State and identity checks. A time, weather or Opening sets its choices in one token.
+    - **The weather shows through a window in a Sheltered location whose image has a Weather Mask.** In open locations, the weather stays off what the mask hides.
+    - **The Test Bench warns when a Weather Mask has a different shape from its picture.** In Advanced mode, the Issues tab names the location, the image and the mask, because the mask would stretch.
+  - **Requirement Sentences:**
+    - **The World Editor's Requires field reads each row as a sentence.** Select an owner, a verb or a target to change it in place. A new condition starts with no owner.
+    - **The World Editor's Requires field edits stat and World Option conditions one word at a time.** Change the owner, stat, comparison, number or unit in place. A World Option swaps for another Option.
+    - **Item, time, weather and Opening requirements in the Requires field read as sentences with tokens.** An item has an owner, a verb with four forms, a target and its State and identity checks. A time, weather or Opening sets its choices in one token.
+    - **A Blueprint's Requires field now reads its own traits and stats as "This entity".** Every Requires field lists Blueprint traits and stats under Blueprints, apart from Global. A condition on one has no owner unless you pick an entity.
+    - **The Requires field's add menu now has the same pages for traits, groups and stats.** Global replaces World, and Persona adds "The player has …". A pick from an entity's page names that entity. Owner lists offer only holders, and a condition without a valid owner shows red.
+    - **Code cards, library updates, image rules and the Test Bench read a requirement in the Requires field's words.** A rule has one wording everywhere. A broken on/off World Option value shows red with a warning.
+    - **An image rule's "Shown while" line ends with a period, and a refused equip joins its rows with a comma.** A world trait on a location's image rule reads "Paladin is active". A broken World Option value says why.
+    - **A trait's or location's lock line now reads as full sentences.** It says "you have Knight and you don't have Paladin" where it said "Knight and not Paladin". Your persona reads as "you", and other entities keep their names.
 
 ### Minor Changes
 
@@ -39,25 +61,15 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A Layer in a Layered Image can fade or bounce when it shows another image.** Pick None, Dissolve or Jelly, with the Mascot's sliders, and press Play in the editor. Jelly fades instead under reduced motion.
     - **A character keeps its Layered Images in the library, in published listings and in exported cards.** Its tile, listing and card show each Layer's first image.
     - **The Test Bench flags Layered Images that break.** Four findings name the image and the Layer: a size mismatch, a bottom Layer that can show nothing, a rule naming a missing trait or stat, and no Layers.
-    - **Renaming a Layer updates only the scripts that name its own Layered Image.** When another Layered Image has a Layer of that name too, **Update Code References** lists the references it can't tell apart, and you check the ones to change.
-    - **Edit Layers opens a Layered Image from an entity's gallery, in the Media tab and the entity editor.** In the Media tab its slot shows its name, Layer count, size and Download, like an image.
+    - **Renaming a Layer updates the scripts that name its Layered Image.** When another Layered Image has a Layer of that name too, **Update Code References** lists the references it can't tell apart, and you check the ones to change.
+    - **Edit Layers opens a Layered Image from an entity's gallery, in the Media tab and the entity editor.** It is a button on the large image's corner. In the Media tab its slot shows its name, Layer count, size and Download, like an image.
     - **Deleting a Layered Image in the World Editor deletes the images only it uses.** The confirm names them first. An image stays when another Layered Image uses it or any slot or gallery links it. One undo brings it all back.
     - **The Media tab hides images that only a Layered Image uses.** They show inside the Layered Image's editor, and a search for their name lists the Layered Image.
-  - **Weather:**
-    - **Every world now has weather, and locations can be Sheltered.** Pick one kind for weather that never changes, such as endless rain, or several to let the story change it. There are 11 kinds, from Fog to Sandstorm. New worlds start Clear. Openings can set their own Weather.
-    - **The current weather now shows behind the game panels.** Each kind has its own motion over the location image, such as wind-driven storm rain, swirling blizzard snow or drifting fog, except in Sheltered locations. Turn it off with Weather Background in Display settings.
-    - **An icon beside the in-game clock now shows the current weather.** Clear shows a sun by day and a moon at night. Hover the clock to read the weather's name, and whether you are sheltered from it.
-    - **The AI now changes a world's weather when the story does, and tells the narrator the weather every turn.** In a world with two or more kinds, the AI picks the new weather from them after each turn. Bright Sun turns Clear at nightfall. With no Default Weather, the AI reads the start weather from page one.
-    - **Scripts can read and set the weather with `world.weather`.** A set from an item or switch script between turns changes the weather at once; a set during a turn lands when the turn ends. A kind the world doesn't allow stops the script with an error.
-    - **Traits and image Visibility rules can now require the weather.** Pick Weather under Add Requirement, then turn on the kinds that count. It shows while the world allows two or more kinds.
-    - **A short effect now plays over the game when the weather changes.** Raindrops run down the screen, a blizzard whites it out, a dust wall sweeps across or the sun breaks through, then it stops. Turn it off with **Weather Foreground** in Display settings.
-    - **A location's background image can carry a Weather Mask that sets where the weather shows over it.** In Advanced mode, upload a grayscale image or choose one the world has. Day and night images can share one. The Media tab lists masks.
-    - **The weather now shows through a window in a Sheltered location whose image has a Weather Mask.** In open locations, the weather stays off what the mask hides. The mask lines up with the background image on any screen.
-    - **The Test Bench warns when a Weather Mask has a different shape from its picture.** In Advanced mode, the Issues tab names the location, the image and the mask, because the mask would stretch.
   - **Drawn Opening:**
     - **Openings can have names.** Type a name at the top of an opening's card. A blank name shows the owner and place, such as "Aki · Opening 2".
+    - **Openings can set the time of day a story starts.** Each opening has a Time, and the world has a Default Time. The AI no longer reads the time when one is set.
     - **A saved game now remembers which opening started it.** Re-rolling page one onto another opening updates it. If the author later deletes that opening, the save reads it as none.
-    - **Time and Weather conditions can now be Not.** Select Require it to be off on a time or weather chip. "Not night" holds at every other time of day.
+    - **Time conditions can now be Not.** Select Require it to be off on a time chip. "Not night" holds at every other time of day.
     - **Scripts can read which opening started the game with `opening`.** It holds the opening's name, owner, kind, time, weather and text on every turn. Pick the opening to test with beside Test Code or in the Test Bench, on every tab but Opening.
     - **Renaming an Opening updates the scripts that compare `opening.name` with its old name.** When another owner has an Opening of that name, **Update Code References** lists the comparisons it can't tell apart. The code editor marks a name no Opening has.
     - **Traits and image Visibility rules can now require the opening a game started from.** Pick Opening under Add Requirement, then check the openings that count. It holds all game, and players don't see it in requirement lines.
@@ -66,15 +78,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **You can edit, delete and regenerate a character's diary entries in Memories.** The character acts on your version from the next turn. Show Hidden Entries lists deleted entries, with Restore. Reset All My Changes resets only the open diary.
     - **A character's popup links to their diary.** A line under the description, such as "Bram's diary · 5 entries", opens that diary in Memories. It shows only when the diary has entries the AI reads.
     - **Regenerating a memory in Memories shows the new text first.** Keep stores it. Discard leaves the memory as it was.
-  - **Requirement Sentences:**
-    - **A trait's or location's lock line now reads as full sentences.** It says "you have Knight and you don't have Paladin" where it said "Knight and not Paladin". Your persona reads as "you", and other entities keep their names.
-    - **The World Editor's Requires field edits stat and World Option conditions one word at a time.** Change the owner, stat, comparison, number or unit in place. A World Option swaps for another Option.
-    - **Code cards, library updates, image rules and the Test Bench read a requirement in the Requires field's words.** A rule has one wording everywhere. A broken on/off World Option value shows red with a warning.
-    - **An image rule's "Shown while" line ends with a period, and a refused equip joins its rows with a comma.** A world trait on a location's image rule reads "Paladin is active". A broken World Option value says why.
-    - **A Blueprint's Requires field now reads its own traits and stats as "This entity".** Every Requires field lists Blueprint traits and stats under Blueprints, apart from Global. A condition on one has no owner, and you can still pick an entity.
-    - **The Requires field's add menu now has the same pages for traits, groups and stats.** Global replaces World, and Persona adds "The player has …". A pick from an entity's page names that entity. Owner lists offer only holders, and a condition without a valid owner shows red.
   - **Script entries now tell you what they are.** Every entity, location, item, stat, trait and other entry in a script reads a read-only `category`, such as "entity" or "itemInstance".
-  - **Openings can set the time of day a story starts.** Each opening has a Time, and the world has a Default Time. The AI no longer reads the time when one is set.
   - **Edit your Avatar's look during play from the pencil on your Avatar.** Change sliders, colors and hair, or switch Avatars when the world allows it. The new look stays after a rollback or a regenerate.
   - **Strangers show their image in the entity view, under the name you know them by.** Click one in the Entities tab to show them, and click again to open their popup. With no one picked, the view can open on a stranger.
 - **⚙️ Backend**
@@ -97,15 +101,19 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **The arrows on a character's picture now stay in place as you page through pictures of different shapes.**
     - **The Previous and Next buttons on a turn's scene images now stay in place as you page through them.** An image narrower than the turn's widest shows with bars at its sides.
     - **With Character Mentions on, a quote speaker you fix now carries over to later turns.** When the story calls that character by the same title, like "the Alpha", their quotes take their color. A title you gave to two characters is not used. Undoing the turn takes it back.
-  - **Renaming a stat, trait, placeholder or location in the World Editor now updates the item scripts that name it.** When another character that can hold the item has a stat of that name, you check which `owner` references to change.
+    - **In Memories, a memory's buttons stay in place when you pin, edit or rewrite it.** Before, a new button pushed the others aside.
+  - **World Editor:**
+    - **Renaming a stat, trait, placeholder or location in the World Editor now updates the item scripts that name it.** When another character that can hold the item has a stat of that name, you check which `owner` references to change.
+    - **The tile strip in a World Editor image gallery now stays still as you select tiles.** The name row stays on every slot. The Visibility rule is now a button on the large image's corner, and its tooltip reads the rule.
+  - **Community Creations:**
+    - **Large Supporter-only worlds, such as Sunmeadow Town, now download from Community Creations.** The download no longer times out, and the installed world stays close to the author's size.
+    - **A world download that runs out of storage now says the storage is full.** The message shows the space Formamorph uses and the space left, and asks you to delete worlds or saves you no longer need.
   - **Auto-Load in the desktop app now loads the top model in the Installed list.** An Auto-Load tag marks it. Drag a model to the top to choose it, including a model from an Additional Search Folder.
-  - **Large Supporter-only worlds, such as Sunmeadow Town, now download from Community Creations.** The download no longer times out, and the installed world stays close to the author's size.
-  - **A world download that runs out of storage now says the storage is full.** The message shows the space Formamorph uses and the space left, and asks you to delete worlds or saves you no longer need.
-  - **The tile strip in a World Editor image gallery now stays still as you select tiles.** The name row stays on every slot. Edit Layers and the Visibility rule are now buttons on the large image's corners, and the eye button's tooltip reads the rule.
   - **The help window no longer runs out of tokens on the built-in engine while the model thinks.** With Reasoning off, the model now answers at once. If another AI thinks too long, the error says to raise Max Output under Options in the help window's Prompts settings.
-  - **In Memories, a memory's buttons stay in place when you pin, edit or rewrite it.** Before, a new button pushed the others aside.
   - **On mobile, an open Sections list now scrolls when it's taller than the screen.** Before, the last sections were cut off in Settings, the World Editor and Community Creations.
   - **The World Editor and Community Creations section rails scroll on short windows.** Every tab stays reachable, and the collapse button stays at the bottom.
+
+</details>
 
 ---
 
