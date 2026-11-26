@@ -143,9 +143,11 @@ export const PictureImg = forwardRef<HTMLElement, ImgProps & {
   center?: boolean;
   /** With `crop`, fit the whole canvas inside the box, centered, rather than cover it. */
   contain?: boolean;
-}>(({ src, crop, center, contain, ...props }, ref) => (isLayeredPicture(src)
-  ? <LayeredImg ref={ref} picture={src} crop={crop} center={center} contain={contain} {...props} />
-  : <RemoteImg ref={ref as Ref<HTMLImageElement>} src={src} {...props} />));
+}>(({ src, crop, center, contain, ...props }, ref) => {
+  if (isLayeredPicture(src)) return <LayeredImg ref={ref} picture={src} crop={crop} center={center} contain={contain} {...props} />;
+  // Stored data can hold an object that is no picture; it draws nothing.
+  return typeof src === 'string' ? <RemoteImg ref={ref as Ref<HTMLImageElement>} src={src} {...props} /> : null;
+});
 PictureImg.displayName = 'PictureImg';
 
 /** A card or tile thumbnail: the picture covering its box, a portrait top-anchored as `thumbFit` sets it. */

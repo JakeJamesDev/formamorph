@@ -44,4 +44,22 @@ describe('RootCrashScreen', () => {
     expect(screen.queryByRole('button', { name: 'Export World' })).toBeNull();
     expect(screen.getByText('Reload the app to continue.')).toBeTruthy();
   });
+
+  it('shows the details to select by hand when copying fails', async () => {
+    vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn(() => Promise.reject(new Error('blocked'))) } });
+    Object.defineProperty(document, 'execCommand', { configurable: true, value: vi.fn(() => false) });
+    try {
+      render(<RootCrashScreen error={new TypeError("Cannot read properties of undefined (reading 'map')")} componentStack="at LayerStack" />);
+      expect(screen.queryByRole('textbox', { name: 'Error details' })).toBeNull();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Copy Error Details' }));
+      const details = await screen.findByRole('textbox', { name: 'Error details' });
+      expect((details as HTMLTextAreaElement).value).toContain("Cannot read properties of undefined (reading 'map')");
+      expect((details as HTMLTextAreaElement).value).toContain('at LayerStack');
+      expect(screen.getByRole('status').textContent).toBe("Couldn't copy the text. Select the text below and copy it.");
+    } finally {
+      vi.unstubAllGlobals();
+      Reflect.deleteProperty(document, 'execCommand');
+    }
+  });
 });

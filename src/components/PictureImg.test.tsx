@@ -115,3 +115,12 @@ describe('PictureImg Variant changes', () => {
     expect(looks(container, 'face')).toEqual([{ src: 'data:wink', opacity: '1' }]);
   });
 });
+
+describe('PictureImg with an object that is no picture', () => {
+  it('draws nothing for a Media List link or an empty object', () => {
+    for (const src of [{ mediaId: 'm-cover' }, {}]) {
+      const { container } = render(<PictureImg alt="" src={src as unknown as string} />);
+      expect(container.innerHTML).toBe('');
+    }
+  });
+});

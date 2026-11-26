@@ -38,7 +38,7 @@ export interface LayeredPicture {
 export type Picture = Base64Data | LayeredPicture;
 
 export const isLayeredPicture = (picture: Picture | null | undefined): picture is LayeredPicture =>
-  typeof picture === 'object' && picture !== null;
+  typeof picture === 'object' && picture !== null && picture.kind === 'layered' && Array.isArray(picture.layers);
 
 /** What resolving reads for its subject. */
 export interface LayerReads {

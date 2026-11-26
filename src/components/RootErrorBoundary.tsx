@@ -15,7 +15,7 @@ export class RootErrorBoundary extends Component<{ children: ReactNode }, State>
   }
 
   componentDidCatch(error: unknown, info: ErrorInfo) {
-    console.error('The app crashed:', error);
+    console.error('The app crashed:', error, info.componentStack ?? '');
     this.setState({ failure: { error, componentStack: info.componentStack ?? '' } });
   }
 

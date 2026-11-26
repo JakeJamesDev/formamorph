@@ -571,3 +571,27 @@ describe('a library with unreadable rows', () => {
     expect(await readStore<StoredWorldRecord>(WORLD_STORE)).toEqual([edited]);
   });
 });
+
+describe('a stored cover that is a Media List link', () => {
+  const linked = (id: string) => world(id, {
+    thumbnail: { mediaId: 'm-cover' } as unknown as string,
+    data: {
+      worldOverview: { name: `World ${id}`, thumbnail: { mediaId: 'm-cover' }, mediaList: { 'm-cover': { id: 'm-cover', name: 'Cover', kind: 'image', data: 'data:image/png;base64,Y292ZXI=' } } },
+      stats: [], locations: [], entities: [], traits: [], statUpdates: [],
+    },
+  });
+
+  it('derives metadata whose thumbnail is the linked image data', () => {
+    expect(worldMetaOf(linked('w1')).thumbnail).toBe('data:image/png;base64,Y292ZXI=');
+  });
+
+  it('lists a metadata row that already holds the link with an empty thumbnail', async () => {
+    const db = await openWorldLibrary();
+    const row = { ...worldMetaOf(world('w1')), thumbnail: { mediaId: 'm-cover' } };
+    await promisifyRequest(db.transaction([WORLD_META_STORE], 'readwrite').objectStore(WORLD_META_STORE).put(row));
+    await promisifyRequest(db.transaction([WORLD_STORE], 'readwrite').objectStore(WORLD_STORE).put(world('w1')));
+    db.close();
+    const [listed] = await WorldStorageService.getWorldMetadata();
+    expect(listed.thumbnail).toBe('');
+  });
+});

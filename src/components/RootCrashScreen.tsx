@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Meta } from '@/components/ui/typography';
 import { TriangleAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { copyText } from '@/lib/clipboard';
 import { downloadBlob } from '@/lib/downloadBlob';
 import { crashReportText } from '@/lib/crashReport';
@@ -21,6 +22,7 @@ interface RootCrashScreenProps {
 export function RootCrashScreen({ error, componentStack }: RootCrashScreenProps) {
   const mounted = useMountedRef();
   const [status, setStatus] = useState('');
+  const [uncopied, setUncopied] = useState('');
   // Read once: the reference outlives every provider, so the button does not come and go with renders.
   const [held] = useState(() => {
     const hold = unsavedWorldExportBlock();
@@ -30,8 +32,11 @@ export function RootCrashScreen({ error, componentStack }: RootCrashScreenProps)
   const { world, block } = held;
 
   const copyDetails = async () => {
-    const copied = await copyText(crashReportText(error, componentStack));
-    if (mounted.current) setStatus(copied ? 'Copied' : "Couldn't copy the text");
+    const report = crashReportText(error, componentStack);
+    const copied = await copyText(report);
+    if (!mounted.current) return;
+    setStatus(copied ? 'Copied' : "Couldn't copy the text. Select the text below and copy it.");
+    setUncopied(copied ? '' : report);
   };
 
   const exportWorld = async () => {
@@ -46,7 +51,7 @@ export function RootCrashScreen({ error, componentStack }: RootCrashScreenProps)
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-background p-6 text-foreground">
-      <div className="flex w-full max-w-md flex-col items-center gap-4 rounded-lg border bg-card p-6 text-center text-card-foreground">
+      <div className="relative flex w-full max-w-md flex-col items-center gap-4 rounded-lg border bg-card p-6 text-center text-card-foreground">
         <TriangleAlert className="h-10 w-10 text-warning" aria-hidden />
         <h1 className="text-title font-semibold">Formamorph Stopped Working</h1>
         <p className="text-muted-foreground">
@@ -62,6 +67,14 @@ export function RootCrashScreen({ error, componentStack }: RootCrashScreenProps)
           <Button onClick={() => window.location.reload()}>Reload</Button>
         </div>
         <Meta as="p" role="status" className="min-h-5">{status}</Meta>
+        {/* Hangs below the card, so the buttons stay where they were. */}
+        {uncopied && (
+          <Textarea
+            readOnly autoFocus value={uncopied} aria-label="Error details" size="sm" rows={8}
+            onFocus={(e) => e.currentTarget.select()}
+            className="absolute inset-x-0 top-full mt-2 resize-none font-mono"
+          />
+        )}
       </div>
     </main>
   );

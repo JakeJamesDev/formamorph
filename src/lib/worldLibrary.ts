@@ -95,15 +95,16 @@ function describeBlurb(record: StoredWorldShape): string {
 export function worldMetaOf(record: StoredWorldShape): WorldMetaRecord {
   const content = contentOf(record);
   const overview = content.worldOverview ?? undefined;
+  const stored = typeof record.thumbnail === 'string' ? record.thumbnail : '';
   return {
     id: record.id,
     name: record.name ?? '',
     description: describeBlurb(record),
     author: record.author || '',
     // A remote thumbnail can't render offline and is blocked cross-origin, so the embedded one wins over a URL.
-    thumbnail: (record.thumbnail && !/^https?:\/\//i.test(record.thumbnail))
-      ? record.thumbnail
-      : (coverData(overview ? { thumbnail: overview.thumbnail ?? null, mediaList: overview.mediaList } : undefined) || record.thumbnail || ''),
+    thumbnail: (stored && !/^https?:\/\//i.test(stored))
+      ? stored
+      : (coverData(overview ? { thumbnail: overview.thumbnail ?? null, mediaList: overview.mediaList } : undefined) || stored),
     tags: overview?.tags || [],
     sourceId: record.sourceId,
     dirty: record.dirty,
@@ -125,7 +126,8 @@ export function worldMetaOf(record: StoredWorldShape): WorldMetaRecord {
 /** The list fields alone, as the menu and pickers take them. */
 export function listFieldsOf(meta: WorldMetaRecord): WorldMetadata {
   const { sourceHash: _hash, linkedCopies: _copies, ...fields } = meta;
-  return fields;
+  // A stored row can hold a cover link instead of image data; the card then shows its placeholder.
+  return typeof fields.thumbnail === 'string' ? fields : { ...fields, thumbnail: '' };
 }
 
 /**
