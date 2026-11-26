@@ -88,6 +88,10 @@ const WEATHER_SENTENCES: Record<WeatherKind, string> = {
 export const weatherLine = (weather: WeatherKind, sheltered: boolean): string =>
   (sheltered && weather !== 'clear' ? `${WEATHER_SENTENCES[weather]} You are under shelter from it.` : WEATHER_SENTENCES[weather]);
 
+/** The clock tip's weather: the kind's name, and a Sheltered note while there is weather to shelter from. */
+export const clockWeatherText = (weather: WeatherKind, sheltered: boolean): string =>
+  (sheltered && weather !== 'clear' ? `${WEATHER_LABELS[weather]}, sheltered` : WEATHER_LABELS[weather]);
+
 /** The kinds the Weather Pass may answer with: the allowed kinds, without Bright Sun outside daylight. */
 export const offeredWeatherKinds = (weather: WorldWeather | null | undefined, daylight: boolean): WeatherKind[] =>
   allowedWeatherKinds(weather).filter((kind) => daylight || kind !== 'brightSun');

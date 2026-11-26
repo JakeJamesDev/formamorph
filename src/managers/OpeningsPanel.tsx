@@ -26,7 +26,7 @@ import type { WeatherKind, Daypart, Entity, GameLocation, Opening, OpeningKind, 
 import { DaypartSelect } from '@/components/editor/DaypartSelect';
 import { DAYPART_ICON } from '@/components/editor/daypartIcons';
 import { DAYPART_LABELS } from '@/lib/routineTime';
-import { WEATHER_ICON } from '@/components/editor/weatherIcons';
+import { WEATHER_ICON } from '@/components/weatherIcons';
 import { WEATHER_LABELS } from '@/lib/weather';
 import { WorldInput } from '@/components/editor/WorldField';
 import { fieldFrame, fieldPath } from '@/lib/historyField';

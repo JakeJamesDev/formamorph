@@ -96,6 +96,8 @@ import { gateStates } from '@/lib/traitGates';
 import { worldEntitiesOf } from '@/lib/persona';
 import type { TraitCascade } from './SetupTraitList';
 import { daypartAt, formatAbsolute, formatClock } from '@/lib/gameClock';
+import { clockWeatherText, hasWeather, isDaylight } from '@/lib/weather';
+import { skyWeatherIcon } from '@/components/weatherIcons';
 import { usePlayOpening } from '@/lib/usePlayOpening';
 import { logKind } from '@/lib/playLog';
 import { cn } from "@/lib/utils";
@@ -1672,6 +1674,7 @@ export const RightPanel = ({
   const displayLocation = isViewingPast
     ? (locations.find((l) => l.id === viewLocationId) ?? currentLocation)
     : currentLocation;
+  const showsWeather = hasWeather(gameData?.worldOverview.weather);
 
   React.useEffect(() => {
     if (collapsed || !onShownTab) return;
@@ -1703,8 +1706,11 @@ export const RightPanel = ({
       <CardContent className="flex flex-col h-full overflow-hidden p-4 sm:p-1">
       <div className="mb-4 sm:mb-1 flex-shrink-0 flex flex-col gap-2">
         {/* The daypart is what the prose is written around; the exact clock waits in the tip. */}
-        <Tip tip={formatClock(gameTime, calendar)} labelsChild={false}>
-          <p tabIndex={0} className="self-center rounded-sm text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset">{formatAbsolute(gameTime, calendar)}</p>
+        <Tip tip={showsWeather ? `${formatClock(gameTime, calendar)} · ${clockWeatherText(weather, !!displayLocation?.sheltered)}` : formatClock(gameTime, calendar)} labelsChild={false}>
+          <p tabIndex={0} className="self-center flex items-center gap-1.5 rounded-sm text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset">
+            {showsWeather && React.createElement(skyWeatherIcon(weather, isDaylight(gameTime, calendar)), { className: 'h-4 w-4 shrink-0', 'aria-hidden': true })}
+            {formatAbsolute(gameTime, calendar)}
+          </p>
         </Tip>
         <PersonaRow onChange={onPersonaChange} disabled={actionsBlocked} />
       </div>
