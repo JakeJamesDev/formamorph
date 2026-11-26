@@ -114,7 +114,8 @@ const LayeredImg = forwardRef<HTMLElement, ImgProps & { picture: LayeredPicture;
       {crop
         ? (
           <>
-            <RemoteImg {...img} src={picture.canvas} className="hidden" onError={onError} onLoad={measure} />
+            {/* Eager: a lazy image with display:none never loads, and the stack waits on its size. */}
+            <RemoteImg {...img} loading="eager" src={picture.canvas} className="hidden" onError={onError} onLoad={measure} />
             {fitted}
           </>
         )

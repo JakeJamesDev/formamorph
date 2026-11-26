@@ -33,6 +33,14 @@ describe('PictureImg with a Layered Image', () => {
     expect(box(container, 'p').querySelector<HTMLElement>('img')!.style.filter).toBe('');
   });
 
+  it('loads a cropped picture\'s hidden canvas eagerly, so a lazy caller still learns its size', () => {
+    const { container } = render(<PictureImg alt="" crop loading="lazy" src={stack([layer('p', 'normal', 'data:p')])} />);
+    const canvas = [...container.querySelectorAll('img')].find((img) => img.getAttribute('src') === 'data:base')!;
+    expect(canvas.className).toBe('hidden');
+    expect(canvas.getAttribute('loading')).toBe('eager');
+    expect(box(container, 'p').querySelector('img')!.getAttribute('loading')).toBe('lazy');
+  });
+
   it('isolates the picture so a blend never reaches what sits behind it', () => {
     const { container } = render(<PictureImg alt="" src={stack([layer('p', 'add', 'data:p')])} />);
     expect(container.querySelector('[data-layered-picture]')!.className).toContain('isolate');
