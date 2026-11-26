@@ -1,5 +1,5 @@
 import type { AllowedWeatherKind } from '@/types';
-import { drawGlow, drawWedge, glowSprite, makeSprite, wedgeSprite, type Sprite } from './weatherSprites';
+import { drawGlow, drawSprite, drawWedge, glowSprite, makeSprite, puffSprite, wedgeSprite, type Sprite } from './weatherSprites';
 import { drawLeaf, fleckPath, LEAF_COLORS } from './weatherEffects';
 
 type Rand = () => number;
@@ -13,7 +13,7 @@ export interface ForegroundEffect {
 
 /** How long each kind plays, in seconds. */
 export const FOREGROUND_DURATION: Record<AllowedWeatherKind, number> = {
-  rain: 3.5, snow: 4, storm: 1.6, blizzard: 3.2, hail: 2.8, fog: 4.5, sandstorm: 3.2, ashfall: 3.5, fallingLeaves: 3.5, brightSun: 3,
+  rain: 3.5, snow: 4, storm: 1.6, blizzard: 3.2, hail: 2.8, fog: 2.5, sandstorm: 3.6, ashfall: 4.5, fallingLeaves: 3.5, brightSun: 3,
 };
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
@@ -438,38 +438,98 @@ function whiteout(w: number, h: number, rand: Rand): ForegroundEffect {
   };
 }
 
-/** Hailstones strike the glass: each lands with a white pip and a small star of cracks, then the glass clears. */
+/** Seconds a hailstone takes to fly in to the glass before it strikes. */
+const HAIL_APPROACH = 0.12;
+
+/** A barrage of hail hits the glass: stones fly in, strike with a flash and a spray of ice, and leave stars of cracks. */
 function hailOnGlass(w: number, h: number, rand: Rand): ForegroundEffect {
   const duration = FOREGROUND_DURATION.hail;
-  const hits = Array.from({ length: Math.round(Math.min(60, Math.max(14, (w * h) / 25000))) }, () => ({
-    x: rand() * w, y: rand() * h, r: 1.5 + rand() * 2.5, born: rand() * 1.5,
-    cracks: Array.from({ length: 3 + Math.floor(rand() * 3) }, () => ({ angle: rand() * Math.PI * 2, len: 4 + rand() * 10 })),
+  const hits = Array.from({ length: Math.round(Math.min(40, Math.max(12, (w * h) / 30000))) }, () => ({
+    x: rand() * w, y: rand() * h, r: 5 + rand() * 6,
+    // The square root bunches strikes late, so the barrage builds.
+    at: HAIL_APPROACH + Math.sqrt(rand()) * 1.7,
+    cracks: Array.from({ length: 4 + Math.floor(rand() * 4) }, () => {
+      const angle = rand() * Math.PI * 2;
+      const len = 14 + rand() * 30;
+      return { angle, len, fork: rand() * 0.6 + 0.3, forkAngle: angle + (rand() < 0.5 ? -1 : 1) * (0.4 + rand() * 0.5), forkLen: len * (0.3 + rand() * 0.3) };
+    }),
+    chips: Array.from({ length: 5 + Math.floor(rand() * 4) }, () => ({ angle: rand() * Math.PI * 2, speed: 120 + rand() * 220, r: 1 + rand() * 1.8 })),
   }));
   return {
     duration,
     frame(ctx, t) {
-      const fade = clamp01((duration - t) / 0.9);
+      const fade = clamp01((duration - t) / 0.8);
       if (fade <= 0) return;
       ctx.lineCap = 'round';
       for (const hit of hits) {
-        const age = t - hit.born;
-        if (age < 0) continue;
-        // The strike flashes bright for a moment, then settles to a faint mark.
-        const strike = 1 - clamp01(age / 0.18);
-        const a = fade * (0.55 + 0.45 * strike);
-        ctx.strokeStyle = `rgba(235, 242, 255, ${0.6 * a})`;
-        ctx.lineWidth = 0.8;
-        ctx.beginPath();
-        for (const c of hit.cracks) {
-          const len = c.len * clamp01(age / 0.08);
-          ctx.moveTo(hit.x, hit.y);
-          ctx.lineTo(hit.x + Math.cos(c.angle) * len, hit.y + Math.sin(c.angle) * len);
+        const age = t - hit.at;
+        if (age < -HAIL_APPROACH) continue;
+        if (age < 0) {
+          // The stone flies in toward the glass: it grows and sharpens.
+          const k = 1 + age / HAIL_APPROACH;
+          stone(ctx, hit.x, hit.y, hit.r * (0.3 + 0.7 * k), fade * k);
+          continue;
         }
-        ctx.stroke();
-        drop(ctx, hit.x, hit.y, hit.r * (1 + strike * 0.8), a, 1);
+        const grow = clamp01(age / 0.06);
+        for (const [color, width] of [['20, 28, 40', 2.4], ['240, 247, 255', 1]] as const) {
+          ctx.strokeStyle = `rgba(${color}, ${(color === '20, 28, 40' ? 0.3 : 0.85) * fade})`;
+          ctx.lineWidth = width;
+          ctx.beginPath();
+          for (const c of hit.cracks) {
+            const ex = hit.x + Math.cos(c.angle) * c.len * grow;
+            const ey = hit.y + Math.sin(c.angle) * c.len * grow;
+            ctx.moveTo(hit.x, hit.y);
+            ctx.lineTo(ex, ey);
+            const fx = hit.x + Math.cos(c.angle) * c.len * c.fork * grow;
+            const fy = hit.y + Math.sin(c.angle) * c.len * c.fork * grow;
+            ctx.moveTo(fx, fy);
+            ctx.lineTo(fx + Math.cos(c.forkAngle) * c.forkLen * grow, fy + Math.sin(c.forkAngle) * c.forkLen * grow);
+          }
+          ctx.stroke();
+        }
+        // The strike: a white flash and a ring that spreads and fades.
+        const flash = 1 - clamp01(age / 0.2);
+        if (flash > 0) {
+          glowDisc(ctx, hit.x, hit.y, hit.r * 5, '235, 244, 255', 0.8 * flash * fade, 0.1);
+          ctx.strokeStyle = `rgba(240, 248, 255, ${0.7 * flash * fade})`;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(hit.x, hit.y, hit.r * (1 + age * 18), 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        // Ice chips spray out and fall away.
+        const chipLife = 1 - clamp01(age / 0.45);
+        if (chipLife > 0) {
+          ctx.fillStyle = `rgba(235, 244, 255, ${0.9 * chipLife * fade})`;
+          ctx.beginPath();
+          for (const c of hit.chips) {
+            const cx = hit.x + Math.cos(c.angle) * c.speed * age;
+            const cy = hit.y + Math.sin(c.angle) * c.speed * age + 600 * age * age;
+            ctx.moveTo(cx + c.r, cy);
+            ctx.arc(cx, cy, c.r, 0, Math.PI * 2);
+          }
+          ctx.fill();
+        }
+        // The stone bounces off and drops away, leaving a frosted pip.
+        const bounce = clamp01(age / 0.2);
+        if (bounce < 1) stone(ctx, hit.x, hit.y + 260 * age * age, hit.r * (1 - 0.5 * bounce), fade * (1 - bounce));
+        drop(ctx, hit.x, hit.y, hit.r * 0.45, 0.7 * fade, 1);
       }
     },
   };
+}
+
+/** One hailstone: an icy white ball, lit from the top left. */
+function stone(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, a: number) {
+  if (a <= 0 || r <= 0) return;
+  const g = ctx.createRadialGradient(x - r * 0.35, y - r * 0.35, r * 0.1, x, y, r);
+  g.addColorStop(0, `rgba(255, 255, 255, ${a})`);
+  g.addColorStop(0.7, `rgba(214, 228, 242, ${0.95 * a})`);
+  g.addColorStop(1, `rgba(150, 172, 196, ${0.85 * a})`);
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 /** Fog rolls in from both sides and mists the glass, holds a moment, then thins away. */
@@ -481,11 +541,11 @@ function fogRollIn(w: number, h: number, rand: Rand): ForegroundEffect {
   return {
     duration,
     frame(ctx, t) {
-      const I = envelope(t, duration, 1.4, 1.6);
+      const I = envelope(t, duration, 0.7, 0.9);
       if (I <= 0) return;
       ctx.fillStyle = `rgba(225, 230, 238, ${0.3 * I})`;
       ctx.fillRect(0, 0, w, h);
-      const roll = easeInOut(clamp01(t / 2));
+      const roll = easeInOut(clamp01(t / 1.1));
       for (const b of banks) {
         // Each bank starts past its edge and rolls in toward the middle.
         const edge = b.from < 0 ? -b.rx * 0.6 : w + b.rx * 0.6;
@@ -500,73 +560,121 @@ function fogRollIn(w: number, h: number, rand: Rand): ForegroundEffect {
   };
 }
 
-/** A wall of dust sweeps across the screen: the front passes, sand streaks through the haze, then it settles. */
+/** Grit layers, far to near, as `[share of grains, width, alpha, speed in screen widths per second, length]`. */
+const GRIT_LAYERS = [[0.6, 0.8, 0.45, 1.3, 10], [0.3, 1.5, 0.6, 2, 22], [0.1, 3, 0.4, 3.2, 60]] as const;
+
+/** A wall of dust rolls across the screen: a churning front, the light turning brown behind it, grit racing through, then it thins. */
 function dustFront(w: number, h: number, rand: Rand): ForegroundEffect {
   const duration = FOREGROUND_DURATION.sandstorm;
-  const grains = Array.from({ length: Math.round(Math.min(500, Math.max(150, (w * h) / 3000))) }, () => ({
-    y: rand() * h, len: 8 + rand() * 24, born: 0.2 + rand() * 1.6, speed: (1.1 + rand()) * w,
+  const sweep = 1.6;
+  const puffs = [0, 1, 2].map(() => puffSprite(SAND_FG, rand));
+  // Billows bulge out of the leading edge; more sit behind it to give the wall body.
+  const billows = Array.from({ length: 36 }, (_, i) => ({
+    lead: i < 16, y: ((i % 16) + rand()) / 16 * h * 1.1 - h * 0.05, back: i < 16 ? rand() * w * 0.04 : w * 0.1 + rand() * w * 1.4,
+    size: h * (i < 16 ? 0.16 + rand() * 0.14 : 0.3 + rand() * 0.3), phase: rand() * Math.PI * 2, sprite: Math.floor(rand() * 3),
   }));
-  const sweep = 1.3;
+  // The leading edge churns: three waves at different scales and speeds.
+  const edge = (y: number, t: number) => w * (0.045 * Math.sin((y / h) * 6 + t * 2) + 0.025 * Math.sin((y / h) * 15 - t * 3.1) + 0.012 * Math.sin((y / h) * 33 + t * 5));
+  const total = Math.round(Math.min(420, Math.max(140, (w * h) / 3500)));
+  const grains = GRIT_LAYERS.flatMap(([share, width, alpha, speed, len]) =>
+    Array.from({ length: Math.round(total * share) }, () => ({ y: rand() * h, start: rand() * w * 2, width, alpha, speed: speed * w * (0.8 + rand() * 0.4), len: len * (0.6 + rand() * 0.8) })));
   return {
     duration,
     frame(ctx, t) {
-      const I = envelope(t, duration, 0.4, 1.3);
+      const I = envelope(t, duration, 0.3, 1.2);
       if (I <= 0) return;
-      // The front: a soft-edged tan wall whose leading edge crosses the screen in `sweep` seconds.
-      // The gradient holds its first stop behind the edge, so one fill covers the dust the front has passed.
-      const front = -w * 0.3 + (w * 1.6 * clamp01(t / sweep));
-      const wall = ctx.createLinearGradient(front - w * 0.5, 0, front, 0);
-      wall.addColorStop(0, `rgba(${SAND_FG}, ${0.55 * I})`);
-      wall.addColorStop(1, `rgba(${SAND_FG}, 0)`);
-      ctx.fillStyle = wall;
-      ctx.fillRect(0, 0, w, h);
-      ctx.strokeStyle = `rgba(240, 210, 160, ${0.7 * I})`;
-      ctx.lineWidth = 1.2;
+      const front = -w * 0.3 + w * 1.8 * easeInOut(clamp01(t / sweep));
+      // The dust body: thick behind the front, thinner at its wavy edge. The gradient holds its first stop, so one fill covers it.
+      const body = ctx.createLinearGradient(front - w * 0.5, 0, front, 0);
+      body.addColorStop(0, `rgba(150, 104, 56, ${0.62 * I})`);
+      body.addColorStop(1, `rgba(${SAND_FG}, ${0.3 * I})`);
+      ctx.fillStyle = body;
       ctx.beginPath();
-      for (const g of grains) {
-        const age = t - g.born;
-        if (age < 0) continue;
-        const x = -g.len + age * g.speed;
-        if (x > w + g.len || x > front) continue;
-        ctx.moveTo(x, g.y);
-        ctx.lineTo(x - g.len, g.y - g.len * 0.05);
+      ctx.moveTo(-1, -1);
+      for (let y = 0; y <= h + 12; y += 12) ctx.lineTo(Math.max(-1, front + edge(y, t)), y);
+      ctx.lineTo(-1, h + 12);
+      ctx.closePath();
+      ctx.fill();
+      for (const b of billows) {
+        // Each billow churns: it swells, rolls up and down and pulses.
+        const y = b.y + Math.sin(t * 1.4 + b.phase * 1.3) * h * 0.03;
+        const x = front + edge(y, t) - b.back + Math.sin(t * 2.2 + b.phase) * w * 0.015;
+        if (x < -b.size * 1.5 || x - b.size > w + b.size) continue;
+        const s = b.size * (1 + 0.12 * Math.sin(t * 1.8 + b.phase));
+        const a = I * (b.lead ? 0.85 : 0.55);
+        const sprite = puffs[b.sprite];
+        if (sprite) drawSprite(ctx, sprite, x, y, s * 2, s * 1.4, a);
+        else glowDisc(ctx, x, y, s, SAND_FG, a * 0.5);
       }
-      ctx.stroke();
+      ctx.lineCap = 'round';
+      for (const [, width, alpha] of GRIT_LAYERS) {
+        ctx.strokeStyle = `rgba(236, 200, 148, ${alpha * I})`;
+        ctx.lineWidth = width;
+        ctx.beginPath();
+        for (const g of grains) {
+          if (g.width !== width) continue;
+          // Grit only shows inside the dust, behind the front.
+          const x = ((g.start + t * g.speed) % (w * 2)) - g.len;
+          if (x > front || x > w + g.len) continue;
+          ctx.moveTo(x, g.y);
+          ctx.lineTo(x - g.len, g.y - g.len * 0.08);
+        }
+        ctx.stroke();
+      }
     },
   };
 }
 
 const SAND_FG = '196, 152, 96';
 
-/** The sky dims to gray and ash drifts close past the glass, with a few embers flaring by. */
+/** Ash layers, far to near, as `[share of flecks, color, alpha, size, fall speed]`. */
+const ASH_LAYERS = [[0.6, '176, 170, 164', 0.8, 3.5, 55], [0.35, '70, 64, 60', 0.9, 11, 130]] as const;
+
+/** The sky darkens and glows red from below, ash thickens past the glass, and embers keep rising through it. */
 function ashCloud(w: number, h: number, rand: Rand): ForegroundEffect {
   const duration = FOREGROUND_DURATION.ashfall;
-  const flecks = Array.from({ length: Math.round(Math.min(160, Math.max(40, (w * h) / 9000))) }, () => ({
-    x: rand() * w, y: -20 - rand() * h * 0.3, r: 3 + rand() * 5, fall: 60 + rand() * 90, drift: 20 + rand() * 40, spin: (rand() - 0.5) * 3, phase: rand() * Math.PI * 2,
-  }));
-  const embers = Array.from({ length: 5 }, () => ({
-    x: rand() * w, y: h * (0.6 + rand() * 0.4), r: 6 + rand() * 10, rise: 120 + rand() * 140, born: rand() * 1.6, phase: rand() * Math.PI * 2,
+  const total = Math.round(Math.min(450, Math.max(120, (w * h) / 2300)));
+  // Flecks start spread over the screen and above it, so ash is in view from the first frame.
+  const flecks = ASH_LAYERS.flatMap(([share, color, alpha, size, fall]) => Array.from({ length: Math.round(total * share) }, () => ({
+    color, alpha, x: rand() * w * 1.2 - w * 0.2, y: rand() * h * 1.4 - h * 0.5, r: size * (0.6 + rand() * 0.8), fall: fall * (0.7 + rand() * 0.6),
+    drift: 15 + rand() * 30, spin: (rand() - 0.5) * 3, phase: rand() * Math.PI * 2,
+  })));
+  const embers = Array.from({ length: 16 }, () => ({
+    x: rand() * w, r: 4 + rand() * 7, rise: 90 + rand() * 120, born: rand() * (duration - 1.4), phase: rand() * Math.PI * 2,
   }));
   return {
     duration,
     frame(ctx, t) {
-      const I = envelope(t, duration, 0.8, 1.2);
+      const I = envelope(t, duration, 0.6, 1.2);
       if (I <= 0) return;
-      ctx.fillStyle = `rgba(60, 56, 54, ${0.35 * I})`;
+      // The sky keeps darkening as the cloud settles in.
+      ctx.fillStyle = `rgba(40, 34, 32, ${(0.3 + 0.25 * clamp01(t / 3)) * I})`;
       ctx.fillRect(0, 0, w, h);
-      ctx.fillStyle = `rgba(150, 144, 138, ${0.85 * I})`;
-      ctx.beginPath();
-      for (const f of flecks) fleckPath(ctx, f.x + t * f.drift + Math.sin(t * 1.5 + f.phase) * 12, f.y + t * f.fall, f.r, f.phase + t * f.spin);
-      ctx.fill();
+      const glow = ctx.createLinearGradient(0, h, 0, h * 0.45);
+      glow.addColorStop(0, `rgba(210, 74, 26, ${(0.38 + 0.06 * Math.sin(t * 2.5)) * clamp01(t / 1.5) * I})`);
+      glow.addColorStop(1, 'rgba(200, 72, 28, 0)');
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, h * 0.45, w, h * 0.55);
+      for (const [, color, alpha] of ASH_LAYERS) {
+        ctx.fillStyle = `rgba(${color}, ${alpha * I})`;
+        ctx.beginPath();
+        for (const f of flecks) {
+          if (f.color !== color) continue;
+          fleckPath(ctx, f.x + t * f.drift + Math.sin(t * 1.5 + f.phase) * 12, f.y + t * f.fall, f.r, f.phase + t * f.spin);
+        }
+        ctx.fill();
+      }
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       for (const e of embers) {
         const age = t - e.born;
         if (age < 0) continue;
-        const flicker = 0.6 + 0.4 * Math.sin(age * 11 + e.phase);
+        const y = h + 20 - age * e.rise;
+        if (y < -20) continue;
+        const flicker = (0.6 + 0.4 * Math.sin(age * 11 + e.phase)) * clamp01(age / 0.3);
         const x = e.x + Math.sin(age * 2 + e.phase) * 30;
-        glowDisc(ctx, x, e.y - age * e.rise, e.r * 1.4, '255, 140, 60', 0.7 * I * flicker, 0.12);
-        glowDisc(ctx, x, e.y - age * e.rise, e.r * 0.35, '255, 220, 150', I * flicker, 0.4);
+        glowDisc(ctx, x, y, e.r * 1.4, '255, 140, 60', 0.7 * I * flicker, 0.12);
+        glowDisc(ctx, x, y, e.r * 0.35, '255, 220, 150', I * flicker, 0.4);
       }
       ctx.restore();
     },

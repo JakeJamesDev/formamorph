@@ -1,6 +1,6 @@
 import type { AllowedWeatherKind } from '@/types';
 import type { WeatherBackgroundMode } from '@/lib/weatherView';
-import { drawGlow, drawWedge, glowSprite, wedgeSprite, type Sprite } from './weatherSprites';
+import { drawGlow, drawSprite, drawWedge, glowSprite, puffSprite, wedgeSprite, type Sprite } from './weatherSprites';
 
 /** The background modes that draw. */
 export type DrawMode = Exclude<WeatherBackgroundMode, 'none'>;
@@ -16,7 +16,7 @@ type Rand = () => number;
 /** Particles per kind, as `[CSS pixels per particle, min, max]`; kinds without a particle field draw their own. */
 const DENSITY: Partial<Record<AllowedWeatherKind, readonly [number, number, number]>> = {
   rain: [3500, 40, 320], snow: [6000, 30, 220], storm: [2500, 60, 420], blizzard: [2200, 80, 600], hail: [5000, 30, 260],
-  sandstorm: [2000, 80, 700], ashfall: [7000, 25, 180], fallingLeaves: [30000, 10, 60],
+  sandstorm: [2000, 80, 700], ashfall: [2200, 80, 500], fallingLeaves: [30000, 10, 60],
 };
 
 /** Particles for a canvas of `width` × `height` CSS pixels: scales with area, so a small screen draws fewer. */
@@ -233,39 +233,44 @@ function hailEffect(count: number, calm: boolean, w: number, h: number, rand: Ra
 interface Bank { x: number; y: number; rx: number; ry: number; speed: number; alpha: number; phase: number }
 
 /** Wide soft banks of fog that drift slowly across the scene and breathe, densest near the ground. */
+/** Fog layers, far to near, as `[wisps, speed in px/s, width share, alpha, top of the band]`: nearer moves faster. */
+const FOG_LAYERS = [[4, 12, 0.9, 0.5, 0.25], [4, 28, 0.7, 0.45, 0.4], [3, 55, 0.55, 0.4, 0.5]] as const;
+
 function fogEffect(calm: boolean, w: number, h: number, rand: Rand): WeatherEffect {
   const pace = calm ? 0.35 : 1;
-  const banks: Bank[] = Array.from({ length: 9 }, (_, i) => ({
-    x: rand() * w, y: h * (0.25 + (i / 9) * 0.8 + rand() * 0.1), rx: w * (0.35 + rand() * 0.35), ry: h * (0.08 + rand() * 0.1),
-    speed: (rand() < 0.5 ? -1 : 1) * (6 + rand() * 14), alpha: 0.14 + rand() * 0.12, phase: rand() * Math.PI * 2,
-  }));
-  let sprite: Sprite | null = null;
+  const dir = rand() < 0.5 ? -1 : 1;
+  const wisps: Bank[] = FOG_LAYERS.flatMap(([n, speed, size, alpha, top]) => Array.from({ length: n }, () => ({
+    x: rand() * w, y: h * (top + rand() * (1 - top)), rx: w * size * (0.8 + rand() * 0.5), ry: h * (0.18 + rand() * 0.14),
+    speed: dir * speed * (0.85 + rand() * 0.3), alpha: alpha * (0.8 + rand() * 0.4), phase: rand() * Math.PI * 2,
+  })));
+  let sprites: (Sprite | null)[] = [];
   let spriteColor = '';
   let time = 0;
   return {
     frame(ctx, dt, colors) {
       time += dt * pace;
-      // The plain background draws in the theme's color, so the sprite follows a theme switch.
-      if (spriteColor !== colors.snow) { sprite = glowSprite(colors.snow); spriteColor = colors.snow; }
+      // The plain background draws in the theme's color, so the sprites follow a theme switch.
+      if (spriteColor !== colors.snow) { sprites = [0, 1, 2].map(() => puffSprite(colors.snow, rand)); spriteColor = colors.snow; }
       const ground = ctx.createLinearGradient(0, h * 0.35, 0, h);
       ground.addColorStop(0, `rgba(${colors.snow}, 0)`);
       ground.addColorStop(1, `rgba(${colors.snow}, 0.22)`);
       ctx.fillStyle = ground;
       ctx.fillRect(0, 0, w, h);
-      for (const b of banks) {
+      wisps.forEach((b, i) => {
         b.x = wrap(b.x + b.speed * dt * pace, w, b.rx);
-        const a = b.alpha * (0.75 + 0.25 * Math.sin(time * 0.3 + b.phase));
+        // Each wisp slowly swells and thins as it drifts.
+        const breathe = 1 + 0.1 * Math.sin(time * 0.35 + b.phase);
+        const a = b.alpha * (0.65 + 0.35 * Math.sin(time * 0.5 + b.phase * 1.7));
+        const sprite = sprites[i % 3];
         if (sprite) {
-          ctx.globalAlpha = a;
-          ctx.drawImage(sprite, b.x - b.rx, b.y - b.ry, b.rx * 2, b.ry * 2);
-          ctx.globalAlpha = 1;
-          continue;
+          drawSprite(ctx, sprite, b.x, b.y, b.rx * 2 * breathe, b.ry * 2 * breathe, a);
+          return;
         }
-        ctx.fillStyle = `rgba(${colors.snow}, ${a * 0.5})`;
+        ctx.fillStyle = `rgba(${colors.snow}, ${a * 0.25})`;
         ctx.beginPath();
         ctx.ellipse(b.x, b.y, b.rx, b.ry, 0, 0, Math.PI * 2);
         ctx.fill();
-      }
+      });
     },
   };
 }
@@ -320,6 +325,9 @@ function sandstormEffect(count: number, calm: boolean, w: number, h: number, ran
 
 const ASH = '168, 162, 156';
 const EMBER = '255, 140, 60';
+const ASH_HAZE = '70, 62, 58';
+const ASH_CLOUD = '38, 32, 30';
+const ASH_NEAR_COLOR = '92, 86, 82';
 
 interface Ash { x: number; y: number; r: number; fall: number; spin: number; angle: number; phase: number }
 interface Ember { x: number; y: number; r: number; rise: number; phase: number }
@@ -335,41 +343,67 @@ export function fleckPath(ctx: CanvasRenderingContext2D, x: number, y: number, r
   ctx.closePath();
 }
 
-/** Gray ash tumbling slowly down, with a few embers drifting up and flickering through it. */
+/** Share of ash flakes that fall close, large and soft; the rest are small, far and dense. */
+const ASH_NEAR = 0.15;
+
+/** A volcano nearby: a warm gray haze, a dull red glow low in the sky, dense far ash, a few large near flakes and bright embers. */
 function ashfallEffect(count: number, calm: boolean, w: number, h: number, rand: Rand): WeatherEffect {
   const pace = calm ? 0.35 : 1;
-  const flakes: Ash[] = Array.from({ length: count }, () => ({
-    x: rand() * w, y: rand() * h, r: 1 + rand() * 2.4, fall: 18 + rand() * 30, spin: (rand() - 0.5) * 3, angle: rand() * Math.PI, phase: rand() * Math.PI * 2,
-  }));
-  const embers: Ember[] = Array.from({ length: Math.max(3, Math.round(count * 0.06)) }, () => ({
-    x: rand() * w, y: rand() * h, r: 1 + rand() * 1.5, rise: 12 + rand() * 25, phase: rand() * Math.PI * 2,
+  const flake = (near: boolean): Ash => ({
+    x: rand() * w, y: rand() * h, r: near ? 4.5 + rand() * 4 : 2 + rand() * 1.8, fall: near ? 40 + rand() * 30 : 14 + rand() * 18,
+    spin: (rand() - 0.5) * 3, angle: rand() * Math.PI, phase: rand() * Math.PI * 2,
+  });
+  const nearCount = Math.max(3, Math.round(count * ASH_NEAR));
+  const far = Array.from({ length: count - nearCount }, () => flake(false));
+  const near = Array.from({ length: nearCount }, () => flake(true));
+  const embers: Ember[] = Array.from({ length: Math.max(2, Math.round(count * 0.025)) }, () => ({
+    x: rand() * w, y: rand() * h, r: 1.4 + rand() * 1.4, rise: 14 + rand() * 24, phase: rand() * Math.PI * 2,
   }));
   const glow = glowSprite(EMBER, 0.15);
   let time = 0;
+  const flakes = (ctx: CanvasRenderingContext2D, list: Ash[], dt: number, sway: number) => {
+    ctx.beginPath();
+    for (const f of list) {
+      f.y = wrap(f.y + f.fall * dt * pace, h, 8);
+      f.angle += f.spin * dt * pace;
+      fleckPath(ctx, f.x + Math.sin(time * 0.6 + f.phase) * sway, f.y, f.r, f.angle);
+    }
+    ctx.fill();
+  };
   return {
     frame(ctx, dt) {
       time += dt * pace;
+      ctx.fillStyle = `rgba(${ASH_HAZE}, ${calm ? 0.18 : 0.24})`;
+      ctx.fillRect(0, 0, w, h);
+      // The ash cloud hangs overhead and darkens the top of the sky.
+      const cloud = ctx.createLinearGradient(0, 0, 0, h * 0.55);
+      cloud.addColorStop(0, `rgba(${ASH_CLOUD}, 0.45)`);
+      cloud.addColorStop(1, `rgba(${ASH_CLOUD}, 0)`);
+      ctx.fillStyle = cloud;
+      ctx.fillRect(0, 0, w, h * 0.55);
+      // The glow below the horizon swells and fades slowly, like a fire out of sight.
+      const fire = ctx.createLinearGradient(0, h, 0, h * 0.4);
+      fire.addColorStop(0, `rgba(190, 70, 30, ${0.28 + 0.06 * Math.sin(time * 0.5)})`);
+      fire.addColorStop(1, 'rgba(190, 70, 30, 0)');
+      ctx.fillStyle = fire;
+      ctx.fillRect(0, h * 0.4, w, h * 0.6);
       ctx.fillStyle = `rgba(${ASH}, 0.75)`;
-      ctx.beginPath();
-      for (const f of flakes) {
-        f.y = wrap(f.y + f.fall * dt * pace, h, 6);
-        f.angle += f.spin * dt * pace;
-        fleckPath(ctx, f.x + Math.sin(time * 0.6 + f.phase) * 20, f.y, f.r, f.angle);
-      }
-      ctx.fill();
+      flakes(ctx, far, dt, 14);
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       for (const e of embers) {
         e.y = wrap(e.y - e.rise * dt * pace, h, 10);
         const x = e.x + Math.sin(time * 0.9 + e.phase) * 26;
-        const flicker = 0.55 + 0.45 * Math.sin(time * 7 + e.phase * 5) * Math.sin(time * 2.3 + e.phase);
-        if (glow) drawGlow(ctx, glow, x, e.y, e.r * 5, 0.5 * flicker);
-        ctx.fillStyle = `rgba(255, 200, 120, ${0.9 * flicker})`;
+        const flicker = 0.6 + 0.4 * Math.sin(time * 7 + e.phase * 5) * Math.sin(time * 2.3 + e.phase);
+        if (glow) drawGlow(ctx, glow, x, e.y, e.r * 7, 0.8 * flicker);
+        ctx.fillStyle = `rgba(255, 215, 140, ${flicker})`;
         ctx.beginPath();
         ctx.arc(x, e.y, e.r, 0, Math.PI * 2);
         ctx.fill();
       }
       ctx.restore();
+      ctx.fillStyle = `rgba(${ASH_NEAR_COLOR}, 0.7)`;
+      flakes(ctx, near, dt, 30);
     },
   };
 }

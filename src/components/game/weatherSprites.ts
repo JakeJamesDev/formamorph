@@ -27,6 +27,32 @@ export function glowSprite(color: string, core = 0): Sprite | null {
   });
 }
 
+/** A lumpy cloud of soft blobs filling a `w` × `h` oval, `color` as `r, g, b`: its detail lets its motion show. */
+export function puffSprite(color: string, rand: () => number, w = 512, h = 256, blobs = 70): Sprite | null {
+  return makeSprite(w, h, (ctx) => {
+    for (let i = 0; i < blobs; i++) {
+      const angle = rand() * Math.PI * 2;
+      const d = Math.sqrt(rand()) * 0.8;
+      const x = w / 2 + Math.cos(angle) * d * w * 0.38;
+      const y = h / 2 + Math.sin(angle) * d * h * 0.3;
+      const r = Math.min(w, h) * (0.12 + rand() * 0.22) * (1 - d * 0.5);
+      const a = (0.1 + rand() * 0.14) * (1 - d * 0.6);
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, `rgba(${color}, ${a})`);
+      g.addColorStop(1, `rgba(${color}, 0)`);
+      ctx.fillStyle = g;
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+  });
+}
+
+/** Draws a sprite centered on `x`, `y`, stretched to `w` × `h`, at strength `a`. */
+export function drawSprite(ctx: CanvasRenderingContext2D, sprite: Sprite, x: number, y: number, w: number, h: number, a: number) {
+  ctx.globalAlpha = Math.min(1, a);
+  ctx.drawImage(sprite, x - w / 2, y - h / 2, w, h);
+  ctx.globalAlpha = 1;
+}
+
 /** Draws a glow sprite centered on `x`, `y` at radius `r` and strength `a`. */
 export function drawGlow(ctx: CanvasRenderingContext2D, sprite: Sprite, x: number, y: number, r: number, a: number) {
   ctx.globalAlpha = Math.min(1, a);
