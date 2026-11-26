@@ -222,8 +222,13 @@ export const LeftPanel = ({ rowStart, rowEnd, entities, onEntityClick, onStrange
   const showable = (entity: Entity | undefined): entity is Entity => !!entity && avatars.shows(entity);
   const { currentPage, isViewingPast } = useGameplay();
   const { lookAround } = usePresence(isViewingPast ? currentPage : undefined);
-  // First met entity in Look Around with something to show. A stranger never heads the view: its art gives it away.
-  const firstShowable = lookAround.find((row) => row.met && showable(row.entity))?.entity;
+  // A stranger shows its art under its label, as its popup does.
+  const asSeen = (entity: Entity): Entity => {
+    const label = lookAround.find((row) => row.entity.id === entity.id && !row.met)?.label;
+    return label ? { ...entity, name: label, sound: undefined } : entity;
+  };
+  // First listed entity in Look Around with something to show.
+  const firstShowable = lookAround.find((row) => (row.met || row.label) && showable(row.entity))?.entity;
   const isMobile = useIsMobile();
   const [showEntityView, setShowEntityView] = React.useState(true);
   const reducedMotion = usePrefersReducedMotion();
@@ -239,10 +244,10 @@ export const LeftPanel = ({ rowStart, rowEnd, entities, onEntityClick, onStrange
   // The shared pick when it has something to show, else the played entity, else the first showable scene
   // entity. The stat panel's (None) and a pick with nothing to show both leave the view on that fallback.
   const pickedEntity = [...entities, ...(personaEntity ? [personaEntity] : [])].find((e) => e.id === selectedEntityId);
-  const entityViewShown = (showable(pickedEntity) ? pickedEntity : undefined) ?? (showable(personaEntity) ? personaEntity : undefined);
-  const entityViewSubject: EntityViewSubject | undefined = entityViewShown ? { kind: 'entity', entity: entityViewShown }
+  const entityViewPick = (showable(pickedEntity) ? pickedEntity : undefined) ?? (showable(personaEntity) ? personaEntity : undefined);
+  const entityViewSubject: EntityViewSubject | undefined = entityViewPick ? { kind: 'entity', entity: asSeen(entityViewPick) }
     : youRow ? { kind: 'played' }
-    : firstShowable && { kind: 'entity', entity: firstShowable };
+    : firstShowable && { kind: 'entity', entity: asSeen(firstShowable) };
   const entityViewEntity = entityViewSubject?.kind === 'entity' ? entityViewSubject.entity : undefined;
   const entityViewSource = entityViewSubject && (entityViewEntity ?? PLAYED_SIDE);
   const entityViewPreference = useEntityVisualPreference(entityViewEntity?.id);
@@ -258,20 +263,20 @@ export const LeftPanel = ({ rowStart, rowEnd, entities, onEntityClick, onStrange
 
   // Clicking an entity selects it, which moves the view when it has something to show and the stat panel when
   // it is listed there. The popup opens on mobile, and in landscape on the row already selected. A
-  // not-yet-revealed entity can show its image but never opens the detail popup: that would spoil the name the
-  // scene is withholding. A stranger opens its reduced popup instead and never selects in the view.
+  // stranger opens its reduced popup instead of the detail popup, which would spoil the name the scene withholds.
   const handleLookAroundClick = (row: EntityPresence) => {
+    const label = row.label;
     if (!row.met) {
-      if (row.label) onStrangerClick?.(row.entity.id, row.label);
+      if (label) openEntity(row.entity, () => onStrangerClick?.(row.entity.id, label));
       return;
     }
-    openEntity(row.entity, true);
+    openEntity(row.entity, () => onEntityClick(row.entity.name));
   };
 
-  const openEntity = (match: Entity, revealed: boolean) => {
+  const openEntity = (match: Entity, openPopup: () => void) => {
     const selects = isMobile || match.id !== selectedRowId;
     if (selects) setSelectedEntityId(match.id);
-    if (revealed && (isMobile || !selects)) onEntityClick(match.name);
+    if (isMobile || !selects) openPopup();
   };
 
   const inSceneRows = lookAround.filter((row) => row.inScene);
@@ -410,7 +415,7 @@ export const LeftPanel = ({ rowStart, rowEnd, entities, onEntityClick, onStrange
                   label={personaEntity.name}
                   you
                   selected={personaEntity.id === selectedRowId}
-                  onClick={() => openEntity(personaEntity, true)}
+                  onClick={() => openEntity(personaEntity, () => onEntityClick(personaEntity.name))}
                 />
               )}
               {/* No pick falls back to the played side, which is what selecting You means. */}

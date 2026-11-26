@@ -323,14 +323,16 @@ describe('LeftPanel', () => {
       expect(rowNames()).toEqual(['Bram']);
     });
 
-    it('opens the stranger popup by id and label, and never the full popup', () => {
+    it('selects on the first click and opens the stranger popup by id and label on the second, never the full popup', () => {
       const view = renderLeftPanel({ entities: WORLD.entities as never }, { world: WORLD as never, seed: stageYard });
 
       openEntitiesTab();
       fireEvent.click(screen.getByText('a hooded figure'));
+      expect(view.gameplay().selectedEntityId).toBe('e1');
+      expect(view.props.onStrangerClick).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByText('a hooded figure'));
       expect(view.props.onStrangerClick).toHaveBeenCalledWith('e1', 'a hooded figure');
       expect(view.props.onEntityClick).not.toHaveBeenCalled();
-      expect(view.gameplay().selectedEntityId).toBeUndefined();
     });
 
     it('opens the full popup once the story has named it', () => {
@@ -356,6 +358,7 @@ describe('LeftPanel', () => {
 
       openEntitiesTab();
       expect(rowNames()).toEqual(['Ivo the Bold', 'Bram']);
+      fireEvent.click(screen.getByText('Ivo the Bold'));
       fireEvent.click(screen.getByText('Ivo the Bold'));
       expect(view.props.onStrangerClick).toHaveBeenCalledWith('e1', 'Ivo the Bold');
       expect(view.props.onEntityClick).not.toHaveBeenCalled();

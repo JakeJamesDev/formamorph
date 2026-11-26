@@ -93,14 +93,29 @@ describe('LeftPanel — one entity view', () => {
     expect(screen.queryByTestId('vrm-viewer')).toBeNull();
   });
 
-  it('opens on the first met entity, never on a stranger listed before it', async () => {
+  it('opens on a stranger listed first, under its label', () => {
     const stranger = { ...heron, id: 'shade', name: 'The Shade', images: [{ data: PICTURE }], strangerName: 'a hooded figure' } as Entity;
     show({
       cast: [stranger, golem],
       scene: [{ name: 'The Shade', alias: 'a hooded figure', revealed: false }, { name: 'Golem', revealed: true }],
     });
-    await waitFor(() => expect(lastAvatarUrl()).toBe(store.golem.file.data));
+    expect(screen.getByAltText('a hooded figure')).toBeInTheDocument();
     expect(screen.queryByAltText('The Shade')).toBeNull();
+    expect(screen.queryByTestId('vrm-viewer')).toBeNull();
+  });
+
+  it('shows a selected stranger under its label, never its name', () => {
+    const stranger = { ...heron, id: 'shade', name: 'The Shade', images: [{ data: PICTURE }], strangerName: 'a hooded figure' } as Entity;
+    show({
+      cast: [heron, stranger],
+      scene: [{ name: 'Heron', revealed: true }, { name: 'The Shade', alias: 'a hooded figure', revealed: false }],
+    });
+    expect(screen.getByAltText('Heron')).toBeInTheDocument();
+
+    fireEvent.click(entityRow('a hooded figure'));
+    expect(screen.getByAltText('a hooded figure')).toBeInTheDocument();
+    expect(screen.queryByAltText('The Shade')).toBeNull();
+    expect(screen.queryByAltText('Heron')).toBeNull();
   });
 
   it('lets the stored preference override the order', () => {

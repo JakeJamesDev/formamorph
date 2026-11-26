@@ -250,7 +250,9 @@ describe('the entity view and the stat panel', () => {
   it('moves the entity view when the dropdown picks', async () => {
     both();
     await choose('a thin runner');
-    expect(shownInView()).toContain('Wick');
+    // A stranger shows under its label, never its name.
+    expect(shownInView()).toContain('a thin runner');
+    expect(shownInView()).not.toContain('Wick');
     expect(shownInView()).not.toContain('Bram');
   });
 
