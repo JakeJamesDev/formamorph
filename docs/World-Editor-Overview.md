@@ -27,10 +27,10 @@ Each location's background is on its **Media** tab. See [World Editor: Locations
 3. Select **Save**.
 
 ## Weather
-<!-- keywords: rain, snow, storm, sun, bright sun, clear, sheltered, indoors, default weather, allowed weather, permanent rain, start weather -->
+<!-- keywords: rain, snow, storm, blizzard, hail, fog, sandstorm, dust storm, ash, leaves, sun, bright sun, clear, sheltered, indoors, default weather, allowed weather, permanent rain, start weather -->
 <!-- route: worldEditor.overview#weather -->
 
-Every world has one weather at a time: **Clear**, **Rain**, **Snow**, **Storm** or **Bright Sun**. A new world allows Clear alone, so its sky stays clear. A save keeps the current weather.
+Every world has one weather at a time: **Clear**, **Rain**, **Snow**, **Storm**, **Blizzard**, **Hail**, **Fog**, **Sandstorm**, **Ashfall**, **Falling Leaves** or **Bright Sun**. A new world allows Clear alone, so its sky stays clear. A save keeps the current weather.
 
 | You pick | What happens |
 | --- | --- |

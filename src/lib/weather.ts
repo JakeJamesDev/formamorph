@@ -5,10 +5,13 @@ import { daypartAt, type WorldCalendar } from '@/lib/gameClock';
 export const isDaylight = (elapsed: number, calendar?: WorldCalendar): boolean => daypartAt(elapsed, calendar) !== 'night';
 
 /** Every kind but Clear, in list order. */
-export const ALLOWED_KINDS = ['rain', 'snow', 'storm', 'brightSun'] as const satisfies readonly AllowedWeatherKind[];
+export const ALLOWED_KINDS = [
+  'rain', 'snow', 'storm', 'blizzard', 'hail', 'fog', 'sandstorm', 'ashfall', 'fallingLeaves', 'brightSun',
+] as const satisfies readonly AllowedWeatherKind[];
 
 export const WEATHER_LABELS: Record<WeatherKind, string> = {
-  clear: 'Clear', rain: 'Rain', snow: 'Snow', storm: 'Storm', brightSun: 'Bright Sun',
+  clear: 'Clear', rain: 'Rain', snow: 'Snow', storm: 'Storm', blizzard: 'Blizzard', hail: 'Hail', fog: 'Fog',
+  sandstorm: 'Sandstorm', ashfall: 'Ashfall', fallingLeaves: 'Falling Leaves', brightSun: 'Bright Sun',
 };
 
 export const isWeatherKind = (value: unknown): value is WeatherKind =>
@@ -72,6 +75,12 @@ const WEATHER_SENTENCES: Record<WeatherKind, string> = {
   rain: 'It is raining.',
   snow: 'It is snowing.',
   storm: 'A storm is raging.',
+  blizzard: 'A blizzard is blowing.',
+  hail: 'It is hailing.',
+  fog: 'A thick fog hangs in the air.',
+  sandstorm: 'A sandstorm is blowing.',
+  ashfall: 'Ash is falling from the sky.',
+  fallingLeaves: 'Leaves are falling on the breeze.',
   brightSun: 'The sun is bright overhead.',
 };
 

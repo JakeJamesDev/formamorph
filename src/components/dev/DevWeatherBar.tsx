@@ -1,10 +1,10 @@
 import { useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Image, ImageOff, Moon, Sun } from 'lucide-react';
 import type { WeatherKind } from '@/types';
-import { WEATHER_LABELS } from '@/lib/weather';
+import { ALL_WEATHER_KINDS, WEATHER_LABELS } from '@/lib/weather';
 
 /** Every kind, Clear first: the bar cycles through all of them whatever the world allows. */
-const KINDS: readonly WeatherKind[] = ['clear', 'rain', 'snow', 'storm', 'brightSun'];
+const KINDS = ALL_WEATHER_KINDS;
 
 /** Outdoor location art from the bundled worlds, dark to bright, as `[world, location]`. */
 const BACKDROP_SOURCES = [['veilwood', 'The Veilwood'], ['emberwatch', 'Ashford Square'], ['sugarscape', 'Strawberrycream Shores']] as const;

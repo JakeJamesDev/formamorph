@@ -1171,7 +1171,8 @@ export type WorldVrmStore = Record<string, WorldVrm>;
 export type VrmPick = { kind: 'default' } | { kind: 'world'; id: string } | { kind: 'library'; id: string };
 
 /** A kind of weather. */
-export type WeatherKind = 'clear' | 'rain' | 'snow' | 'storm' | 'brightSun';
+export type WeatherKind =
+  | 'clear' | 'rain' | 'snow' | 'storm' | 'blizzard' | 'hail' | 'fog' | 'sandstorm' | 'ashfall' | 'fallingLeaves' | 'brightSun';
 
 /** A kind with something to show: every kind but Clear. */
 export type AllowedWeatherKind = Exclude<WeatherKind, 'clear'>;

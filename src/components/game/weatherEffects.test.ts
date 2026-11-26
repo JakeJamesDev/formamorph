@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { ALLOWED_KINDS } from '@/lib/weather';
 import { createWeatherEffect, nextFlashDelay, particleCount } from './weatherEffects';
 
 /** A seeded random source, so a schedule is the same on every run. */
@@ -76,5 +77,76 @@ describe('particle counts', () => {
 
   it('stay capped on a very large screen', () => {
     expect(particleCount('storm', 'full', 7680, 4320)).toBe(particleCount('storm', 'full', 3840, 2160));
+  });
+});
+
+/** A context that records each moveTo → lineTo segment of the frame, and ignores the rest. */
+function segmentContext() {
+  let at: [number, number] = [0, 0];
+  const segments: { dx: number; dy: number }[] = [];
+  const ctx = new Proxy({}, {
+    get: (_t, name) => {
+      if (name === 'createLinearGradient') return () => ({ addColorStop: () => {} });
+      if (name === 'moveTo') return (x: number, y: number) => { at = [x, y]; };
+      if (name === 'lineTo') return (x: number, y: number) => { segments.push({ dx: at[0] - x, dy: at[1] - y }); };
+      return () => {};
+    },
+    set: () => true,
+  }) as unknown as CanvasRenderingContext2D;
+  return { ctx, segments };
+}
+
+/** The rain's lean on one frame: sideways over down, read from the first streak drawn. */
+function leanAt(effect: ReturnType<typeof createWeatherEffect>) {
+  const { ctx, segments } = segmentContext();
+  effect.frame(ctx, 1 / 60, COLORS);
+  return segments[0].dx / segments[0].dy;
+}
+
+describe('every kind', () => {
+  it.each(ALLOWED_KINDS)('%s draws on every frame in both modes', (kind) => {
+    for (const mode of ['full', 'calm'] as const) {
+      const effect = createWeatherEffect(kind, mode, 800, 600, seeded(5));
+      const { ctx, calls } = fakeContext();
+      for (let frame = 0; frame < 60 * 10; frame++) effect.frame(ctx, 1 / 60, COLORS);
+      expect(calls.fill + calls.stroke + calls.fillRect).toBeGreaterThanOrEqual(60 * 10);
+    }
+  });
+});
+
+describe('wind', () => {
+  it('leans storm rain harder than rain, and gusts it while rain holds steady', () => {
+    const storm = createWeatherEffect('storm', 'full', 800, 600, seeded(2));
+    const rain = createWeatherEffect('rain', 'full', 800, 600, seeded(2));
+    const stormLeans: number[] = [];
+    const rainLeans: number[] = [];
+    for (let frame = 0; frame < 60 * 20; frame++) {
+      stormLeans.push(leanAt(storm));
+      rainLeans.push(leanAt(rain));
+    }
+    expect(Math.min(...stormLeans)).toBeGreaterThan(Math.max(...rainLeans));
+    expect(Math.max(...stormLeans) - Math.min(...stormLeans)).toBeGreaterThan(0.1);
+    expect(Math.max(...rainLeans) - Math.min(...rainLeans)).toBeLessThan(1e-9);
+  });
+
+  it('drives blizzard snow sideways faster than it falls', () => {
+    const effect = createWeatherEffect('blizzard', 'full', 800, 600, seeded(4));
+    const { ctx, segments } = segmentContext();
+    effect.frame(ctx, 1 / 60, COLORS);
+    const sideways = segments.reduce((sum, s) => sum + s.dx, 0);
+    const down = segments.reduce((sum, s) => sum + s.dy, 0);
+    expect(sideways).toBeGreaterThan(down);
+  });
+});
+
+describe('hail', () => {
+  it('bounces where it lands: some pellets show as dots once the first ones reach the ground', () => {
+    const effect = createWeatherEffect('hail', 'full', 800, 600, seeded(6));
+    const { ctx } = fakeContext();
+    for (let frame = 0; frame < 60; frame++) effect.frame(ctx, 1 / 60, COLORS);
+    const { ctx: rec, segments } = segmentContext();
+    effect.frame(rec, 1 / 60, COLORS);
+    expect(segments.some((s) => Math.abs(s.dy) < 1)).toBe(true);
+    expect(segments.some((s) => s.dy > 5)).toBe(true);
   });
 });

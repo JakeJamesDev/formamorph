@@ -1,5 +1,6 @@
 import type { AllowedWeatherKind } from '@/types';
 import { drawGlow, drawWedge, glowSprite, makeSprite, wedgeSprite, type Sprite } from './weatherSprites';
+import { drawLeaf, fleckPath, LEAF_COLORS } from './weatherEffects';
 
 type Rand = () => number;
 
@@ -11,7 +12,9 @@ export interface ForegroundEffect {
 }
 
 /** How long each kind plays, in seconds. */
-export const FOREGROUND_DURATION: Record<AllowedWeatherKind, number> = { rain: 3.5, snow: 4, storm: 1.6, brightSun: 3 };
+export const FOREGROUND_DURATION: Record<AllowedWeatherKind, number> = {
+  rain: 3.5, snow: 4, storm: 1.6, blizzard: 3.2, hail: 2.8, fog: 4.5, sandstorm: 3.2, ashfall: 3.5, fallingLeaves: 3.5, brightSun: 3,
+};
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 const easeInOut = (v: number) => v * v * (3 - 2 * v);
@@ -400,10 +403,216 @@ function sunBurst(w: number, h: number, rand: Rand): ForegroundEffect {
   };
 }
 
+/** A gust of snow sweeps across the screen: streaking flakes, a white-out that peaks and clears, frost at the corners. */
+function whiteout(w: number, h: number, rand: Rand): ForegroundEffect {
+  const duration = FOREGROUND_DURATION.blizzard;
+  const flakes = Array.from({ length: Math.round(Math.min(420, Math.max(120, (w * h) / 3500))) }, () => ({
+    y: rand() * h, r: 1 + rand() * 3, born: rand() * 1.6, speed: (0.9 + rand() * 0.8) * w, lift: (rand() - 0.3) * h * 0.25,
+  }));
+  const size = Math.max(w, h);
+  return {
+    duration,
+    frame(ctx, t) {
+      const I = envelope(t, duration, 0.7, 1.4);
+      if (I <= 0) return;
+      ctx.fillStyle = `rgba(240, 246, 255, ${0.42 * I})`;
+      ctx.fillRect(0, 0, w, h);
+      // Frost gathers in each corner as the glass chills.
+      for (const [cx, cy] of [[0, 0], [w, 0], [0, h], [w, h]] as const) glowDisc(ctx, cx, cy, size * 0.35, '235, 244, 255', 0.55 * I, 0.25);
+      ctx.strokeStyle = `rgba(255, 255, 255, ${0.85 * I})`;
+      ctx.lineCap = 'round';
+      ctx.lineWidth = 2.4;
+      ctx.beginPath();
+      for (const f of flakes) {
+        const age = t - f.born;
+        if (age < 0) continue;
+        const x = -20 + age * f.speed;
+        if (x > w + 40) continue;
+        const y = f.y + (age * f.lift) / 1.5;
+        const tail = 6 + f.r * 5;
+        ctx.moveTo(x, y);
+        ctx.lineTo(x - tail, y - (tail * f.lift) / f.speed / 1.5);
+      }
+      ctx.stroke();
+    },
+  };
+}
+
+/** Hailstones strike the glass: each lands with a white pip and a small star of cracks, then the glass clears. */
+function hailOnGlass(w: number, h: number, rand: Rand): ForegroundEffect {
+  const duration = FOREGROUND_DURATION.hail;
+  const hits = Array.from({ length: Math.round(Math.min(60, Math.max(14, (w * h) / 25000))) }, () => ({
+    x: rand() * w, y: rand() * h, r: 1.5 + rand() * 2.5, born: rand() * 1.5,
+    cracks: Array.from({ length: 3 + Math.floor(rand() * 3) }, () => ({ angle: rand() * Math.PI * 2, len: 4 + rand() * 10 })),
+  }));
+  return {
+    duration,
+    frame(ctx, t) {
+      const fade = clamp01((duration - t) / 0.9);
+      if (fade <= 0) return;
+      ctx.lineCap = 'round';
+      for (const hit of hits) {
+        const age = t - hit.born;
+        if (age < 0) continue;
+        // The strike flashes bright for a moment, then settles to a faint mark.
+        const strike = 1 - clamp01(age / 0.18);
+        const a = fade * (0.55 + 0.45 * strike);
+        ctx.strokeStyle = `rgba(235, 242, 255, ${0.6 * a})`;
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        for (const c of hit.cracks) {
+          const len = c.len * clamp01(age / 0.08);
+          ctx.moveTo(hit.x, hit.y);
+          ctx.lineTo(hit.x + Math.cos(c.angle) * len, hit.y + Math.sin(c.angle) * len);
+        }
+        ctx.stroke();
+        drop(ctx, hit.x, hit.y, hit.r * (1 + strike * 0.8), a, 1);
+      }
+    },
+  };
+}
+
+/** Fog rolls in from both sides and mists the glass, holds a moment, then thins away. */
+function fogRollIn(w: number, h: number, rand: Rand): ForegroundEffect {
+  const duration = FOREGROUND_DURATION.fog;
+  const banks = Array.from({ length: 8 }, (_, i) => ({
+    from: i % 2 ? 1 : -1, y: h * (0.15 + rand() * 0.9), rx: w * (0.4 + rand() * 0.3), ry: h * (0.15 + rand() * 0.15), reach: 0.3 + rand() * 0.5,
+  }));
+  return {
+    duration,
+    frame(ctx, t) {
+      const I = envelope(t, duration, 1.4, 1.6);
+      if (I <= 0) return;
+      ctx.fillStyle = `rgba(225, 230, 238, ${0.3 * I})`;
+      ctx.fillRect(0, 0, w, h);
+      const roll = easeInOut(clamp01(t / 2));
+      for (const b of banks) {
+        // Each bank starts past its edge and rolls in toward the middle.
+        const edge = b.from < 0 ? -b.rx * 0.6 : w + b.rx * 0.6;
+        const x = edge - b.from * roll * w * b.reach;
+        ctx.save();
+        ctx.translate(x, b.y);
+        ctx.scale(1, b.ry / b.rx);
+        glowDisc(ctx, 0, 0, b.rx, '235, 238, 244', 0.55 * I);
+        ctx.restore();
+      }
+    },
+  };
+}
+
+/** A wall of dust sweeps across the screen: the front passes, sand streaks through the haze, then it settles. */
+function dustFront(w: number, h: number, rand: Rand): ForegroundEffect {
+  const duration = FOREGROUND_DURATION.sandstorm;
+  const grains = Array.from({ length: Math.round(Math.min(500, Math.max(150, (w * h) / 3000))) }, () => ({
+    y: rand() * h, len: 8 + rand() * 24, born: 0.2 + rand() * 1.6, speed: (1.1 + rand()) * w,
+  }));
+  const sweep = 1.3;
+  return {
+    duration,
+    frame(ctx, t) {
+      const I = envelope(t, duration, 0.4, 1.3);
+      if (I <= 0) return;
+      // The front: a soft-edged tan wall whose leading edge crosses the screen in `sweep` seconds.
+      // The gradient holds its first stop behind the edge, so one fill covers the dust the front has passed.
+      const front = -w * 0.3 + (w * 1.6 * clamp01(t / sweep));
+      const wall = ctx.createLinearGradient(front - w * 0.5, 0, front, 0);
+      wall.addColorStop(0, `rgba(${SAND_FG}, ${0.55 * I})`);
+      wall.addColorStop(1, `rgba(${SAND_FG}, 0)`);
+      ctx.fillStyle = wall;
+      ctx.fillRect(0, 0, w, h);
+      ctx.strokeStyle = `rgba(240, 210, 160, ${0.7 * I})`;
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      for (const g of grains) {
+        const age = t - g.born;
+        if (age < 0) continue;
+        const x = -g.len + age * g.speed;
+        if (x > w + g.len || x > front) continue;
+        ctx.moveTo(x, g.y);
+        ctx.lineTo(x - g.len, g.y - g.len * 0.05);
+      }
+      ctx.stroke();
+    },
+  };
+}
+
+const SAND_FG = '196, 152, 96';
+
+/** The sky dims to gray and ash drifts close past the glass, with a few embers flaring by. */
+function ashCloud(w: number, h: number, rand: Rand): ForegroundEffect {
+  const duration = FOREGROUND_DURATION.ashfall;
+  const flecks = Array.from({ length: Math.round(Math.min(160, Math.max(40, (w * h) / 9000))) }, () => ({
+    x: rand() * w, y: -20 - rand() * h * 0.3, r: 3 + rand() * 5, fall: 60 + rand() * 90, drift: 20 + rand() * 40, spin: (rand() - 0.5) * 3, phase: rand() * Math.PI * 2,
+  }));
+  const embers = Array.from({ length: 5 }, () => ({
+    x: rand() * w, y: h * (0.6 + rand() * 0.4), r: 6 + rand() * 10, rise: 120 + rand() * 140, born: rand() * 1.6, phase: rand() * Math.PI * 2,
+  }));
+  return {
+    duration,
+    frame(ctx, t) {
+      const I = envelope(t, duration, 0.8, 1.2);
+      if (I <= 0) return;
+      ctx.fillStyle = `rgba(60, 56, 54, ${0.35 * I})`;
+      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = `rgba(150, 144, 138, ${0.85 * I})`;
+      ctx.beginPath();
+      for (const f of flecks) fleckPath(ctx, f.x + t * f.drift + Math.sin(t * 1.5 + f.phase) * 12, f.y + t * f.fall, f.r, f.phase + t * f.spin);
+      ctx.fill();
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (const e of embers) {
+        const age = t - e.born;
+        if (age < 0) continue;
+        const flicker = 0.6 + 0.4 * Math.sin(age * 11 + e.phase);
+        const x = e.x + Math.sin(age * 2 + e.phase) * 30;
+        glowDisc(ctx, x, e.y - age * e.rise, e.r * 1.4, '255, 140, 60', 0.7 * I * flicker, 0.12);
+        glowDisc(ctx, x, e.y - age * e.rise, e.r * 0.35, '255, 220, 150', I * flicker, 0.4);
+      }
+      ctx.restore();
+    },
+  };
+}
+
+/** A gust carries a flurry of large leaves across the screen, tumbling as they go. */
+function leafGust(w: number, h: number, rand: Rand): ForegroundEffect {
+  const duration = FOREGROUND_DURATION.fallingLeaves;
+  const leaves = Array.from({ length: Math.round(Math.min(40, Math.max(14, (w * h) / 40000))) }, () => ({
+    y: rand() * h * 0.9, size: 10 + rand() * 14, born: rand() * 1.4, speed: (0.45 + rand() * 0.45) * w, dip: (rand() - 0.2) * h * 0.3,
+    spin: (rand() - 0.5) * 8, flip: 2 + rand() * 4, phase: rand() * Math.PI * 2, color: LEAF_COLORS[Math.floor(rand() * LEAF_COLORS.length)],
+  }));
+  return {
+    duration,
+    frame(ctx, t) {
+      const fade = clamp01((duration - t) / 0.8);
+      if (fade <= 0) return;
+      for (const l of leaves) {
+        const age = t - l.born;
+        if (age < 0) continue;
+        const x = -l.size * 2 + age * l.speed;
+        if (x > w + l.size * 2) continue;
+        ctx.save();
+        ctx.translate(x, l.y + Math.sin(age * 2.2 + l.phase) * 30 + age * l.dip * 0.5);
+        ctx.rotate(l.phase + age * l.spin);
+        ctx.scale(1, 0.2 + 0.8 * Math.abs(Math.cos(age * l.flip + l.phase)));
+        drawLeaf(ctx, l.size, l.color, fade);
+        ctx.restore();
+      }
+    },
+  };
+}
+
 /** The foreground effect for one kind on a `w` × `h` CSS-pixel canvas. */
 export function createForegroundEffect(kind: AllowedWeatherKind, w: number, h: number, rand: Rand = Math.random): ForegroundEffect {
-  if (kind === 'rain') return rainOnGlass(w, h, rand);
-  if (kind === 'snow') return settlingSnow(w, h, rand);
-  if (kind === 'storm') return lightningFlash(w, h, rand);
-  return sunBurst(w, h, rand);
+  switch (kind) {
+    case 'rain': return rainOnGlass(w, h, rand);
+    case 'snow': return settlingSnow(w, h, rand);
+    case 'storm': return lightningFlash(w, h, rand);
+    case 'blizzard': return whiteout(w, h, rand);
+    case 'hail': return hailOnGlass(w, h, rand);
+    case 'fog': return fogRollIn(w, h, rand);
+    case 'sandstorm': return dustFront(w, h, rand);
+    case 'ashfall': return ashCloud(w, h, rand);
+    case 'fallingLeaves': return leafGust(w, h, rand);
+    case 'brightSun': return sunBurst(w, h, rand);
+  }
 }

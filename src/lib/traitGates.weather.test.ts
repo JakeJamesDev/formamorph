@@ -14,6 +14,8 @@ import { conditionsOf } from './requirementRows';
 import { scoped } from './scope';
 
 const weather = (...kinds: WeatherKind[]): WeatherRequirement => ({ kind: 'weather', kinds });
+/** Every kind but `kinds`. */
+const others = (...kinds: WeatherKind[]) => ALL_WEATHER_KINDS.filter((k) => !kinds.includes(k));
 const T = (id: string, extra: Partial<Trait> = {}): Trait => ({ id, name: id, statChanges: [], ...extra });
 
 const input = (traits: Trait[], at?: WeatherKind): GateInput => ({
@@ -65,7 +67,8 @@ describe('a weather Condition', () => {
     expect(sameRequirement(weather('storm', 'rain'), weather('rain', 'storm'))).toBe(true);
     expect(sameRequirement(weather('rain'), weather('rain', 'snow'))).toBe(false);
     expect(sameRequirement(weather('rain'), { kind: 'time', dayparts: ['night'] })).toBe(false);
-    expect(complementary(weather('clear', 'rain'), weather('snow', 'storm', 'brightSun'))).toBe(true);
+    expect(complementary(weather('clear', 'rain'), weather(...others('clear', 'rain')))).toBe(true);
+    expect(complementary(weather('clear', 'rain'), weather('snow', 'storm', 'brightSun'))).toBe(false);
     expect(flipped(weather('rain'))).toEqual({ ...weather('rain'), not: true });
     expect(flipped(flipped(weather('rain')))).toEqual(weather('rain'));
   });
@@ -103,10 +106,10 @@ describe('a negated weather Condition', () => {
   });
 
   it('equals the other kinds listed plainly, and complements its plain form over every kind', () => {
-    expect(sameRequirement(not('rain'), weather('clear', 'snow', 'storm', 'brightSun'))).toBe(true);
+    expect(sameRequirement(not('rain'), weather(...others('rain')))).toBe(true);
     expect(sameRequirement(not('rain'), weather('rain'))).toBe(false);
     expect(complementary(weather('rain'), not('rain'))).toBe(true);
-    expect(complementary(weather('clear', 'rain'), weather('snow', 'storm', 'brightSun'))).toBe(true);
+    expect(complementary(weather('clear', 'rain'), weather(...others('clear', 'rain')))).toBe(true);
     expect(complementary(weather('rain'), weather('snow'))).toBe(false);
   });
 
@@ -246,9 +249,9 @@ describe('a weather Condition on a character card', () => {
   });
 
   it('keeps known kinds and drops a Condition left with none', () => {
-    const odd = { kind: 'weather', kinds: ['snow', 'hail', 'snow'] } as unknown as WeatherRequirement;
+    const odd = { kind: 'weather', kinds: ['snow', 'sleet', 'snow'] } as unknown as WeatherRequirement;
     expect(conditionsOf(throughCard(wren([{ all: [odd] }])).traits?.[0].requires)).toEqual([weather('snow')]);
-    const none = { kind: 'weather', kinds: ['hail'] } as unknown as WeatherRequirement;
+    const none = { kind: 'weather', kinds: ['sleet'] } as unknown as WeatherRequirement;
     expect(throughCard(wren([{ all: [none] }])).traits?.[0].requires).toBeUndefined();
   });
 });

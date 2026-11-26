@@ -19,7 +19,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 - **👤 User-facing**
   - **Weather:**
     - **Paint a Weather Mask over a location's background image in the World Editor.** Paint opens the image full screen with a brush, eraser, soft edge, fill, clear and invert. Edit reopens a mask; a shared mask changes for every image that uses it.
-    - **See live weather through a Weather Mask while you paint it, and open any mask from the Media tab.** Pick Rain, Snow, Storm or Bright Sun to check the mask. The Media tab's Edit button opens the brush editor over an image that uses the mask.
+    - **See live weather through a Weather Mask while you paint it, and open any mask from the Media tab.** Pick any weather to check the mask. The Media tab's Edit button opens the brush editor over an image that uses the mask.
     - **Each location image in the World Editor now has a Weather Mask button that holds every mask action.** Paint, upload, choose or remove a mask there. Show Mask tints the image blue where the weather shows.
     - **Zoom in with the mouse wheel while you paint a Weather Mask, and switch tools with B and E.** Ctrl+wheel sizes the brush, a middle-button drag pans, and 0 or Fit shows the whole image.
   - **The World Editor's Requires field reads each row as a sentence.** Select an owner, a verb or a target to change it in place. A new condition starts with no owner.
@@ -44,12 +44,12 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **Deleting a Layered Image in the World Editor deletes the images only it uses.** The confirm names them first. An image stays when another Layered Image uses it or any slot or gallery links it. One undo brings it all back.
     - **The Media tab hides images that only a Layered Image uses.** They show inside the Layered Image's editor, and a search for their name lists the Layered Image.
   - **Weather:**
-    - **Every world now has weather, and locations can be Sheltered.** Pick one kind for weather that never changes, such as endless rain, or several to let the story change it. New worlds start Clear. Openings can set their own Weather.
-    - **The current weather now shows behind the game panels.** Rain, snow, storm and bright sun play over the location image, except in Sheltered locations. Turn it off with Weather Background in Display settings.
+    - **Every world now has weather, and locations can be Sheltered.** Pick one kind for weather that never changes, such as endless rain, or several to let the story change it. There are 11 kinds, from Fog to Sandstorm. New worlds start Clear. Openings can set their own Weather.
+    - **The current weather now shows behind the game panels.** Each kind has its own motion over the location image, such as wind-driven storm rain, swirling blizzard snow or drifting fog, except in Sheltered locations. Turn it off with Weather Background in Display settings.
     - **The AI now changes a world's weather when the story does, and tells the narrator the weather every turn.** In a world with two or more kinds, the AI picks the new weather from them after each turn. Bright Sun turns Clear at nightfall. With no Default Weather, the AI reads the start weather from page one.
     - **Scripts can read and set the weather with `world.weather`.** A set from an item or switch script between turns changes the weather at once; a set during a turn lands when the turn ends. A kind the world doesn't allow stops the script with an error.
     - **Traits and image Visibility rules can now require the weather.** Pick Weather under Add Requirement, then turn on the kinds that count. It shows while the world allows two or more kinds.
-    - **A short effect now plays over the game when the weather changes.** Raindrops run down the screen, snow piles up, lightning flashes or the sun breaks through, then it stops. Turn it off with **Weather Foreground** in Display settings.
+    - **A short effect now plays over the game when the weather changes.** Raindrops run down the screen, a blizzard whites it out, a dust wall sweeps across or the sun breaks through, then it stops. Turn it off with **Weather Foreground** in Display settings.
     - **A location's background image can carry a Weather Mask that sets where the weather shows over it.** In Advanced mode, upload a grayscale image or choose one the world has. Day and night images can share one. The Media tab lists masks.
     - **The weather now shows through a window in a Sheltered location whose image has a Weather Mask.** In open locations, the weather stays off what the mask hides. The mask lines up with the background image on any screen.
     - **The Test Bench warns when a Weather Mask has a different shape from its picture.** In Advanced mode, the Issues tab names the location, the image and the mask, because the mask would stretch.

@@ -967,7 +967,7 @@ if (atGate) atGate.image = "Captain";
 ```
 
 ### Weather
-<!-- keywords: weather, set weather, make it rain, storm, snow, bright sun, clear sky, read weather, world.weather, does not allow the weather -->
+<!-- keywords: weather, set weather, make it rain, storm, snow, blizzard, hail, fog, sandstorm, ashfall, falling leaves, bright sun, clear sky, read weather, world.weather, does not allow the weather -->
 
 `world.weather` is the World Weather: one weather for the whole world, as the Weather Pass or the story sets it. The world's kinds are set in the [World Editor](World-Editor-Overview).
 
@@ -977,6 +977,12 @@ if (atGate) atGate.image = "Captain";
 | Rain | `"rain"` |
 | Snow | `"snow"` |
 | Storm | `"storm"` |
+| Blizzard | `"blizzard"` |
+| Hail | `"hail"` |
+| Fog | `"fog"` |
+| Sandstorm | `"sandstorm"` |
+| Ashfall | `"ashfall"` |
+| Falling Leaves | `"fallingLeaves"` |
 | Bright Sun | `"brightSun"` |
 
 ```javascript

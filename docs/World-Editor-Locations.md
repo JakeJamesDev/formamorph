@@ -256,7 +256,7 @@ Each background image has a ◐ **Weather Mask** button at its bottom right. Sel
 
 **Paint** or **Edit** opens the background image full screen. What you paint shows as a blue tint: blue is where the weather shows. **Hide Mask** hides the tint so you can see the image.
 
-Weather plays over the image through the mask as you paint, so you can judge the result before you save. Pick **Rain**, **Snow**, **Storm** or **Bright Sun** from the **Weather Preview** list in the top-left card to check each one against the same mask. With reduced motion on, the weather moves slowly.
+Weather plays over the image through the mask as you paint, so you can judge the result before you save. Pick any weather from the **Weather Preview** list in the top-left card to check each one against the same mask. With reduced motion on, the weather moves slowly.
 
 | Tool | What it does |
 | --- | --- |

@@ -7,7 +7,8 @@ export const NO_WEATHER_CHANGE = 'no change';
 
 /** How the pass names each kind, in its request and in its reply. */
 export const WEATHER_ANSWER_WORDS: Record<WeatherKind, string> = {
-  clear: 'clear', rain: 'rain', snow: 'snow', storm: 'storm', brightSun: 'bright sun',
+  clear: 'clear', rain: 'rain', snow: 'snow', storm: 'storm', blizzard: 'blizzard', hail: 'hail', fog: 'fog',
+  sandstorm: 'sandstorm', ashfall: 'ashfall', fallingLeaves: 'falling leaves', brightSun: 'bright sun',
 };
 
 /** The pass's input beyond the narration: the weather before the turn (null on the page-one read) and the
