@@ -56,7 +56,7 @@ describe('a world with one kind', () => {
 
   it('falls back to Clear when allowed, else the first allowed kind', () => {
     expect(fallbackWeather(on())).toBe('clear');
-    expect(fallbackWeather({ allowed: ['storm', 'snow'] })).toBe('snow');
+    expect(fallbackWeather({ allowed: ['snow', 'storm'] })).toBe('storm');
   });
 });
 
@@ -126,7 +126,7 @@ describe('the Weather Change', () => {
 describe('the offered kinds', () => {
   it('drop Bright Sun outside daylight', () => {
     const weather: WorldWeather = { allowed: ['clear', 'rain', 'brightSun'] };
-    expect(offeredWeatherKinds(weather, true)).toEqual(['clear', 'rain', 'brightSun']);
+    expect(offeredWeatherKinds(weather, true)).toEqual(['clear', 'brightSun', 'rain']);
     expect(offeredWeatherKinds(weather, false)).toEqual(['clear', 'rain']);
   });
 });

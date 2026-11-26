@@ -6,7 +6,7 @@ export const isDaylight = (elapsed: number, calendar?: WorldCalendar): boolean =
 
 /** Every kind but Clear, in list order. */
 export const ALLOWED_KINDS = [
-  'rain', 'snow', 'storm', 'blizzard', 'hail', 'fog', 'sandstorm', 'ashfall', 'fallingLeaves', 'brightSun',
+  'brightSun', 'rain', 'storm', 'snow', 'blizzard', 'hail', 'fog', 'fallingLeaves', 'sandstorm', 'ashfall',
 ] as const satisfies readonly AllowedWeatherKind[];
 
 export const WEATHER_LABELS: Record<WeatherKind, string> = {

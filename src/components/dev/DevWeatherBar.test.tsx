@@ -9,22 +9,22 @@ const mount = (kind: Parameters<typeof DevWeatherBar>[0]['kind']) => {
 };
 
 describe('the dev weather bar', () => {
-  it('steps forward and wraps from Bright Sun to Clear', () => {
-    const onKind = mount('brightSun');
+  it('steps forward and wraps from Ashfall to Clear', () => {
+    const onKind = mount('ashfall');
     fireEvent.click(screen.getByRole('button', { name: 'Next weather' }));
     expect(onKind).toHaveBeenCalledWith('clear');
   });
 
-  it('steps back and wraps from Clear to Bright Sun', () => {
+  it('steps back and wraps from Clear to Ashfall', () => {
     const onKind = mount('clear');
     fireEvent.click(screen.getByRole('button', { name: 'Previous weather' }));
-    expect(onKind).toHaveBeenCalledWith('brightSun');
+    expect(onKind).toHaveBeenCalledWith('ashfall');
   });
 
   it('steps on arrow keys, but not while a text field has focus', () => {
     const onKind = mount('rain');
     fireEvent.keyDown(window, { key: 'ArrowRight' });
-    expect(onKind).toHaveBeenLastCalledWith('snow');
+    expect(onKind).toHaveBeenLastCalledWith('storm');
     const input = document.body.appendChild(document.createElement('input'));
     fireEvent.keyDown(input, { key: 'ArrowLeft' });
     expect(onKind).toHaveBeenCalledTimes(1);
