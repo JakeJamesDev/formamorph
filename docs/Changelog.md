@@ -18,6 +18,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 - **👤 User-facing**
   - **The desktop, Android and web builds of Formamorph are smaller.** 3.9.0 carried about 130 MB of bundled world art that the game never loads.
+  - **macOS no longer says the Mac desktop app is damaged.** On first launch, open it from Privacy & Security in System Settings with Open Anyway.
 
 ---
 

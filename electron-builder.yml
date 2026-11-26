@@ -55,6 +55,9 @@ mac:
       to: llama-server/mac-x64
   target:
     - dmg
+  # Ad-hoc signature: unsigned arm64 apps show as "damaged". Hardened runtime would reject Electron's frameworks.
+  identity: '-'
+  hardenedRuntime: false
   category: public.app-category.games
   artifactName: Formamorph-${version}.dmg
   icon: public/icon.png
