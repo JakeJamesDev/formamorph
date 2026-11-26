@@ -13,14 +13,16 @@ export interface DevBackdrop { name: string; data: string }
 
 interface ArtWorld { locations?: { name: string; images?: { data?: string }[] }[] }
 
-const WORLDS: Record<string, () => Promise<{ default: unknown }>> = {
+// Behind DEV so a production build emits no whole-world chunks (images inlined, past Pages' 25 MiB file cap).
+const WORLDS: Record<string, () => Promise<{ default: unknown }>> = import.meta.env.DEV ? {
   veilwood: () => import('@/defaultworlds/veilwood.json'),
   emberwatch: () => import('@/defaultworlds/emberwatch.json'),
   sugarscape: () => import('@/defaultworlds/sugarscape.json'),
-};
+} : {};
 
 /** DEV: the backdrop art the bar cycles through, loaded on first use. */
 export async function loadDevBackdrops(): Promise<DevBackdrop[]> {
+  if (!import.meta.env.DEV) return [];
   const found = await Promise.all(BACKDROP_SOURCES.map(async ([world, name]): Promise<DevBackdrop | null> => {
     const art = (await WORLDS[world]()).default as ArtWorld;
     const data = art.locations?.find((l) => l.name === name)?.images?.[0]?.data;

@@ -12,6 +12,7 @@ import { stripSeededWorlds } from './scripts/stripSeededWorlds.mjs'
 import { bundledWorldHashes } from './scripts/bundledWorldHashes.mjs'
 import { shipNotices } from './scripts/shipNotices.mjs'
 import { bundledAvatarCheck } from './scripts/bundledAvatarCheck.mjs'
+import { bundledWorldImportCheck } from './scripts/bundledWorldImportCheck.mjs'
 import { espeakCheck } from './scripts/espeakCheck.mjs'
 import { corefDevManifest } from './scripts/corefDevManifest.mjs'
 import { remoteOrtRuntime } from './scripts/remoteOrtRuntime.mjs'
@@ -148,7 +149,7 @@ const shippedWorlds = shipBundledWorlds(import.meta.dirname)
 const notices = shipNotices(import.meta.dirname)
 
 export default defineConfig({
-  plugins: [react(), directSyncAppModules, holdUpdates, docsIndexMarkdown, whatsNewSummary, whatsNewRecent, sharedCjs, shippedWorlds, stripSeededWorlds(), bundledWorldHashes(shippedWorlds.api.shippedText), notices, stashSourceMaps(), bundledAvatarCheck(), espeakCheck(), corefDevManifest(import.meta.dirname), remoteOrtRuntime(ortDist, process.env.FORMAMORPH_BUILD === 'web')],
+  plugins: [react(), directSyncAppModules, holdUpdates, docsIndexMarkdown, whatsNewSummary, whatsNewRecent, sharedCjs, shippedWorlds, stripSeededWorlds(), bundledWorldHashes(shippedWorlds.api.shippedText), notices, stashSourceMaps(), bundledAvatarCheck(), bundledWorldImportCheck(), espeakCheck(), corefDevManifest(import.meta.dirname), remoteOrtRuntime(ortDist, process.env.FORMAMORPH_BUILD === 'web')],
   cacheDir: process.env.E2E_SYNC_APP ? path.resolve(import.meta.dirname, 'node_modules/.vite-sync-app') : devCacheDir,
   base: './',
   // Maps for reading crash stacks; stashSourceMaps moves them out of the shipped output.
@@ -235,6 +236,7 @@ export default defineConfig({
       'src/lib/docs/changelogSlice.ts',
       'scripts/recentChangesSlice.mjs',
       'scripts/bundledAvatarCheck.mjs',
+      'scripts/bundledWorldImportCheck.mjs',
       'scripts/espeakCheck.mjs',
       'scripts/corefDevManifest.mjs',
       'scripts/remoteOrtRuntime.mjs',

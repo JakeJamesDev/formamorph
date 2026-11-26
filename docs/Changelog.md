@@ -12,6 +12,13 @@ Each release groups changes as **Major** / **Minor**, then **Added** / **Removed
 
 _Unreleased — new work accumulates here until it earns a version bump. The next batch will pin its own version; `package.json` reads **3.9.0** (just released below)._
 
+### Minor Changes
+
+#### 🔧 Fixed
+
+- **👤 User-facing**
+  - **The desktop, Android and web builds of Formamorph are smaller.** 3.9.0 carried about 130 MB of bundled world art that the game never loads.
+
 ---
 
 <details>

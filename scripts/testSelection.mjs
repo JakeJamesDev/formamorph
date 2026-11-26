@@ -112,8 +112,7 @@ export const GRAPH_COVERED = {
   'scripts/stripSeededWorlds.mjs': 'reads only the world file an import names; a change to it runs the full suite',
   'scripts/shipNotices.mjs': 'reads the notices file its caller names and the package.json of each module; a change to it runs the full suite',
   'scripts/bundledAvatarCheck.mjs': 'checks only the output folder its build names; a change to it runs the full suite',
-  'scripts/espeakCheck.mjs': 'checks only the output folder its build names; a change to it runs the full suite',
-  'scripts/corefDevManifest.mjs': 'reads files only in the dev server, which no test runs; a change to it runs the full suite',
+  'scripts/espeakCheck.mjs': 'checks only the output folder its build names; a change to it runs the full suite',  'scripts/corefDevManifest.mjs': 'reads files only in the dev server, which no test runs; a change to it runs the full suite',
   'scripts/remoteOrtRuntime.mjs': 'reads only the onnxruntime-web package.json; a change to it runs the full suite',
   'scripts/stashSourceMaps.mjs': 'moves only the maps under the folders its caller names; a change to it runs the full suite',
   'scripts/stashSourceMaps.test.mjs': 'reads only its own temp folder',
@@ -185,7 +184,7 @@ export const PATH_TRIGGERS = {
   'scripts/fixtures/release-summary/*.md': ['scripts/validateReleaseSummary.test.mjs'],
   '.github/workflows/pages.yml': ['scripts/bundledAvatarCheck.test.mjs'],
   'electron-builder.yml': ['electron/builderConfig.test.mjs', 'scripts/bundledAvatarCheck.test.mjs'],
-  'vite.config.js': ['scripts/espeakCheck.test.mjs'],
+  'vite.config.js': ['scripts/espeakCheck.test.mjs', 'scripts/bundledWorldImportCheck.test.mjs'],
   // The runner test loads this reporter by path through real vitest.
   'scripts/runOutcomeReporter.mjs': ['scripts/runTests.test.mjs'],
   // The replay test loads this reporter by path through real vitest.
