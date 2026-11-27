@@ -15,6 +15,7 @@ import { channelMatch } from '@/lib/vrmColorChannels';
 import { blendColor } from '@/lib/oklab';
 import { COLOR_CHANNELS, type ColorPlan } from '@/lib/avatarLook';
 import { usePanelLoopGate } from '@/lib/panelShown';
+import { waitForPrograms } from '@/lib/waitForPrograms';
 
 // VRM/MToon material: the base three Material plus the standard/MToon fields the color code touches.
 type VrmMaterial = THREE.Material & {
@@ -483,7 +484,9 @@ const VRMViewer = forwardRef<VRMViewerHandle, VRMViewerProps>(({
 
         // Compile the shaders off the main thread and upload one texture a frame, so the first draw
         // doesn't stall the page. This runs after the setup above, which decides the programs drawn.
-        await renderer.compileAsync(scene, camera);
+        // Own wait, not compileAsync: its poll throws once unmount disposes the renderer mid-compile.
+        const gl = renderer.getContext();
+        await waitForPrograms(renderer.compile(scene, camera), renderer.properties, () => cancelled || gl.isContextLost());
         for (const texture of texturesOf(vrm.scene)) {
           if (cancelled) return;
           renderer.initTexture(texture);
