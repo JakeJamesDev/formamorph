@@ -34,4 +34,5 @@ Brush editor choice: it opens on the copy right after the split (user story 8). 
 - No live-preview check. The jsdom tests drive the real menu, undo history and brush editor; no dev route holds a world with a shared mask.
 
 **For you**
-- Approve the wording: the action label **Copy for This Image**, and the copy's name `<name> (Copy)`, then `<name> (Copy) (2)` for a second copy. World Editor → a location with two images that share a mask → the Weather Mask button.
+- Wording approved 2026-11-26: the action label **Copy for This Image**, and the copy's name `<name> (Copy)`, then `<name> (Copy) (2)` for a second copy.
+- Live check: World Editor → a location with two images that share a mask → the Weather Mask button.
