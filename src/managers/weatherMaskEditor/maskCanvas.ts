@@ -45,12 +45,12 @@ export function drawTint(canvas: HTMLCanvasElement, raster: Uint8ClampedArray, r
   context.putImageData(image, r.x0, r.y0);
 }
 
-/** The longest edge of the live preview's mask, so a stroke's re-encode stays cheap. */
-const PREVIEW_EDGE = 256;
+/** The longest edge of the preview's mask while a stroke paints, so each frame's re-encode stays cheap. */
+export const STROKE_PREVIEW_EDGE = 256;
 
-/** `raster` as a small grayscale PNG for the weather preview, sampled down to `PREVIEW_EDGE`. */
-export function previewMaskPng(raster: Uint8ClampedArray, width: number, height: number): string {
-  const step = Math.max(1, Math.ceil(Math.max(width, height) / PREVIEW_EDGE));
+/** `raster` as a grayscale PNG for the weather preview, sampled down to fit `edge`. */
+export function previewMaskPng(raster: Uint8ClampedArray, width: number, height: number, edge: number): string {
+  const step = Math.max(1, Math.ceil(Math.max(width, height) / edge));
   const w = Math.max(1, Math.floor(width / step));
   const h = Math.max(1, Math.floor(height / step));
   const small = new Uint8ClampedArray(w * h);

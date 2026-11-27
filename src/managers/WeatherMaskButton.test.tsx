@@ -23,10 +23,11 @@ vi.mock('@/lib/weatherMask', async (load) => ({ ...(await load<typeof import('@/
 // jsdom has no canvas: the brush editor reads a stored mask as all black and saves a PNG named for its size.
 const canvasFake = vi.hoisted(() => ({ saved: [] as { width: number; height: number; raster: Uint8ClampedArray }[] }));
 vi.mock('./weatherMaskEditor/maskCanvas', () => ({
+  STROKE_PREVIEW_EDGE: 256,
   readMaskRaster: vi.fn(async (_data: string, width: number, height: number) => new Uint8ClampedArray(width * height)),
   drawTint: vi.fn(),
-  // Names the preview mask for its painted pixels, so a test reads whether it followed a stroke.
-  previewMaskPng: vi.fn((raster: Uint8ClampedArray) => `data:image/png;base64,lit${raster.reduce((n, v) => n + (v > 0 ? 1 : 0), 0)}`),
+  // Names the preview mask for its painted pixels and its longest edge, so a test reads what it followed and how sharp.
+  previewMaskPng: vi.fn((raster: Uint8ClampedArray, _w: number, _h: number, edge: number) => `data:image/png;base64,lit${raster.reduce((n, v) => n + (v > 0 ? 1 : 0), 0)}@${edge}`),
   encodeMaskRaster: vi.fn((raster: Uint8ClampedArray, width: number, height: number) => {
     canvasFake.saved.push({ width, height, raster: raster.slice() });
     return `data:image/png;base64,${width}x${height}`;
@@ -577,12 +578,29 @@ describe('Weather Mask brush editor preview', () => {
     await mount(world([{ mediaId: 'day' }]));
     const paint = await openEditor('Paint', 1280, 720);
     const canvas = weather();
-    expect(canvas.dataset.weatherMask).toBe('data:image/png;base64,lit0');
+    expect(canvas.dataset.weatherMask).toBe('data:image/png;base64,lit0@1280');
     stroke(paint);
-    await waitFor(() => expect(weather().dataset.weatherMask).not.toBe('data:image/png;base64,lit0'));
+    await waitFor(() => expect(weather().dataset.weatherMask).not.toBe('data:image/png;base64,lit0@1280'));
     expect(weather()).toBe(canvas);
     await press('Invert');
-    expect(weather().dataset.weatherMask).toMatch(/lit\d{6,}/);
+    expect(weather().dataset.weatherMask).toMatch(/lit\d{6,}@1280$/);
+  });
+
+  it('draws a small mask while a stroke paints and the full-size mask once it ends', async () => {
+    await mount(world([{ mediaId: 'day' }]));
+    const paint = await openEditor('Paint', 1280, 720);
+    fireEvent.pointerDown(paint, { button: 0, pointerId: 1, clientX: 600, clientY: 300 });
+    fireEvent.pointerMove(paint, { pointerId: 1, clientX: 700, clientY: 320 });
+    await waitFor(() => expect(weather().dataset.weatherMask).toMatch(/lit[1-9]\d*@256$/));
+    fireEvent.pointerUp(paint, { pointerId: 1, clientX: 700, clientY: 320 });
+    expect(weather().dataset.weatherMask).toMatch(/lit[1-9]\d*@1280$/);
+  });
+
+  it('turns sharp when a stroke ends before its frame draws', async () => {
+    await mount(world([{ mediaId: 'day' }]));
+    const paint = await openEditor('Paint', 1280, 720);
+    stroke(paint);
+    expect(weather().dataset.weatherMask).toMatch(/lit[1-9]\d*@1280$/);
   });
 });
 

@@ -24,7 +24,7 @@ import { useMediaQuery } from '@/lib/useMediaQuery';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { cn } from '@/lib/utils';
 import { MASK_CAP } from '@/lib/weatherMask';
-import { drawTint, encodeMaskRaster, previewMaskPng, readMaskRaster } from './maskCanvas';
+import { STROKE_PREVIEW_EDGE, drawTint, encodeMaskRaster, previewMaskPng, readMaskRaster } from './maskCanvas';
 import {
   FIT_VIEW, MAX_SIZE, MIN_SIZE, boxToMask, panBy, screenSize, stepSize, viewTransform, wheelDelta, wheelZoom, zoomAt, type MaskView,
 } from './maskView';
@@ -141,7 +141,7 @@ function EditorBody({ pictures, mask, sharedCount, onSave, onClose }: {
       const base = mask ? await readMaskRaster(mask, w, h) : new Uint8ClampedArray(w * h);
       if (!mounted.current) return;
       raster.current = base.slice();
-      setPreviewMask(previewMaskPng(base, w, h));
+      setPreviewMask(previewMaskPng(base, w, h, Math.max(w, h)));
       setLoaded({ width: w, height: h, base });
       setDoc(newMaskDocument(w, h));
     } catch (e: unknown) {
@@ -156,11 +156,16 @@ function EditorBody({ pictures, mask, sharedCount, onSave, onClose }: {
     if (canvas && raster.current) drawTint(canvas, raster.current);
   }, []);
 
-  /** Every redraw also hands the weather preview the mask as it stands. */
+  /** Hands the weather preview the mask as it stands: full size, or small while a stroke paints. */
+  const updatePreview = () => {
+    if (!raster.current || !loaded) return;
+    const edge = painter.current ? STROKE_PREVIEW_EDGE : Math.max(loaded.width, loaded.height);
+    setPreviewMask(previewMaskPng(raster.current, loaded.width, loaded.height, edge));
+  };
   const redraw = (rect?: MaskRect | null) => {
     if (!raster.current) return;
     if (tint.current) drawTint(tint.current, raster.current, rect);
-    if (loaded) setPreviewMask(previewMaskPng(raster.current, loaded.width, loaded.height));
+    updatePreview();
   };
 
   /** Moves the document to `next` and redraws the replay over the base. */
@@ -242,6 +247,11 @@ function EditorBody({ pictures, mask, sharedCount, onSave, onClose }: {
     painter.current = null;
     strokePointer.current = null;
     setPainting(false);
+    // Flush the stroke's last frame now, so the preview turns sharp once.
+    if (frame.current) {
+      cancelAnimationFrame(frame.current);
+      paintFrame();
+    } else updatePreview();
     // The raster already holds the stroke; the document records it for undo.
     setDoc((d) => (d ? applyMaskOp(d, stroke.op()) : d));
   };
