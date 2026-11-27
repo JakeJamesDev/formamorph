@@ -14,6 +14,11 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 
 ### Minor Changes
 
+#### ➕ Added
+
+- **👤 User-facing**
+  - **A location image in the World Editor can get its own copy of a shared Weather Mask.** **Copy for This Image** in the Weather Mask menu keeps the original on the other images and opens the brush editor on the copy.
+
 #### 🔧 Fixed
 
 - **👤 User-facing**

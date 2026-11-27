@@ -4,7 +4,7 @@ import type { GalleryImage, GameLocation, MediaFileEntry, MediaList } from '@/ty
 import { galleryLink } from './entityImages';
 import { fitWithin } from './imageBytes';
 import { IMAGE_CAPS } from './imageSlots';
-import { mediaEntry, newMediaName } from './mediaList';
+import { mediaEntry, newMediaName, uniqueMediaName } from './mediaList';
 import { randomUUID } from './uuid';
 
 /** A Mask is capped like the location image it covers. */
@@ -35,6 +35,18 @@ export function withSlotMask(images: readonly GalleryImage[], index: number, id:
 /** A new Mask entry holding `data`, named for the file, else "<subject> Mask N", unique in `list`. */
 export function newMaskEntry(list: MediaList | undefined, data: string, fileName: string | undefined, subject: string): MediaFileEntry {
   return { id: randomUUID(), name: newMediaName(fileName, `${subject} Mask`, 'mask', list), kind: 'mask', data, type: 'image/png' };
+}
+
+/**
+ * Slot `index` split off Mask `original`: a new Mask entry with the same data, named "<name> (Copy)", unique in
+ * `list`, and `images` with only that slot linking it.
+ */
+export function copySlotMask(list: MediaList | undefined, original: MediaFileEntry, images: readonly GalleryImage[], index: number): {
+  entry: MediaFileEntry;
+  images: GalleryImage[];
+} {
+  const entry: MediaFileEntry = { ...original, id: randomUUID(), name: uniqueMediaName(`${original.name} (Copy)`, list) };
+  return { entry, images: withSlotMask(images, index, entry.id) };
 }
 
 /** An uploaded file as a Mask's data: a PNG data URL, scaled down to fit `MASK_CAP`. */

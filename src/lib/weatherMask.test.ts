@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { GameLocation, MediaList, WorldOverview } from '@/types';
+import type { GameLocation, MediaFileEntry, MediaList, WorldOverview } from '@/types';
 import { galleryLinks } from './entityImages';
 import { editGallery, galleryView, migrateGalleriesToMediaList, placeGalleryFile } from './mediaGallery';
 import { mediaEntryItems } from './mediaEntries';
@@ -8,7 +8,7 @@ import { writeGalleryImage } from './mediaParents';
 import { locationWithoutMedia, overviewWithoutMedia } from './mediaUnlink';
 import { mediaUsage, mediaUseLabel } from './mediaUsage';
 import { sandboxMediaOf } from './sandboxMedia';
-import { maskUseCount, newMaskEntry, withSlotMask } from './weatherMask';
+import { copySlotMask, maskUseCount, newMaskEntry, withSlotMask } from './weatherMask';
 
 const DAY = 'data:image/png;base64,REFZ';
 const NIGHT = 'data:image/png;base64,TklHSFQ=';
@@ -126,6 +126,22 @@ describe('slot helpers', () => {
     const pictures = [{ data: DAY }, { data: NIGHT, weatherMask: 'win' }];
     expect(withSlotMask(pictures, 0, 'win')).toEqual([{ data: DAY, weatherMask: 'win' }, pictures[1]]);
     expect(withSlotMask(pictures, 1, undefined)).toEqual([pictures[0], { data: NIGHT }]);
+  });
+
+  it('copies a shared Mask to one slot: a fresh id, the same data, and only that slot relinked', () => {
+    const pictures = [{ data: DAY, weatherMask: 'win' }, { data: NIGHT, weatherMask: 'win' }, { data: DAY }];
+    const { entry, images } = copySlotMask(LIST, LIST.win as MediaFileEntry, pictures, 1);
+    expect(entry.id).not.toBe('win');
+    expect(LIST[entry.id]).toBeUndefined();
+    expect(entry).toMatchObject({ name: 'Dock Window (Copy)', kind: 'mask', data: WINDOW });
+    expect(images).toEqual([pictures[0], { data: NIGHT, weatherMask: entry.id }, pictures[2]]);
+  });
+
+  it('names a second copy uniquely in the list', () => {
+    const first = copySlotMask(LIST, LIST.win as MediaFileEntry, [{ data: DAY, weatherMask: 'win' }], 0).entry;
+    const second = copySlotMask({ ...LIST, [first.id]: first }, LIST.win as MediaFileEntry, [{ data: DAY, weatherMask: 'win' }], 0).entry;
+    expect(second.name).toBe('Dock Window (Copy) (2)');
+    expect(second.id).not.toBe(first.id);
   });
 
   it('names a new Mask for its file, else for its location, unique in the list', () => {

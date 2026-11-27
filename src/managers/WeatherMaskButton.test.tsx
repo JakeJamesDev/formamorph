@@ -148,7 +148,75 @@ describe('Weather Mask control', () => {
   it('names the shared count and the Mask at the top of the menu when two images link it', async () => {
     await mount(world([{ mediaId: 'day', weatherMask: 'win' }, { mediaId: 'night', weatherMask: 'win' }]));
     expect(control().getAttribute('data-weather-mask')).toBe('win');
-    expect(await openMenu()).toEqual(['Shared by 2 images · Dock Window', '---', 'Edit', 'Replace', 'Choose', 'Show Mask', '---', 'Remove']);
+    expect(await openMenu()).toEqual(['Shared by 2 images · Dock Window', '---', 'Edit', 'Replace', 'Choose', 'Copy for This Image', 'Show Mask', '---', 'Remove']);
+  });
+
+  describe('Copy for This Image', () => {
+    const shedLoc: GameLocation = { id: 'shedLoc', name: 'Shed', images: [{ mediaId: 'shed', weatherMask: 'win' }] };
+    const shedImages = (ctx: () => { locations: GameLocation[] }) => ctx().locations.find((l) => l.id === 'shedLoc')!.images;
+    /** Splits the framed slot and closes the brush editor it opens, unpainted. */
+    const split = async () => {
+      await pick('Copy for This Image');
+      await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Weather Mask' })).not.toBeNull());
+      await act(async () => { fireEvent.click(within(editor()).getByRole('button', { name: 'Cancel' })); });
+      expect(screen.queryByRole('dialog', { name: 'Weather Mask' })).toBeNull();
+    };
+
+    it('links this slot to a new Mask with the same pixels, and every other slot keeps the original', async () => {
+      const { ctx, stored } = await mount(world([{ mediaId: 'day', weatherMask: 'win' }, { mediaId: 'night', weatherMask: 'win' }], [shedLoc]));
+      await split();
+      const copyId = stored()[0].weatherMask!;
+      expect(copyId).not.toBe('win');
+      const list = ctx().worldOverview.mediaList!;
+      expect(list[copyId]).toMatchObject({ kind: 'mask', data: WINDOW, name: 'Dock Window (Copy)' });
+      expect(list.win).toEqual(LIST.win);
+      expect(stored()[1].weatherMask).toBe('win');
+      expect(shedImages(ctx)).toEqual([{ mediaId: 'shed', weatherMask: 'win' }]);
+      expect(masks(list)).toHaveLength(2);
+      expect(maskButton().getAttribute('aria-label')).toBe('Weather Mask: Dock Window (Copy)');
+    });
+
+    it('drops the shared count: the copy is unshared, the original names one image fewer', async () => {
+      await mount(world([{ mediaId: 'day', weatherMask: 'win' }, { mediaId: 'night', weatherMask: 'win' }], [shedLoc]));
+      expect((await openMenu())[0]).toBe('Shared by 3 images · Dock Window');
+      fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
+      await split();
+      expect(await openMenu()).toEqual(['Edit', 'Replace', 'Choose', 'Show Mask', '---', 'Remove']);
+      fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
+      frameTile('Image 2');
+      expect((await openMenu())[0]).toBe('Shared by 2 images · Dock Window');
+    });
+
+    it('undoes in one step: the shared link comes back and the copy goes', async () => {
+      const { ctx, history, stored } = await mount(world([{ mediaId: 'day', weatherMask: 'win' }, { mediaId: 'night', weatherMask: 'win' }]));
+      await split();
+      const copyId = stored()[0].weatherMask!;
+      expect(ctx().worldOverview.mediaList![copyId]).toBeDefined();
+      await act(async () => { history().undo(); });
+      expect(stored().map((s) => s.weatherMask)).toEqual(['win', 'win']);
+      expect(ctx().worldOverview.mediaList![copyId]).toBeUndefined();
+      expect(masks(ctx().worldOverview.mediaList!)).toEqual([LIST.win]);
+    });
+
+    it('opens the brush editor on the copy, and Save changes the copy only', async () => {
+      const { ctx, stored } = await mount(world([{ mediaId: 'day', weatherMask: 'win' }, { mediaId: 'night', weatherMask: 'win' }]));
+      await pick('Copy for This Image');
+      await waitFor(() => expect(document.querySelector('[data-mask-scene] img')).not.toBeNull());
+      const picture = document.querySelector<HTMLImageElement>('[data-mask-scene] img')!;
+      expect(document.querySelector('[data-mask-shared]')).toBeNull();
+      Object.defineProperty(picture, 'naturalWidth', { value: 3840 });
+      Object.defineProperty(picture, 'naturalHeight', { value: 2160 });
+      await act(async () => { fireEvent.load(picture); });
+      await waitFor(() => expect(document.querySelector('[data-mask-paint]')).not.toBeNull());
+      const paint = document.querySelector<HTMLElement>('[data-mask-paint]')!;
+      paint.getBoundingClientRect = () => ({ left: 0, top: 0, width: 1280, height: 720, right: 1280, bottom: 720, x: 0, y: 0, toJSON: () => ({}) });
+      stroke(paint);
+      await press('Save');
+      const copyId = stored()[0].weatherMask!;
+      await waitFor(() => expect(ctx().worldOverview.mediaList![copyId]).toMatchObject({ data: 'data:image/png;base64,1920x1080' }));
+      expect(ctx().worldOverview.mediaList!.win).toEqual(LIST.win);
+      expect(stored()[1].weatherMask).toBe('win');
+    });
   });
 
   it('opens the file picker inside the Upload click, which a browser needs to show it', async () => {
