@@ -89,6 +89,16 @@ describe('buildStatContext', () => {
     expect(buildStatContext([bandless], all)).toBe('Vigor: 62/100 — Physical stamina.');
     expect(buildStatContext([bandless], { values: false, status: true, meaning: false })).toBe('Vigor');
   });
+  it('a band with no description omits the status, in every format', () => {
+    const blank = { ...vigor, descriptors: [{ id: 'd', threshold: 100 }] } as unknown as PlayerStat;
+    const status = { values: false, status: true, meaning: false };
+    expect(buildStatContext([blank], status)).toBe('Vigor');
+    expect(buildStatContext([blank], all)).toBe('Vigor: 62/100 — Physical stamina.');
+    expect(buildStatContext([blank], status, 'markdown')).toBe('- **Vigor**');
+    expect(buildStatContext([blank], all, 'xml')).toBe(
+      '<stat>\n  <name>Vigor</name>\n  <value>62/100</value>\n  <meaning>Physical stamina.</meaning>\n</stat>',
+    );
+  });
   it('an absent descriptors array reads exactly as an empty one, in every format', () => {
     const empty = { ...bandless, descriptors: [] } as PlayerStat;
     for (const format of ['simple', 'markdown', 'xml'] as const) {

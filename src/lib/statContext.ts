@@ -72,7 +72,8 @@ export const ownerStatParts = (
 
 /** One stat in `format`: a line, or a multi-line `<stat>` block in xml. Each piece is marked as its own. */
 function statEntry(stat: PlayerStat, pieces: StatPieces, format: ContextFormat): MarkedRun[] {
-  const descriptor = activeDescriptor(stat, stat.value);
+  // World JSON can carry a band with no description; it has no status to give.
+  const status = pieces.status ? activeDescriptor(stat, stat.value)?.description : undefined;
   const valueStr = statValueLabel(stat, stat.value);
   if (format === 'xml') {
     // The line break and indent stay unmarked, so a piece marks only its tag.
@@ -82,15 +83,15 @@ function statEntry(stat: PlayerStat, pieces: StatPieces, format: ContextFormat):
       '<stat>',
       child('name', stat.name),
       pieces.values ? child('value', valueStr, 'range') : '',
-      pieces.status && descriptor ? child('status', descriptor.description, 'descriptor') : '',
+      status ? child('status', status, 'descriptor') : '',
       pieces.meaning && stat.description ? child('meaning', stat.description, 'meaning') : '',
       '\n</stat>',
     );
   }
   let body: MarkedRun[] = pieces.values ? mark(['range'], valueStr) : [];
   // Descriptor is parenthesized when it trails a value, bare when it stands alone.
-  if (pieces.status && descriptor) {
-    const text = pieces.values ? `(${descriptor.description})` : descriptor.description;
+  if (status) {
+    const text = pieces.values ? `(${status})` : status;
     body = runs(body, pieces.values ? ' ' : '', mark(['descriptor'], text));
   }
   if (pieces.meaning && stat.description) body = runs(body, textOf(body) ? ' — ' : '', mark(['meaning'], stat.description));
