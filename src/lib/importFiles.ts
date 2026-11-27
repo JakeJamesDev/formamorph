@@ -3,7 +3,7 @@ import { toast } from 'react-toastify';
 import { describeError, showErrorDetails } from '@/lib/errorDetails';
 import { filesFrom } from '@/lib/filesFrom';
 import { linkToast } from '@/lib/linkToast';
-import { isQuotaError } from '@/lib/saveFailureToast';
+import { DISK_WRITE_CAUSE, isDiskWriteError, isQuotaError } from '@/lib/saveFailureToast';
 
 /**
  * Shared bits of the multi-file import handlers (worlds, characters, dictionaries, saves), which all follow
@@ -56,7 +56,8 @@ export interface SkippedImport {
 
 /** The written cause for a file that could not be stored. */
 export function storageCause(error: unknown, noun: ImportNoun): string {
-  return isQuotaError(error) ? 'The storage is full.' : `Formamorph cannot save the ${noun.one}.`;
+  if (isQuotaError(error)) return 'The storage is full.';
+  return isDiskWriteError(error) ? DISK_WRITE_CAUSE : `Formamorph cannot save the ${noun.one}.`;
 }
 
 /** The written cause for a world file that failed before storing: its content, or the read itself. */

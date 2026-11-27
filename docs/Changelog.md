@@ -26,6 +26,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **macOS no longer says the Mac desktop app is damaged.** On first launch, open it from Privacy & Security in System Settings with Open Anyway.
   - **The main menu no longer crashes on a world whose library card has no usable cover.** The card shows its placeholder art until the world is saved again.
   - **The weather preview in the Weather Mask brush editor now stops at the mask's edges.** Edges look soft only while a stroke paints, and turn sharp when it ends.
+  - **A world save that fails because the disk is full or blocked now offers Export World.** The message says the disk may be full, or security software blocked the file. Autosaves, world downloads and imports name the same causes.
   - **Copy Error Details on the crash screen now works in the itch.io web build.** When the copy still fails, the details show below the message, ready to select and copy.
 
 ---

@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { ChangeEvent, ReactElement } from 'react';
 import { fireEvent, render } from '@testing-library/react';
 import { getErrorDetailsState } from './errorDetails';
+import { DISK_WRITE_CAUSE } from './saveFailureToast';
 import { filesFrom, importPackFile, importReportToast, importSummaryToast, storageCause } from './importFiles';
 
 vi.mock('react-toastify', () => ({
@@ -158,5 +159,7 @@ describe('storageCause', () => {
     const full = Object.assign(new Error('raw'), { name: 'QuotaExceededError' });
     expect(storageCause(full, { one: 'entity', many: 'entities' })).toBe('The storage is full.');
     expect(storageCause(new Error('raw'), { one: 'entity', many: 'entities' })).toBe('Formamorph cannot save the entity.');
+    const diskWrite = Object.assign(new Error('Failed to write blobs (IOError)'), { name: 'DataError' });
+    expect(storageCause(diskWrite, { one: 'entity', many: 'entities' })).toBe(DISK_WRITE_CAUSE);
   });
 });
