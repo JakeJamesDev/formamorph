@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { mergeOrder, folderRefFor, groupSaves, mergeVisibleSaveOrder, type SaveMeta } from './saveOrdering';
+import {
+  mergeOrder, folderRefFor, groupSaves, mergeVisibleSaveOrder, rebindOrphanedSaves, uniqueNameToId, type SaveMeta,
+} from './saveOrdering';
 
 const meta = (id: string, worldId: string | undefined, worldName: string | null, timestamp: number): SaveMeta =>
   ({ id, name: id, worldId, worldName, timestamp });
@@ -60,6 +62,41 @@ describe('folderRefFor', () => {
     const ref = folderRefFor(meta('s', undefined, 'Ghost', 1), nameToId, idToName);
     expect(ref.key).toBe('name:Ghost');
     expect(ref.worldId).toBeUndefined();
+  });
+
+  it('matches by name when the save names a world id from another device', () => {
+    expect(folderRefFor(meta('s', 'uploaded-other-device', 'Beta', 1), nameToId, idToName)).toMatchObject({ key: 'w2', worldId: 'w2', worldName: 'Beta' });
+  });
+
+  it('keeps a foreign world id as the key when no installed world has the name', () => {
+    expect(folderRefFor(meta('s', 'uploaded-other-device', 'Ghost', 1), nameToId, idToName)).toMatchObject({ key: 'uploaded-other-device', worldName: 'Ghost' });
+  });
+});
+
+describe('uniqueNameToId', () => {
+  it('leaves out a name two installed worlds share', () => {
+    const map = uniqueNameToId([{ id: 'w1', name: 'Alpha' }, { id: 'w2', name: 'Alpha' }, { id: 'w3', name: 'Beta' }]);
+    expect([...map]).toEqual([['Beta', 'w3']]);
+  });
+});
+
+describe('rebindOrphanedSaves', () => {
+  const record = (id: string, worldId: string | undefined, worldName: string) => ({ id, worldId, currentState: { worldName } });
+
+  it('rebinds only saves whose world id is not installed, to the one world with their name', () => {
+    const worlds = [{ id: 'w1', name: 'Alpha' }, { id: 'w2', name: 'Beta' }];
+    const rebound = rebindOrphanedSaves([
+      record('moved', 'uploaded-other-device', 'Beta'),
+      record('home', 'w1', 'Beta'),
+      record('legacy', undefined, 'Alpha'),
+      record('lost', 'uploaded-other-device', 'Ghost'),
+    ], worlds);
+    expect(rebound).toEqual([record('moved', 'w2', 'Beta')]);
+  });
+
+  it('leaves a save alone when two installed worlds share its name', () => {
+    const worlds = [{ id: 'w1', name: 'Alpha' }, { id: 'w2', name: 'Alpha' }];
+    expect(rebindOrphanedSaves([record('moved', 'uploaded-other-device', 'Alpha')], worlds)).toEqual([]);
   });
 });
 

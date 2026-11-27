@@ -28,6 +28,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The weather preview in the Weather Mask brush editor now stops at the mask's edges.** Edges look soft only while a stroke paints, and turn sharp when it ends.
   - **A world save that fails because the disk is full or blocked now offers Export World.** The message says the disk may be full, or security software blocked the file. Autosaves, world downloads and imports name the same causes.
   - **Copy Error Details on the crash screen now works in the itch.io web build.** When the copy still fails, the details show below the message, ready to select and copy.
+  - **A save moved to another device now loads with its world there.** Import or download the world, then import the save. Saves already imported this way find their world the next time Load Game opens. When two of your worlds share the name, the save still asks for its world.
 
 ---
 

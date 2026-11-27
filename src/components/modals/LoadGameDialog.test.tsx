@@ -93,6 +93,35 @@ describe('importing saves', () => {
   });
 });
 
+describe('saves moved from another device', () => {
+  const moved = { ...save, worldId: 'uploaded-other-device' } as SaveRecord;
+
+  it('stores an imported save under the installed world with its name', async () => {
+    db.putSaveRecord.mockResolvedValue(undefined);
+    await renderDialog();
+    const { id: _id, ...file } = moved;
+    fireEvent.change(document.getElementById('save-upload')!, {
+      target: { files: [new File([JSON.stringify(file)], 'harbor.json', { type: 'application/json' })] },
+    });
+
+    await waitFor(() => expect(db.putSaveRecord).toHaveBeenCalledTimes(1));
+    expect(db.putSaveRecord.mock.calls[0][0]).toMatchObject({ worldId: 'w1' });
+  });
+
+  it('rebinds a stored save to the installed world and cold-loads it there', async () => {
+    db.getAllSaveRecords.mockResolvedValue([moved]);
+    db.putSaveRecord.mockResolvedValue(undefined);
+    const onLoad = vi.fn();
+    render(<LoadGameDialog open onOpenChange={() => {}} onLoad={onLoad} />);
+
+    fireEvent.click(await screen.findByText('Sedge Landing'));
+    fireEvent.click(await screen.findByText('Harbor Night'));
+
+    await waitFor(() => expect(onLoad).toHaveBeenCalledWith('s1', 'w1'));
+    expect(db.putSaveRecord).toHaveBeenCalledWith(expect.objectContaining({ id: 's1', worldId: 'w1' }));
+  });
+});
+
 describe('save failures', () => {
   it('toasts a failed load and ends the busy state', async () => {
     const onLoad = vi.fn().mockRejectedValue(new Error('save store closed'));

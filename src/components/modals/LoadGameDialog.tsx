@@ -22,6 +22,7 @@ import { filesFrom, importReportToast, storageCause, type SkippedImport } from "
 import WorldStorageService from '../../services/WorldStorageService';
 import {
   formatSaveTimestamp, groupSaves, mergeOrder, mergeVisibleSaveOrder, folderRefFor, FOLDER_ORDER_KEY,
+  rebindOrphanedSaves, resolveWorldId, uniqueNameToId,
   type SaveMeta, type SaveFolder, type WorldRef,
 } from '../../lib/saveOrdering';
 import type { SaveRecord, SupporterCopyMarker } from "@/types";
@@ -184,10 +185,19 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
       const worldMeta = await WorldStorageService.getWorldMetadata();
       const worldRefs: WorldRef[] = worldMeta.map(w => ({ id: String(w.id), name: w.name }));
       setSupporterCopies(new Map(worldMeta.flatMap(w => (w.supporterCopy ? [[String(w.id), w.supporterCopy] as const] : []))));
-      const nameToId = new Map(worldRefs.map(w => [w.name, w.id] as const));
+      const nameToId = uniqueNameToId(worldRefs);
       await migrateLegacySaves(name => nameToId.get(name ?? ''));
 
       const all = await getAllSaveRecords();
+      // A save moved between devices names its world's old id; rebind it to the world installed here.
+      for (const rebound of rebindOrphanedSaves(all, worldRefs)) {
+        try {
+          await putSaveRecord(rebound);
+          all[all.findIndex(r => r.id === rebound.id)] = rebound;
+        } catch (error) {
+          console.error('Error rebinding save:', rebound.id, error);
+        }
+      }
       setWorlds(worldRefs);
       setRecords(all);
       setFolderOrder(await getOrder(FOLDER_ORDER_KEY));
@@ -212,7 +222,7 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
     return () => { cancelled = true; };
   }, [activeKey, saveOrderByKey]);
 
-  const nameToId = React.useMemo(() => new Map(worlds.map(w => [w.name, w.id])), [worlds]);
+  const nameToId = React.useMemo(() => uniqueNameToId(worlds), [worlds]);
   const idToName = React.useMemo(() => new Map(worlds.map(w => [w.id, w.name])), [worlds]);
 
   const folders = React.useMemo(() => groupSaves(records.map(recordToRow), worlds, current), [records, worlds, current]);
@@ -341,7 +351,7 @@ export function LoadGameDialog({ open, onOpenChange, current, onLoad, title, ico
           ...save,
           id: randomUUID(),
           name: save.name ?? 'Imported save',
-          worldId: save.worldId ?? nameToId.get(worldName ?? ''),
+          worldId: resolveWorldId({ worldId: save.worldId, worldName }, nameToId, idToName) ?? save.worldId,
           isAutosave: undefined, // an imported save is always a manual one, never the auto slot
         };
         try { await putSaveRecord(record); }
