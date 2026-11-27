@@ -31,6 +31,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **A save moved to another device now loads with its world there.** Import or download the world, then import the save. Saves already imported this way find their world the next time Load Game opens. When two of your worlds share the name, the save still asks for its world.
   - **Leaving a screen while its Avatar is still loading no longer shows an error.** An Avatar that was loading when the graphics driver reset no longer stays blank.
   - **The Test Bench no longer crashes on a world whose stat has a descriptor with no description.** The AI reads no status for that stat while its value sits in that descriptor's range.
+  - **A dropped connection in the web build no longer shows an error or crashes the game screen.** Code then shows without colors and code fields edit as plain text. Text to Speech and the date picker say they couldn't load.
 
 ---
 

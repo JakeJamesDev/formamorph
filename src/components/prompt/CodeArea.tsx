@@ -364,6 +364,9 @@ export function CodeArea(props: CodeAreaProps) {
         onUpdate,
       });
       setSession(created);
+    }, (error: unknown) => {
+      // The plain text field stays in place of the editor.
+      console.warn('The code editor did not load:', error);
     });
     return () => { live = false; created?.destroy(); setSession(null); };
   }, [ariaLabel, placeholder, slots, onUpdate]);

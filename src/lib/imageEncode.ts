@@ -14,7 +14,11 @@ export const QUALITY = 0.82;
 // import) so this module stays evaluable in non-browser contexts (vitest) that can't load the CJS glue, and so
 // wasm-webp lands in its own chunk. The worker bundles it inline via `worker.rolldownOptions` in vite.config.
 let webpPromise: Promise<typeof import('wasm-webp')> | null = null;
-const loadWebp = () => (webpPromise ??= import('wasm-webp'));
+// A failed chunk fetch is not kept, so the next encode fetches again.
+const loadWebp = () => (webpPromise ??= import('wasm-webp').catch((error: unknown) => {
+  webpPromise = null;
+  throw error;
+}));
 
 // Minimal WebCodecs typings (ImageDecoder isn't in our TS lib) — used only to decode animated GIF/WebP frames.
 interface VideoFrameLike { duration: number | null; displayWidth: number; displayHeight: number; close(): void }

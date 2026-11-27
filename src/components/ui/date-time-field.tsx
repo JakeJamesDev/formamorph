@@ -5,12 +5,15 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { LoadFailureBoundary } from '@/components/LoadFailureBoundary';
 
 // react-day-picker loads all of date-fns, so the calendar loads when a pointer or focus nears its button.
 let loadedCalendar: typeof import('./date-calendar') | undefined;
 const loadCalendar = () => import('./date-calendar').then((module) => (loadedCalendar = module));
 // `lazy` suspends on its first render even with the module in hand, and React holds a shown fallback a while.
 const LazyCalendar = lazy(loadCalendar);
+// A failed prefetch shows when the calendar opens, through the boundary there.
+const prefetchCalendar = () => { loadCalendar().catch(() => {}); };
 
 /** How far either side of this year the caption's year list reaches. */
 const YEAR_REACH = 10;
@@ -244,8 +247,8 @@ export function DateTimeField({
             id={buttonId}
             aria-label={`${label} date`}
             disabled={readOnly}
-            onPointerEnter={() => void loadCalendar()}
-            onFocus={() => void loadCalendar()}
+            onPointerEnter={prefetchCalendar}
+            onFocus={prefetchCalendar}
             className={cn(
               'flex h-10 min-w-[9rem] items-center gap-2 rounded-md border border-input bg-background px-3 text-label',
               // Only the pair shares a row, so only the pair has a stretch to divide.
@@ -262,17 +265,19 @@ export function DateTimeField({
         {/* portal={false}: inside a modal Dialog, the scroll lock swallows wheel events on body-portaled content. */}
         <PopoverContent portal={false} className="w-auto p-3" align="start">
           {/* The calendar's own size, so a cold first open holds its place rather than growing the popover. */}
-          <Suspense fallback={<div data-calendar-loading="" className="h-[19rem] w-[17.5rem]" />}>
-            <Calendar
-              selected={selected}
-              startMonth={startMonth}
-              endMonth={endMonth}
-              onSelect={(next) => {
-                emitDay(dateToDay(next));
-                setDateOpen(false);
-              }}
-            />
-          </Suspense>
+          <LoadFailureBoundary fallback={<p role="alert" className="w-[17.5rem] text-label text-destructive">{"Couldn't load the calendar."}</p>}>
+            <Suspense fallback={<div data-calendar-loading="" className="h-[19rem] w-[17.5rem]" />}>
+              <Calendar
+                selected={selected}
+                startMonth={startMonth}
+                endMonth={endMonth}
+                onSelect={(next) => {
+                  emitDay(dateToDay(next));
+                  setDateOpen(false);
+                }}
+              />
+            </Suspense>
+          </LoadFailureBoundary>
         </PopoverContent>
       </Popover>}
 

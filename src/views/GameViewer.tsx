@@ -79,6 +79,7 @@ import { Tip } from "@/components/ui/tooltip";
 import { Meta } from "@/components/ui/typography";
 import { toast } from "react-toastify";
 import { toastError } from "@/lib/linkToast";
+import { LoadFailureBoundary } from "@/components/LoadFailureBoundary";
 import { cancelOpenPrompts, isNotice, scriptPrompts, silentPrompts, type ScriptPromptHost } from "@/lib/scriptPrompts";
 import { isScriptPromptSample, SCRIPT_PROMPT_SAMPLES } from "@/lib/devScriptPromptSamples";
 import { addTell, latestTurnId, NO_SHOWS, pruneTells, REROLLED_TIMINGS, setTurnTells, tellHost, turnTells, withoutTimings, type ScriptImageTell } from "@/lib/scriptTells";
@@ -1424,6 +1425,12 @@ const GameViewer = ({
   useEffect(() => {
     if (isTTSModalOpen) setTtsRequested(true);
   }, [isTTSModalOpen]);
+  // Unlatches too, so the next open mounts a fresh boundary and tries again.
+  const onTtsLoadFailure = useCallback((error: unknown) => {
+    toastError(error, { headline: "Couldn't open Text to Speech." });
+    setIsTTSModalOpen(false);
+    setTtsRequested(false);
+  }, []);
   const [ttsLoaded, setTtsLoaded] = useState(false);
   const [ttsGenerating, setTtsGenerating] = useState(false);
   const [ttsProgress, setTtsProgress] = useState<TTSProgress | null>(null);
@@ -8043,14 +8050,16 @@ const GameViewer = ({
       </Dialog>
 
       {ttsRequested && (
-        <Suspense fallback={null}>
-          <TTSModal
-            ref={ttsModalRef}
-            isOpen={isTTSModalOpen}
-            onOpenChange={setIsTTSModalOpen}
-            onLoadedChange={setTtsLoaded}
-          />
-        </Suspense>
+        <LoadFailureBoundary fallback={null} onError={onTtsLoadFailure}>
+          <Suspense fallback={null}>
+            <TTSModal
+              ref={ttsModalRef}
+              isOpen={isTTSModalOpen}
+              onOpenChange={setIsTTSModalOpen}
+              onLoadedChange={setTtsLoaded}
+            />
+          </Suspense>
+        </LoadFailureBoundary>
       )}
 
       <FeedbackDialog open={showBugReport} onOpenChange={setShowBugReport} notify={toastFeedbackNotify} />

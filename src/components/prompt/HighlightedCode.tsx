@@ -25,6 +25,9 @@ export function HighlightedCode({ code, slots, language, className }: {
     let live = true;
     void import('@/lib/codeHighlight').then((module) => {
       if (live) setHighlight({ run: module.highlightCode });
+    }, (error: unknown) => {
+      // The plain code stays, and it is the whole content.
+      console.warn('Code highlighting did not load:', error);
     });
     return () => { live = false; };
   }, []);

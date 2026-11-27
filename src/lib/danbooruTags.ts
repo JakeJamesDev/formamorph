@@ -11,4 +11,8 @@ export const loadDanbooruTags = (): Promise<string[]> => (promise ??= (
   import.meta.env.VITE_SFW_TAGS === 'true'
     ? import('@/data/danbooruTagsSfw.json')
     : import('@/data/danbooruTags.json')
-).then((m) => m.default as string[]));
+).then((m) => m.default as string[], (error: unknown) => {
+  // A failed chunk fetch is not kept, so the next use fetches again.
+  promise = null;
+  throw error;
+}));
