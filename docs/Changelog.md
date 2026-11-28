@@ -21,6 +21,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
     - **A location image in the World Editor can get its own copy of a shared Weather Mask.** **Copy for This Image** in the Weather Mask menu keeps the original on the other images and opens the brush editor on the copy.
     - **The Weather Mask brush editor shows the mask in magenta, cyan, or black and white.** Magenta is the new default, and Show Mask in the Weather Mask menu also tints in magenta. An eye button hides or shows the mask.
   - **Daily Check-In now sends your device language and AI Language choice.** The AI Language goes as a listed language or "other," never your typed words. Turning the switch off stops the whole send.
+  - **Bug reports now name your browser's version.** Samsung Internet and in-app browsers on Android show as themselves, not as Chrome.
 
 #### 🔧 Fixed
 
@@ -35,6 +36,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Leaving a screen while its Avatar is still loading no longer shows an error.** An Avatar that was loading when the graphics driver reset no longer stays blank.
   - **The Test Bench no longer crashes on a world whose stat has a descriptor with no description.** The AI reads no status for that stat while its value sits in that descriptor's range.
   - **A dropped connection in the web build no longer shows an error or crashes the game screen.** Code then shows without colors and code fields edit as plain text. Text to Speech and the date picker say they couldn't load.
+  - **Community downloads no longer stop while Formamorph is in the background.** A download that gets no data for 30 seconds now says so, in place of "The user aborted a request."
 
 ---
 

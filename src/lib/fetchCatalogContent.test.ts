@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { fetchCatalogContent } from './fetchCatalogContent';
+import { downloadStalledMessage, fetchCatalogContent } from './fetchCatalogContent';
 import AuthService from '@/services/AuthService';
 
 /** A response whose body streams `chunks` back, so the progress path is exercised. */
@@ -105,12 +105,118 @@ describe('fetchCatalogContent', () => {
     vi.mocked(fetch).mockImplementation(stalling());
     try {
       const p = fetchCatalogContent('w1', () => {}, { stallTimeoutMs: 1000 });
-      const assertion = expect(p).rejects.toThrow(/stalled/i);
+      const assertion = expect(p).rejects.toThrow(downloadStalledMessage(1000));
       await vi.advanceTimersByTimeAsync(1100); // past the stall window → controller aborts the fetch
       await assertion;
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  /**
+   * A fetch whose headers arrive after `headersMs` and whose chunks each take their delay. An abort rejects the
+   * pending step: with the signal's reason, or with the bare AbortError older Chromium gives a body read.
+   */
+  const dripping = (headersMs: number, chunkDelays: number[], legacy = false) => {
+    const json = JSON.stringify({ success: true, data: { contentData: { name: 'Sedge' } } });
+    const size = Math.ceil(json.length / chunkDelays.length);
+    const parts = chunkDelays.map((_, n) => json.slice(n * size, (n + 1) * size));
+    return vi.fn((_url: RequestInfo | URL, init?: RequestInit) => {
+      const sig = init?.signal;
+      const wait = <T,>(ms: number, value: T) => new Promise<T>((resolve, reject) => {
+        const timer = setTimeout(() => resolve(value), ms);
+        sig?.addEventListener('abort', () => {
+          clearTimeout(timer);
+          reject(legacy ? new DOMException('The user aborted a request.', 'AbortError') : sig.reason);
+        }, { once: true });
+      });
+      let i = 0;
+      const encoder = new TextEncoder();
+      const response = {
+        ok: true,
+        headers: { get: () => null },
+        body: {
+          getReader: () => ({
+            read: () => i < parts.length
+              ? wait(chunkDelays[i], { done: false, value: encoder.encode(parts[i++]) })
+              : Promise.resolve({ done: true, value: undefined }),
+          }),
+        },
+      } as unknown as Response;
+      return wait(headersMs, response);
+    });
+  };
+
+  /** A document whose visibility the test sets, firing `visibilitychange` like a browser does. */
+  const fakeDocument = () => {
+    const doc = Object.assign(new EventTarget(), { visibilityState: 'visible' as DocumentVisibilityState });
+    vi.stubGlobal('document', doc);
+    return {
+      hide: () => { doc.visibilityState = 'hidden'; doc.dispatchEvent(new Event('visibilitychange')); },
+      show: () => { doc.visibilityState = 'visible'; doc.dispatchEvent(new Event('visibilitychange')); },
+    };
+  };
+
+  describe('stall timer', () => {
+    beforeEach(() => { vi.useFakeTimers(); });
+    afterEach(() => { vi.useRealTimers(); });
+
+    it('names the stall when the browser rejects with a generic abort', async () => {
+      vi.mocked(fetch).mockImplementation(dripping(100, [5000], true));
+      const p = fetchCatalogContent('w1', () => {}, { stallTimeoutMs: 1000 });
+      const assertion = expect(p).rejects.toThrow(downloadStalledMessage(1000));
+      await vi.advanceTimersByTimeAsync(1200);
+      await assertion;
+    });
+
+    it('gives the first chunk a full window after slow headers', async () => {
+      vi.mocked(fetch).mockImplementation(dripping(900, [600]));
+      const p = fetchCatalogContent('w1', () => {}, { stallTimeoutMs: 1000 });
+      await vi.advanceTimersByTimeAsync(1600);
+      await expect(p).resolves.toEqual({ name: 'Sedge' });
+    });
+
+    it('does not count time the page spends hidden', async () => {
+      const page = fakeDocument();
+      vi.mocked(fetch).mockImplementation(dripping(100, [3000]));
+      const p = fetchCatalogContent('w1', () => {}, { stallTimeoutMs: 1000 });
+      page.hide();
+      await vi.advanceTimersByTimeAsync(3200);
+      await expect(p).resolves.toEqual({ name: 'Sedge' });
+    });
+
+    it('gives a full window when the page shows again', async () => {
+      const page = fakeDocument();
+      vi.mocked(fetch).mockImplementation(dripping(100, [2200]));
+      const p = fetchCatalogContent('w1', () => {}, { stallTimeoutMs: 1000 });
+      page.hide();
+      await vi.advanceTimersByTimeAsync(1900);
+      page.show();
+      await vi.advanceTimersByTimeAsync(600);
+      await expect(p).resolves.toEqual({ name: 'Sedge' });
+    });
+
+    it('still ends a stall that continues after the page shows again', async () => {
+      const page = fakeDocument();
+      vi.mocked(fetch).mockImplementation(dripping(100, [60_000]));
+      const p = fetchCatalogContent('w1', () => {}, { stallTimeoutMs: 1000 });
+      const assertion = expect(p).rejects.toThrow(downloadStalledMessage(1000));
+      page.hide();
+      await vi.advanceTimersByTimeAsync(5000);
+      page.show();
+      await vi.advanceTimersByTimeAsync(1100);
+      await assertion;
+    });
+
+    it('does not end a download when its timer runs late after a freeze', async () => {
+      vi.mocked(fetch).mockImplementation(dripping(100, [1500]));
+      const p = fetchCatalogContent('w1', () => {}, { stallTimeoutMs: 1000 });
+      await vi.advanceTimersByTimeAsync(500);
+      // A frozen page: the clock moves on while no timer runs.
+      vi.setSystemTime(Date.now() + 40_000);
+      await vi.advanceTimersByTimeAsync(1100);
+      await expect(p).resolves.toEqual({ name: 'Sedge' });
+    });
   });
 
   it('rejects when the caller aborts via signal', async () => {

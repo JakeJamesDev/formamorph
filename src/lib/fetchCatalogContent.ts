@@ -2,6 +2,14 @@ import WorldStorageService from '@/services/WorldStorageService';
 import AuthService from '@/services/AuthService';
 import { responseError } from '@/services/responseError';
 
+/** A timer this late means the page was frozen or throttled, so it says nothing about the server. */
+const LATE_TIMER_MS = 5_000;
+
+/** The message a stalled download rejects with, whatever text the browser gives its own abort. */
+export function downloadStalledMessage(stallMs: number): string {
+  return `The download stopped. No data arrived for ${Math.round(stallMs / 1000)} seconds. Try again.`;
+}
+
 /**
  * Fetch a community listing's stored content, streaming the body so a large download can report progress.
  *
@@ -13,7 +21,8 @@ import { responseError } from '@/services/responseError';
  * `Content-Length`) so a caller can show an indeterminate bar rather than a wrong one.
  *
  * `opts.signal` lets a caller cancel; `opts.stallTimeoutMs` (default 30s) aborts if the server goes quiet
- * mid-body — without either, a stalled connection would leave `reader.read()` pending forever with no way out.
+ * while the page is running — without either, a stalled connection would leave `reader.read()` pending
+ * forever with no way out. Time spent hidden or frozen never counts toward the stall.
  */
 export async function fetchCatalogContent(
   listingId: string,
@@ -22,22 +31,38 @@ export async function fetchCatalogContent(
 ): Promise<unknown> {
   const stallMs = opts.stallTimeoutMs ?? 30_000;
   const controller = new AbortController();
-  // Reset on every sign of progress (headers, each chunk); fire => no data for `stallMs` => give up.
+  const doc = typeof document === 'undefined' ? undefined : document;
+  let stalled = false;
+  // Reset on every sign of progress (headers, each chunk, the page showing again).
   let stallTimer: ReturnType<typeof setTimeout> | undefined;
+  let due = 0;
   const armStall = () => {
     clearTimeout(stallTimer);
-    stallTimer = setTimeout(() => controller.abort(new DOMException('Download stalled', 'TimeoutError')), stallMs);
+    due = Date.now() + stallMs;
+    stallTimer = setTimeout(onStallTimer, stallMs);
   };
+  const onStallTimer = () => {
+    if (doc?.visibilityState === 'hidden' || Date.now() - due > LATE_TIMER_MS) {
+      armStall();
+      return;
+    }
+    stalled = true;
+    controller.abort(new DOMException('Download stalled', 'TimeoutError'));
+  };
+  const onShown = () => { if (doc?.visibilityState !== 'hidden') armStall(); };
   const onExternalAbort = () => controller.abort(opts.signal?.reason);
   if (opts.signal?.aborted) controller.abort(opts.signal.reason);
   else opts.signal?.addEventListener('abort', onExternalAbort, { once: true });
 
   armStall();
+  doc?.addEventListener('visibilitychange', onShown);
+  doc?.addEventListener('resume', onShown);
   try {
     const response = await fetch(`${WorldStorageService.API_URL}/worlds/${listingId}/content`, {
       headers: AuthService.isAuthenticated() ? { 'Authorization': `Bearer ${AuthService.token}` } : {},
       signal: controller.signal,
     });
+    armStall();
 
     if (!response.ok) throw await responseError(response, 'Failed to download', ['message', 'error']);
 
@@ -52,7 +77,7 @@ export async function fetchCatalogContent(
       for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
-        armStall(); // progress — restart the stall clock
+        armStall();
         received += value.length;
         // Decoded incrementally: a multi-byte character can straddle two chunks, and decoding each chunk
         // independently would split it.
@@ -71,8 +96,14 @@ export async function fetchCatalogContent(
     }
 
     return payload.data.contentData;
+  } catch (error) {
+    // Older browsers drop the abort reason and reject with a generic "The user aborted a request."
+    if (stalled) throw new Error(downloadStalledMessage(stallMs), { cause: error });
+    throw error;
   } finally {
     clearTimeout(stallTimer);
+    doc?.removeEventListener('visibilitychange', onShown);
+    doc?.removeEventListener('resume', onShown);
     opts.signal?.removeEventListener('abort', onExternalAbort);
   }
 }

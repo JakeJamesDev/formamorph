@@ -10,6 +10,8 @@ const UA = {
   safariMac: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15',
   safariIpad: 'Mozilla/5.0 (iPad; CPU OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1',
   chromeAndroid: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36',
+  samsungAndroid: 'Mozilla/5.0 (Linux; Android 13; SM-S911B) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/23.0 Chrome/115.0.0.0 Mobile Safari/537.36',
+  webViewAndroid: 'Mozilla/5.0 (Linux; Android 13; Pixel 7; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/120.0.6099.230 Mobile Safari/537.36',
   operaWindows: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 OPR/117.0.0.0',
 };
 
@@ -20,30 +22,36 @@ afterEach(() => {
 
 describe('summarizing a user agent', () => {
   it('names the OS and the browser', () => {
-    expect(summarizeUserAgent(UA.chromeWindows)).toBe('Windows · Chrome');
-    expect(summarizeUserAgent(UA.firefoxLinux)).toBe('Linux · Firefox');
+    expect(summarizeUserAgent(UA.chromeWindows)).toBe('Windows · Chrome 131');
+    expect(summarizeUserAgent(UA.firefoxLinux)).toBe('Linux · Firefox 133');
   });
 
   it('does not read Edge or Opera as Chrome', () => {
     // Both claim Chrome in their user agent, so a naive check reports the wrong browser for each.
-    expect(summarizeUserAgent(UA.edgeWindows)).toBe('Windows · Edge');
-    expect(summarizeUserAgent(UA.operaWindows)).toBe('Windows · Opera');
+    expect(summarizeUserAgent(UA.edgeWindows)).toBe('Windows · Edge 131');
+    expect(summarizeUserAgent(UA.operaWindows)).toBe('Windows · Opera 117 (Chromium 131)');
   });
 
   it('does not read Chrome as Safari', () => {
     // Chrome's user agent ends in "Safari/537.36".
     expect(summarizeUserAgent(UA.chromeWindows)).toContain('Chrome');
-    expect(summarizeUserAgent(UA.safariMac)).toBe('macOS · Safari');
+    expect(summarizeUserAgent(UA.safariMac)).toBe('macOS · Safari 18');
   });
 
   it('reads an iPad as iOS rather than macOS', () => {
     // An iPad's user agent says "Mac OS X" too, so order of checks is what separates them.
-    expect(summarizeUserAgent(UA.safariIpad)).toBe('iOS · Safari');
+    expect(summarizeUserAgent(UA.safariIpad)).toBe('iOS · Safari 18');
   });
 
   it('reads Android as Android rather than Linux', () => {
     // Android user agents say "Linux" as well.
-    expect(summarizeUserAgent(UA.chromeAndroid)).toBe('Android · Chrome');
+    expect(summarizeUserAgent(UA.chromeAndroid)).toBe('Android · Chrome 131');
+  });
+
+  it('names the Chromium forks that call themselves Chrome on Android', () => {
+    // Both carry "Chrome/"; the Chromium major is what decides how fetch and IndexedDB behave.
+    expect(summarizeUserAgent(UA.samsungAndroid)).toBe('Android · Samsung Internet 23 (Chromium 115)');
+    expect(summarizeUserAgent(UA.webViewAndroid)).toBe('Android · WebView (Chromium 120)');
   });
 
   it('says Unknown rather than nothing when it recognizes neither', () => {
@@ -63,7 +71,7 @@ describe('what is collected', () => {
     expect(collectDiagnostics()).toEqual({
       version: APP_VERSION,
       platform: 'Browser',
-      system: 'Windows · Chrome',
+      system: 'Windows · Chrome 131',
     });
   });
 

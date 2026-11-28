@@ -11,11 +11,12 @@ export const DIAGNOSTIC_LABELS: Record<keyof BugDiagnostics, string> = {
 /**
  * Reduce a user-agent string to the OS and browser worth reporting.
  *
- * Deliberately coarse. The full string is a fingerprint, and a bug report needs to know "Windows, Chrome",
- * not the exact build of every engine the browser lists.
+ * Deliberately coarse. The full string is a fingerprint, and a bug report needs to know "Windows, Chrome 131",
+ * not the exact build of every engine the browser lists. A Chromium fork also names its Chromium major,
+ * which decides how the web platform behaves.
  *
  * @param userAgent - `navigator.userAgent`
- * @returns Something like `Windows · Chrome`, or `Unknown` when neither is recognizable
+ * @returns Something like `Windows · Chrome 131`, or `Unknown` when neither is recognizable
  */
 export function summarizeUserAgent(userAgent: string): string {
   const ua = userAgent || '';
@@ -29,13 +30,20 @@ export function summarizeUserAgent(userAgent: string): string {
     : /Linux/i.test(ua) ? 'Linux'
     : null;
 
+  const major = (pattern: RegExp) => ua.match(pattern)?.[1];
+  const chromium = major(/Chrome\/(\d+)/);
+  const fork = (name: string, version: string | undefined) =>
+    [name, version, chromium && `(Chromium ${chromium})`].filter(Boolean).join(' ');
+
   const browser =
-    // Order matters: Edge and Opera both claim Chrome, and Chrome claims Safari.
-    /Edg\//i.test(ua) ? 'Edge'
-    : /OPR\/|Opera/i.test(ua) ? 'Opera'
-    : /Firefox\//i.test(ua) ? 'Firefox'
-    : /Chrome\//i.test(ua) ? 'Chrome'
-    : /Safari\//i.test(ua) ? 'Safari'
+    // Order matters: Edge, Opera, Samsung Internet and WebViews all claim Chrome, and Chrome claims Safari.
+    /Edg\//i.test(ua) ? ['Edge', major(/Edg\/(\d+)/)].filter(Boolean).join(' ')
+    : /OPR\/|Opera/i.test(ua) ? fork('Opera', major(/OPR\/(\d+)/))
+    : /SamsungBrowser\//i.test(ua) ? fork('Samsung Internet', major(/SamsungBrowser\/(\d+)/))
+    : /Android/i.test(ua) && /; wv\)/.test(ua) ? fork('WebView', undefined)
+    : /Firefox\//i.test(ua) ? ['Firefox', major(/Firefox\/(\d+)/)].filter(Boolean).join(' ')
+    : chromium ? `Chrome ${chromium}`
+    : /Safari\//i.test(ua) ? ['Safari', major(/Version\/(\d+)/)].filter(Boolean).join(' ')
     : null;
 
   const parts = [os, browser].filter(Boolean);
