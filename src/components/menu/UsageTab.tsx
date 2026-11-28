@@ -15,18 +15,18 @@ import { useMountedRef } from "@/lib/useMountedRef";
 import { useTierName } from "@/lib/tierNames";
 import {
   FUNNEL_COLUMN_LABELS, NO_VALUE, axisTop, clientLabel, dayLabel, daysCsv, endingLabel, failureLabel, funnelCellLabel, funnelRows,
-  instantLabel, money, percent, platformLabel, promptTypeLabel, promptTypesCsv, refusalLabel, seconds, share, whole,
+  instantLabel, languageLabel, money, percent, platformLabel, promptTypeLabel, promptTypesCsv, refusalLabel, seconds, share, whole,
 } from "@/lib/usageReport";
 import type { FunnelRow } from "@/lib/usageReport";
 import { FUNNEL_STAGES } from "@/lib/funnel";
 import HostedAiAdminService, {
-  type HostedActiveFigures, type HostedAiAdminApi, type HostedInstallBuild, type HostedPromptTypeUsage, type HostedUsageDay,
-  type HostedUsageReport,
+  type HostedActiveFigures, type HostedAiAdminApi, type HostedInstallBuild, type HostedInstallMonth, type HostedLanguageCount,
+  type HostedPromptTypeUsage, type HostedUsageDay, type HostedUsageReport,
 } from "@/services/HostedAiAdminService";
 
 // scroll-guard: allow horizontal: wide tables scroll sideways inside the panel's vertical ScrollArea
 
-type UsageApi = Pick<HostedAiAdminApi, 'fetchUsageReport'>;
+type UsageApi = Pick<HostedAiAdminApi, 'fetchUsageReport' | 'fetchInstallMonths'>;
 
 const RANGES = [
   { value: '7', label: '7 Days' },
@@ -121,13 +121,14 @@ export function DayChart<Day extends { day: string }>({ days, partialDay, valueO
 }
 
 /** One bar per row on a shared baseline, longest first as the caller orders them. */
-function RankedBars({ rows, empty }: { rows: readonly { label: string; amount: number; value: string }[]; empty: string }) {
+function RankedBars({ rows, empty, wideLabels = false }: { rows: readonly { label: string; amount: number; value: string }[]; empty: string; wideLabels?: boolean }) {
+  const columns = wideLabels ? 'grid-cols-[11.5rem_minmax(0,1fr)_auto]' : 'grid-cols-[8.5rem_minmax(0,1fr)_auto]';
   if (rows.length === 0) return <Meta>{empty}</Meta>;
   const longest = Math.max(...rows.map((row) => row.amount), 1);
   return (
     <div className="grid gap-2">
       {rows.map((row) => (
-        <div key={row.label} className="grid grid-cols-[8.5rem_minmax(0,1fr)_auto] items-center gap-2 text-label">
+        <div key={row.label} className={`grid ${columns} items-center gap-2 text-label`}>
           <span className="min-w-0 truncate">{row.label}</span>
           <div aria-hidden="true" className="h-3">
             {row.amount > 0 && <div className={`h-3 min-w-0.5 rounded-r ${CHART_FILL}`} style={{ width: `${(row.amount / longest) * 100}%` }} />}
@@ -503,22 +504,46 @@ function PerformanceSection({ report, days }: { report: HostedUsageReport; days:
   );
 }
 
-/** This month's active installs per platform, most first, each with its share of the month. */
+/** Ranked rows in the order given, each with its share of the rows' total. */
+const shareRows = (counts: readonly { label: string; count: number }[]) => {
+  const total = counts.reduce((sum, row) => sum + row.count, 0);
+  return counts.map(({ label, count }) => ({ label, amount: count, value: `${whole(count)} (${percent(count / total)})` }));
+};
+
+/** This month's active installs per platform, most first. */
 const platformRows = (builds: readonly HostedInstallBuild[]) => {
   const byPlatform = new Map<string, number>();
   for (const build of builds) byPlatform.set(build.platform, (byPlatform.get(build.platform) ?? 0) + build.month);
-  const total = [...byPlatform.values()].reduce((sum, count) => sum + count, 0);
-  return [...byPlatform].filter(([, count]) => count > 0).sort((a, b) => b[1] - a[1])
-    .map(([platform, count]) => ({ label: platformLabel(platform), amount: count, value: `${whole(count)} (${percent(count / total)})` }));
+  return shareRows([...byPlatform].filter(([, count]) => count > 0).sort((a, b) => b[1] - a[1])
+    .map(([platform, count]) => ({ label: platformLabel(platform), count })));
 };
 
-function ClientsSection({ report }: { report: HostedUsageReport }) {
+const languageRows = (counts: readonly HostedLanguageCount[]) => shareRows(counts.map(({ language, count }) => ({ label: languageLabel(language), count })));
+
+const NO_INSTALLS = 'No active installs counted this month';
+
+function ClientsSection({ report, installMonths }: { report: HostedUsageReport; installMonths: readonly HostedInstallMonth[] }) {
   const { builds } = report.activeUsers;
+  // Matched by name, not position: a month with no send yet is not listed, so the newest can be last month.
+  const thisMonth = report.days[report.days.length - 1]?.day.slice(0, 7);
+  const languages = installMonths.find((entry) => entry.month === thisMonth)?.languages;
   return (
     <div className="grid gap-8">
-      <UsageSection title="Active Installs This Month">
-        <RankedBars empty="No active installs counted this month" rows={platformRows(builds)} />
-      </UsageSection>
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,21rem),1fr))] content-start gap-8">
+        <UsageSection title="Active Installs This Month">
+          <RankedBars empty={NO_INSTALLS} rows={platformRows(builds)} />
+        </UsageSection>
+        {languages && (
+          <>
+            <UsageSection title="Device Language This Month">
+              <RankedBars wideLabels empty={NO_INSTALLS} rows={languageRows(languages.device)} />
+            </UsageSection>
+            <UsageSection title="AI Language This Month">
+              <RankedBars empty={NO_INSTALLS} rows={languageRows(languages.ai)} />
+            </UsageSection>
+          </>
+        )}
+      </div>
 
       {builds.length > 0 && (
         <UsageSection title="Active Installs By Build">
@@ -569,10 +594,10 @@ function ClientsSection({ report }: { report: HostedUsageReport }) {
   );
 }
 
-function ReportView({ report, days, section }: { report: HostedUsageReport; days: Range; section: Section }) {
+function ReportView({ report, installMonths, days, section }: { report: HostedUsageReport; installMonths: readonly HostedInstallMonth[]; days: Range; section: Section }) {
   if (section === 'accounts') return <AccountsSection report={report} />;
   if (section === 'performance') return <PerformanceSection report={report} days={days} />;
-  if (section === 'clients') return <ClientsSection report={report} />;
+  if (section === 'clients') return <ClientsSection report={report} installMonths={installMonths} />;
   return <OverviewSection report={report} days={days} />;
 }
 
@@ -582,7 +607,18 @@ export function UsagePanel({ active, api }: { active: boolean; api: UsageApi }) 
   const [section, setSection] = useState<Section>('overview');
   const [report, setReport] = useState<{ range: Range; data: HostedUsageReport } | null>(null);
   const [unreadable, setUnreadable] = useState(false);
+  const [installMonths, setInstallMonths] = useState<HostedInstallMonth[]>([]);
   const mounted = useMountedRef();
+
+  useEffect(() => {
+    if (!active) return;
+    let current = true;
+    // A failed read only hides the language lists, so it stays silent.
+    api.fetchInstallMonths()
+      .then((months) => { if (current && mounted.current) setInstallMonths(months); })
+      .catch(() => { if (current && mounted.current) setInstallMonths([]); });
+    return () => { current = false; };
+  }, [active, api, mounted]);
 
   useEffect(() => {
     if (!active) return;
@@ -620,7 +656,7 @@ export function UsagePanel({ active, api }: { active: boolean; api: UsageApi }) 
       <Tabs value={section} onValueChange={(value) => setSection(value as Section)}>
         <CollapsingTabsList aria-label="Usage Sections" tabs={SECTIONS} value={section} />
       </Tabs>
-      {report ? <ReportView report={report.data} days={report.range} section={section} /> : unreadable ? <Meta>The usage report could not be read</Meta> : <Skeleton className="h-32 w-full" />}
+      {report ? <ReportView report={report.data} installMonths={installMonths} days={report.range} section={section} /> : unreadable ? <Meta>The usage report could not be read</Meta> : <Skeleton className="h-32 w-full" />}
     </div>
   );
 }

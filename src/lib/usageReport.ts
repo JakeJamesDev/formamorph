@@ -111,6 +111,19 @@ const PLATFORM_LABELS: Record<string, string> = { web: 'Web', windows: 'Windows'
 
 export const platformLabel = (platform: string): string => PLATFORM_LABELS[platform] ?? platform;
 
+const SENT_LANGUAGE_LABELS: Record<string, string> = { other: 'Other', unknown: 'Unknown' };
+const LANGUAGE_NAMES = new Intl.DisplayNames('en-US', { type: 'language', languageDisplay: 'standard' });
+
+/** `pt-BR` as `Portuguese (Brazil)`. A code with no English name stays as it is. */
+export function languageLabel(code: string): string {
+  if (SENT_LANGUAGE_LABELS[code]) return SENT_LANGUAGE_LABELS[code];
+  try {
+    return LANGUAGE_NAMES.of(code) ?? code;
+  } catch {
+    return code; // `of` throws on a malformed code.
+  }
+}
+
 /** One count over another, or null where the base is missing or zero. */
 export const share = (part: number, base: number | null): number | null => (base ? part / base : null);
 

@@ -40,6 +40,7 @@ beforeEach(() => {
     fetchPause: vi.fn(async () => ({ paused: true, pausedAt: '2026-01-01T09:30:00.000Z', liftedAt: null, until: '2026-01-02T00:00:00.000Z' })),
     liftPause: vi.fn(async () => ({ paused: false, pausedAt: '2026-01-01T09:30:00.000Z', liftedAt: '2026-01-01T10:00:00.000Z', until: '2026-01-02T00:00:00.000Z' })),
     fetchUsageReport: vi.fn(async () => { throw new Error('The panel does not read the usage report'); }),
+    fetchInstallMonths: vi.fn(async () => { throw new Error('The panel does not read the install months'); }),
   };
 });
 

@@ -53,5 +53,6 @@ export function createDevHostedAiApi(): HostedAiAdminApi {
     fetchPause: async () => ({ ...pause }),
     liftPause: async () => { pause = { ...pause, paused: false, liftedAt: new Date().toISOString() }; return { ...pause }; },
     fetchUsageReport: async () => { throw new Error('The Usage tab has its own fixture'); },
+    fetchInstallMonths: async () => { throw new Error('The Usage tab has its own fixture'); },
   };
 }

@@ -124,6 +124,19 @@ export interface HostedPromptTypeUsage {
   failed: number;
 }
 
+export interface HostedLanguageCount {
+  language: string;
+  count: number;
+}
+
+/** One UTC month of Active Installs. A server without the language counts omits `languages`. */
+export interface HostedInstallMonth {
+  /** `YYYY-MM`. */
+  month: string;
+  /** Each list is sorted most first. */
+  languages?: { device: HostedLanguageCount[]; ai: HostedLanguageCount[] };
+}
+
 /** Sums and call timings for a range of UTC days. It names no account. */
 export interface HostedUsageReport {
   since: string;
@@ -159,6 +172,8 @@ export interface HostedAiAdminApi {
   fetchPause(): Promise<HostedPause>;
   liftPause(): Promise<HostedPause>;
   fetchUsageReport(days: number): Promise<HostedUsageReport>;
+  /** Newest month first. */
+  fetchInstallMonths(): Promise<HostedInstallMonth[]>;
 }
 
 /** The server's value, with the lists and objects a form reads always present. */
@@ -240,6 +255,12 @@ class HostedAiAdminService implements HostedAiAdminApi {
   async fetchUsageReport(days: number): Promise<HostedUsageReport> {
     const response = await fetch(`${this.base}/hosted-ai/admin/usage-report?days=${days}`, { headers: authHeaders() });
     return (await unwrap<{ data: HostedUsageReport }>(response, 'Failed to read the usage report')).data;
+  }
+
+  async fetchInstallMonths(): Promise<HostedInstallMonth[]> {
+    // `days` only sizes the day list, which this read drops.
+    const response = await fetch(`${this.base}/active-installs?days=1`, { headers: authHeaders() });
+    return (await unwrap<{ data: { months: HostedInstallMonth[] } }>(response, 'Failed to read the active installs')).data.months;
   }
 }
 

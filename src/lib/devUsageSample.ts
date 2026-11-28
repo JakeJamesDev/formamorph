@@ -11,8 +11,16 @@ const WAVE = [12, 15, 9, 18, 21, 16, 11, 14, 23, 26, 19, 13, 17, 24, 28, 22, 15,
  *
  * Every figure is a placeholder to make the tab render; none is a real price, budget or count.
  */
-export function createDevUsageApi(): Pick<HostedAiAdminApi, 'fetchUsageReport'> {
+export function createDevUsageApi(): Pick<HostedAiAdminApi, 'fetchUsageReport' | 'fetchInstallMonths'> {
+  const languageCounts = (counts: Record<string, number>) => Object.entries(counts).map(([language, count]) => ({ language, count }));
   return {
+    fetchInstallMonths: async () => [{
+      month: new Date().toISOString().slice(0, 7),
+      languages: {
+        device: languageCounts({ 'en-US': 910, 'en-GB': 240, 'pt-BR': 210, 'es-419': 180, 'de-DE': 130, 'fr-FR': 110, 'zh-TW': 70, ru: 40, unknown: 10 }),
+        ai: languageCounts({ en: 1610, es: 100, pt: 80, other: 50, fr: 40, unknown: 20 }),
+      },
+    }],
     fetchUsageReport: async (count) => {
       const today = Math.floor(Date.now() / DAY_MS) * DAY_MS;
       const days: HostedUsageReport['days'] = Array.from({ length: count }, (_, index) => {

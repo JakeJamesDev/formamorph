@@ -2,7 +2,7 @@ import { render, screen, cleanup, fireEvent, waitFor, within } from '@testing-li
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { UsagePanel } from './UsageTab';
-import type { HostedUsageReport } from '@/services/HostedAiAdminService';
+import type { HostedInstallMonth, HostedUsageReport } from '@/services/HostedAiAdminService';
 import { toastTexts } from '@/test/toastText';
 import { seedSampleTierNames } from '@/test/tierNames';
 
@@ -61,8 +61,19 @@ const report = (patch: Partial<HostedUsageReport> = {}): HostedUsageReport => ({
   ...patch,
 });
 
-const mount = async (value = report()) => {
-  const api = { fetchUsageReport: vi.fn(async () => value) };
+const noMonths = async (): Promise<HostedInstallMonth[]> => [];
+
+/** The report's newest day is in January 2026. */
+const installMonths: HostedInstallMonth[] = [
+  { month: '2026-01', languages: {
+    device: [{ language: 'pt-BR', count: 3 }, { language: 'unknown', count: 1 }],
+    ai: [{ language: 'en', count: 2 }, { language: 'other', count: 1 }, { language: 'fr', count: 1 }],
+  } },
+  { month: '2025-12', languages: { device: [{ language: 'de', count: 9 }], ai: [{ language: 'de', count: 9 }] } },
+];
+
+const mount = async (value = report(), fetchInstallMonths = noMonths) => {
+  const api = { fetchUsageReport: vi.fn(async () => value), fetchInstallMonths: vi.fn(fetchInstallMonths) };
   render(<UsagePanel active api={api} />);
   await screen.findByRole('table', { name: 'Per Day' });
   return api;
@@ -186,6 +197,31 @@ describe('the figures', () => {
       ['3.6.2', '20', '60', '100'],
       ['3.6.1', '10', '40', '50'],
     ]);
+  });
+
+  it('ranks the report month\'s device and AI languages by name, each with its share', async () => {
+    const user = userEvent.setup();
+    await mount(report(), async () => installMonths);
+    await open(user, 'Clients And Offer');
+
+    const barsOf = (name: string) => Array.from(screen.getByRole('group', { name }).querySelectorAll('.grid.gap-2 > div.grid'), (row) => Array.from(row.querySelectorAll('span'), (span) => span.textContent));
+    expect(barsOf('Device Language This Month')).toEqual([['Portuguese (Brazil)', '3 (75%)'], ['Unknown', '1 (25%)']]);
+    expect(barsOf('AI Language This Month')).toEqual([['English', '2 (50%)'], ['Other', '1 (25%)'], ['French', '1 (25%)']]);
+  });
+
+  it.each<[string, () => Promise<HostedInstallMonth[]>]>([
+    ['the active installs read fails', async () => { throw new Error('refused'); }],
+    ['the month has no language counts', async () => [{ month: '2026-01' }]],
+    ['only an earlier month is listed', async () => installMonths.slice(1)],
+  ])('shows the tab without language lists when %s', async (_case, fetchInstallMonths) => {
+    const user = userEvent.setup();
+    const api = await mount(report(), fetchInstallMonths);
+    await waitFor(() => expect(api.fetchInstallMonths).toHaveBeenCalled());
+    await open(user, 'Clients And Offer');
+
+    expect(screen.queryByRole('group', { name: /Language This Month/ })).toBeNull();
+    expect(within(screen.getByRole('group', { name: 'Active Installs This Month' })).getByText('300 (75%)')).toBeTruthy();
+    expect(toastErrorMock).not.toHaveBeenCalled();
   });
 
   it('says so when no install is counted this month', async () => {
@@ -352,7 +388,7 @@ describe('the range', () => {
     const fetchUsageReport = vi.fn((days: number) => (days === 14
       ? new Promise<HostedUsageReport>((resolve) => { finishSlow = resolve; })
       : Promise.resolve(report({ totals: { ...report().totals, costMicros: 7_000_000 } }))));
-    render(<UsagePanel active api={{ fetchUsageReport }} />);
+    render(<UsagePanel active api={{ fetchUsageReport, fetchInstallMonths: noMonths }} />);
 
     await user.click(screen.getAllByRole('radio', { name: '30 Days' })[0]);
     await screen.findByText('$7.00');
@@ -366,9 +402,11 @@ describe('the range', () => {
 
   it('reads nothing while the tab is not on screen', () => {
     const fetchUsageReport = vi.fn(async () => report());
-    render(<UsagePanel active={false} api={{ fetchUsageReport }} />);
+    const fetchInstallMonths = vi.fn(noMonths);
+    render(<UsagePanel active={false} api={{ fetchUsageReport, fetchInstallMonths }} />);
 
     expect(fetchUsageReport).not.toHaveBeenCalled();
+    expect(fetchInstallMonths).not.toHaveBeenCalled();
   });
 });
 
@@ -416,7 +454,7 @@ describe('an empty or failed read', () => {
 
   it('reports a read that fails', async () => {
     const fetchUsageReport = vi.fn(async () => { throw new Error('refused'); });
-    render(<UsagePanel active api={{ fetchUsageReport }} />);
+    render(<UsagePanel active api={{ fetchUsageReport, fetchInstallMonths: noMonths }} />);
 
     expect(await screen.findByText('The usage report could not be read')).toBeTruthy();
     expect(toastTexts(toastErrorMock).join(' ')).toContain('refused');
