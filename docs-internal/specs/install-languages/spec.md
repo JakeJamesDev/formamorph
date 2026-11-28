@@ -58,7 +58,8 @@ The Daily Send carries two more values: the **Device Language** and the **AI Lan
 
 **Usage tab**
 
-- The Usage tab shows the two language splits for the month periods, beside the existing breakdown, with the same collapsing segments.
+- Ticket 04 ruling (2026-11-27): the Usage tab also calls `GET /api/active-installs`. Clients And Offer gains "Device Language This Month" and "AI Language This Month" ranked-bar lists for the current month, beside "Active Installs This Month", in the same style. There is no month picker. Month history stays in the admin route.
+- If that call fails, or the month has no `languages`, the rest of the tab renders as before and the two lists do not show.
 
 **Privacy policy**
 
