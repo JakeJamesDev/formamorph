@@ -96,7 +96,7 @@ The Daily Send carries two more values: the **Device Language** and the **AI Lan
 
 ## Further Notes
 
-- **The policy edit needs a new acceptance version.** The 2026-11-07 deploy published the Daily Send policy as `acceptance_version=5`. Adding two values means version 6 and a re-accept. The user decides whether this edit re-asks or ships as a minor change.
+- **The policy edit needs a new acceptance version.** The 2026-11-07 deploy published the Daily Send policy as `acceptance_version=5`. Ticket 05 ruling (2026-11-27): it publishes as version 6 with re-accept, right after the server deploy that carries tickets 01 and 02.
 - **Collection is still behind the `active_installs` setting.** The 2026-11-07 deploy log says it was off. Turn it on, or keep it on, only after the version 6 policy is live.
 - **The server half deploys before the client release.** An older client sends no body and counts under `unknown`, so the order is safe either way.
 - **Export shape:** no world or save `.json` changes.

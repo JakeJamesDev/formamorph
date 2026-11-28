@@ -1,6 +1,6 @@
 # 05: Privacy Policy Names The Languages
 
-Status: ready-for-human
+Status: ready-for-agent
 Blocked by: None (can start immediately)
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
 Reasoning effort: medium
@@ -11,7 +11,7 @@ Model rationale: legal text that must match what the code stores, word for word.
 
 ## What to build
 
-The Daily Send section of `src/assets/policies/privacy-policy.md` names the two new values, and the totals sentence names the language split. The user decides whether the edit publishes as a re-accept.
+The Daily Send section of `src/assets/policies/privacy-policy.md` names the two new values, and the totals sentence names the language split. It publishes as `acceptance_version=6` with re-accept, right after the server deploy that carries tickets 01 and 02 (user ruling, 2026-11-27).
 
 ## Acceptance criteria
 
@@ -19,4 +19,4 @@ The Daily Send section of `src/assets/policies/privacy-policy.md` names the two 
 - [ ] It says nothing typed in the AI Language setting leaves the device.
 - [ ] The totals sentence names the language split.
 - [ ] The wording follows the writing guide.
-- [ ] For you: decide whether this publishes as `acceptance_version=6` with a re-accept.
+- [ ] The deploy notes in `docs-internal/server.md` say to publish with `requireReaccept: true` right after the deploy, and to turn on `active_installs` only after that.
