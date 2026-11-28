@@ -1,6 +1,7 @@
 # Spec: Install Languages
 
-Status: ready-for-agent
+Status: done
+Status note: Closed 2026-11-27. Tickets 01–05 landed, last landing f716dfbf9. Review: spec text corrected. Gates: test green, lint red only in untracked worlds-wip/ files.
 
 Both repos: the client sends, the server counts. Tickets carry a `Repo:` line for the server half. This extends **Active Installs** (`docs-internal/specs/active-installs/spec.md`) and changes none of its rules.
 
@@ -51,9 +52,9 @@ The Daily Send carries two more values: the **Device Language** and the **AI Lan
 **Server**
 
 - An additive schema step adds `device_language` and `ai_language` columns to the daily rows. Rows stored before the step read as `unknown`.
-- `POST /api/active-installs` reads the body. A Device Language that does not match a language code with an optional region (`^[a-z]{2,3}(-[A-Z]{2}|-[0-9]{3})?$`, at most 12 characters) is stored as `unknown`. An AI Language outside the server's copy of the code list, `en` and `other` is stored as `unknown`. A missing or unreadable body stores `unknown` for both and still counts the install, so an older client keeps counting.
+- `POST /api/active-installs` reads the body. A Device Language that does not match a language code with an optional region (`^[a-z]{2,3}(-[A-Z]{2}|-[0-9]{3})?$`, so at most 7 characters) is stored as `unknown`. An AI Language outside the server's copy of the code list, `en` and `other` is stored as `unknown`. A missing or unreadable body stores `unknown` for both and still counts the install, so an older client keeps counting.
 - The first row of a day keeps its languages, as it keeps its version. The month total counts each hash once, under the languages of its first row that month.
-- Month Close writes language totals to a new table: period kind, period, dimension (`device` or `ai`), language and count. A unique index on kind, period, dimension and language makes a close safe to repeat. The existing close rules apply: a month that already has totals is never closed again, and totals win over live rows.
+- Month Close writes language totals to a new table: period kind, period, dimension (`device` or `ai`), language and count. A unique index on kind, period, dimension and language makes a close safe to repeat. The existing close rules apply: a month that already has totals is never closed again, and totals win over live rows. A month closed before the language totals table existed shows empty language lists.
 - The admin route adds `languages: { device: [{ language, count }], ai: [{ language, count }] }` to every day and month, sorted by count descending, then by language. Each list adds up to that period's total.
 - No new column or table holds an account id, an address or a raw Install id.
 

@@ -1,6 +1,6 @@
 # 02: Month Close Writes Language Totals
 
-Status: ready-for-human
+Status: done
 Base: 36cef6d
 Blocked by: 01
 Recommended model: Claude Opus 5.5 (`claude-opus-5-5`)
