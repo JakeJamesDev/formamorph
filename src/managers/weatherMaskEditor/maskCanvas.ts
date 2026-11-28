@@ -1,4 +1,4 @@
-/** The brush editor's canvas side: reads a stored mask into a raster, draws a raster as a tint or an alpha mask, and saves one as a PNG. */
+/** The brush editor's canvas side: reads a stored mask into a raster, draws a raster as a tint, and saves one as a PNG. */
 import { grayFromRgba, rgbaFromGray, type MaskRect } from '@/lib/maskDocument';
 import { MASK_TINTS, MASK_TINT_ALPHA, type MaskShade } from '@/lib/weatherMask';
 
@@ -58,10 +58,8 @@ export function drawTint(canvas: HTMLCanvasElement, raster: Uint8ClampedArray, s
   });
 }
 
-/** Draws `raster`'s `rect` onto the weather preview's mask canvas: the mask value as alpha. */
-export function drawMaskAlpha(canvas: HTMLCanvasElement, raster: Uint8ClampedArray, rect?: MaskRect | null): void {
-  drawPixels(canvas, raster, rect, (v, out, j) => { out[j + 3] = v; });
-}
+/** `raster` as the weather preview's mask: the same PNG a save makes, kept apart so a preview never reads as one. */
+export const previewMaskPng = (raster: Uint8ClampedArray, width: number, height: number): string => encodeMaskRaster(raster, width, height);
 
 /** `raster` as an opaque grayscale PNG data URL. */
 export function encodeMaskRaster(raster: Uint8ClampedArray, width: number, height: number): string {

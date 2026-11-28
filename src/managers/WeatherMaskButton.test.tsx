@@ -8,7 +8,7 @@ import type { EditorMode } from '@/lib/editorMode';
 import type { GameLocation, MediaList, World } from '@/types';
 import { LocationImageField } from './LocationImageField';
 import { EntityGalleryField } from './EntityFields';
-import { drawMaskAlpha, drawTint } from './weatherMaskEditor/maskCanvas';
+import { drawTint } from './weatherMaskEditor/maskCanvas';
 
 vi.mock('react-toastify', () => ({ toast: { info: vi.fn(), success: vi.fn(), error: vi.fn() }, ToastContainer: () => null }));
 // jsdom has no canvas: an upload stores this PNG.
@@ -26,7 +26,8 @@ const canvasFake = vi.hoisted(() => ({ saved: [] as { width: number; height: num
 vi.mock('./weatherMaskEditor/maskCanvas', () => ({
   readMaskRaster: vi.fn(async (_data: string, width: number, height: number) => new Uint8ClampedArray(width * height)),
   drawTint: vi.fn(),
-  drawMaskAlpha: vi.fn(),
+  // Names the preview mask for its painted pixels and its size, so a test reads what it followed and how much of it.
+  previewMaskPng: vi.fn((raster: Uint8ClampedArray, width: number, height: number) => `data:image/png;base64,lit${raster.reduce((n, v) => n + (v > 0 ? 1 : 0), 0)}@${width}x${height}`),
   encodeMaskRaster: vi.fn((raster: Uint8ClampedArray, width: number, height: number) => {
     canvasFake.saved.push({ width, height, raster: raster.slice() });
     return `data:image/png;base64,${width}x${height}`;
@@ -573,37 +574,28 @@ describe('Weather Mask brush editor preview', () => {
     expect(weather()).toBe(canvas);
   });
 
-  /** Each draw into the preview's mask canvas: the canvas, how many pixels show any or full weather, and the rect it covered. */
-  const alphaDraws = () => vi.mocked(drawMaskAlpha).mock.calls.map(([canvas, raster, rect]) => ({
-    canvas, rect, lit: raster.reduce((n, v) => n + (v > 0 ? 1 : 0), 0), full: raster.reduce((n, v) => n + (v === 255 ? 1 : 0), 0),
-  }));
+  const previewMask = () => weather().dataset.weatherMask ?? '';
 
-  it('draws through a full-size mask canvas that follows every stroke frame, also mid-stroke', async () => {
-    vi.mocked(drawMaskAlpha).mockClear();
+  it('shows the whole mask, and while a stroke paints, the part under the view on a grid of at most 256 cells', async () => {
     await mount(world([{ mediaId: 'day' }]));
     const paint = await openEditor('Paint', 1280, 720);
     const canvas = weather();
-    const [opened] = alphaDraws();
-    expect(opened).toMatchObject({ lit: 0, rect: undefined });
-    expect([opened.canvas.width, opened.canvas.height]).toEqual([1280, 720]);
+    expect(previewMask()).toBe('data:image/png;base64,lit0@1280x720');
     fireEvent.pointerDown(paint, { button: 0, pointerId: 1, clientX: 600, clientY: 300 });
     fireEvent.pointerMove(paint, { pointerId: 1, clientX: 700, clientY: 320 });
-    // Mid-stroke the same full-size canvas takes the painted rect: no smaller stand-in mask.
-    await waitFor(() => expect(alphaDraws().at(-1)!.lit).toBeGreaterThan(0));
-    expect(alphaDraws().at(-1)!.canvas).toBe(opened.canvas);
-    expect(alphaDraws().at(-1)!.rect).toBeDefined();
+    // At fit the view is the whole mask: 5 px cells, 256 by 144.
+    await waitFor(() => expect(previewMask()).toMatch(/lit[1-9]\d*@256x144$/));
     fireEvent.pointerUp(paint, { pointerId: 1, clientX: 700, clientY: 320 });
-    const painted = alphaDraws().at(-1)!.full;
+    expect(previewMask()).toMatch(/lit[1-9]\d*@1280x720$/);
     await press('Invert');
-    expect(alphaDraws().at(-1)).toMatchObject({ canvas: opened.canvas, lit: 1280 * 720 - painted, rect: undefined });
+    expect(previewMask()).toMatch(/lit\d{6,}@1280x720$/);
     expect(weather()).toBe(canvas);
   });
 
-  it('draws the stroke into the mask canvas when it ends before its frame draws', async () => {
-    vi.mocked(drawMaskAlpha).mockClear();
+  it('shows the whole mask with the stroke when it ends before its frame draws', async () => {
     await mount(world([{ mediaId: 'day' }]));
     stroke(await openEditor('Paint', 1280, 720));
-    expect(alphaDraws().at(-1)!.lit).toBeGreaterThan(0);
+    expect(previewMask()).toMatch(/lit[1-9]\d*@1280x720$/);
   });
 });
 

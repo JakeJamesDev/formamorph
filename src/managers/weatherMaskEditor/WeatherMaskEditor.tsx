@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react';
+import { memo, useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react';
 import { Brush, Contrast, Eraser, Eye, EyeOff, PaintBucket, Redo2, Trash2, Undo2 } from 'lucide-react';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { PictureImg } from '@/components/PictureImg';
@@ -23,8 +23,9 @@ import { useIsMobile } from '@/lib/useIsMobile';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { cn } from '@/lib/utils';
-import { DEFAULT_MASK_SHADE, MASK_CAP, MASK_SHADES, MASK_SHADE_LABELS, type MaskShade } from '@/lib/weatherMask';
-import { drawMaskAlpha, drawTint, encodeMaskRaster, readMaskRaster } from './maskCanvas';
+import { DEFAULT_MASK_SHADE, MASK_CAP, MASK_SHADES, MASK_SHADE_LABELS, boxMaskStyle, placedMaskStyle, type MaskShade } from '@/lib/weatherMask';
+import { drawTint, encodeMaskRaster, previewMaskPng, readMaskRaster } from './maskCanvas';
+import { StrokePreview } from './strokePreview';
 import {
   FIT_VIEW, MAX_SIZE, MIN_SIZE, boxToMask, panBy, screenSize, stepSize, viewTransform, wheelDelta, wheelZoom, zoomAt, type MaskView,
 } from './maskView';
@@ -74,8 +75,7 @@ export function WeatherMaskEditor({ open, pictures, mask, sharedCount, onSave, o
   );
 }
 
-/** `alpha` is the weather preview's mask: a canvas the raster's size, kept in step with every stroke. */
-interface Loaded { width: number; height: number; base: Uint8ClampedArray; alpha: HTMLCanvasElement }
+interface Loaded { width: number; height: number; base: Uint8ClampedArray }
 
 function EditorBody({ pictures, mask, sharedCount, onSave, onClose }: {
   pictures: readonly PictureChoice[]; mask?: string; sharedCount: number; onSave: (data: string) => void; onClose: () => void;
@@ -106,6 +106,9 @@ function EditorBody({ pictures, mask, sharedCount, onSave, onClose }: {
   const tint = useRef<HTMLCanvasElement | null>(null);
   const ring = useRef<HTMLDivElement | null>(null);
   const painter = useRef<MaskStrokePainter | null>(null);
+  const strokePreview = useRef<StrokePreview | null>(null);
+  const previewSink = useRef<PreviewMaskSink>({}).current;
+  const setPreviewMask = (next: PreviewMask) => { previewSink.mask = next; previewSink.show?.(next); };
   const dirty = useRef<MaskRect | null>(null);
   const frame = useRef(0);
 
@@ -142,11 +145,9 @@ function EditorBody({ pictures, mask, sharedCount, onSave, onClose }: {
       const base = mask ? await readMaskRaster(mask, w, h) : new Uint8ClampedArray(w * h);
       if (!mounted.current) return;
       raster.current = base.slice();
-      const alpha = document.createElement('canvas');
-      alpha.width = w;
-      alpha.height = h;
-      drawMaskAlpha(alpha, base);
-      setLoaded({ width: w, height: h, base, alpha });
+      const full = previewMaskPng(base, w, h);
+      setPreviewMask({ data: full, style: boxMaskStyle(full) });
+      setLoaded({ width: w, height: h, base });
       setDoc(newMaskDocument(w, h));
     } catch (e: unknown) {
       toastError(e, { headline: "Couldn't open the Weather Mask" });
@@ -160,10 +161,23 @@ function EditorBody({ pictures, mask, sharedCount, onSave, onClose }: {
     if (tint.current && raster.current) drawTint(tint.current, raster.current, shade);
   }, [loaded, shade]);
 
+  /** Hands the weather preview the mask as it stands: whole, or while a stroke paints, the part under the view. */
+  const updatePreview = (rect?: MaskRect | null) => {
+    if (!raster.current || !loaded) return;
+    const stroke = strokePreview.current;
+    if (stroke) {
+      if (rect) stroke.update(rect);
+      const data = previewMaskPng(stroke.cells, stroke.cols, stroke.rows);
+      setPreviewMask({ data, style: placedMaskStyle(data, stroke.placement()) });
+      return;
+    }
+    const data = previewMaskPng(raster.current, loaded.width, loaded.height);
+    setPreviewMask({ data, style: boxMaskStyle(data) });
+  };
   const redraw = (rect?: MaskRect | null) => {
     if (!raster.current) return;
     if (tint.current) drawTint(tint.current, raster.current, shade, rect);
-    if (loaded) drawMaskAlpha(loaded.alpha, raster.current, rect);
+    updatePreview(rect);
   };
 
   /** Moves the document to `next` and redraws the replay over the base. */
@@ -224,6 +238,8 @@ function EditorBody({ pictures, mask, sharedCount, onSave, onClose }: {
     e.currentTarget.setPointerCapture?.(e.pointerId);
     strokePointer.current = e.pointerId;
     painter.current = new MaskStrokePainter(raster.current, loaded.width, loaded.height, tool, size, softness);
+    // Zoom and pan wait while a stroke paints, so the view this grid covers holds until it ends.
+    strokePreview.current = new StrokePreview(raster.current, loaded.width, loaded.height, view);
     setPainting(true);
     paintTo(painter.current.extend(toMask(e)));
   };
@@ -245,11 +261,12 @@ function EditorBody({ pictures, mask, sharedCount, onSave, onClose }: {
     painter.current = null;
     strokePointer.current = null;
     setPainting(false);
-    // Flush the stroke's last frame now, so the tint and preview never miss its end.
+    strokePreview.current = null;
+    // Flush the stroke's last frame now, so the tint never misses its end and the preview turns whole once.
     if (frame.current) {
       cancelAnimationFrame(frame.current);
       paintFrame();
-    }
+    } else updatePreview();
     // The raster already holds the stroke; the document records it for undo.
     setDoc((d) => (d ? applyMaskOp(d, stroke.op()) : d));
   };
@@ -427,7 +444,7 @@ function EditorBody({ pictures, mask, sharedCount, onSave, onClose }: {
             {picture
               ? <PictureImg src={picture} alt="" crop center contain className="absolute inset-0 h-full w-full select-none object-fill" draggable={false} />
               : <div className="absolute inset-0 bg-muted" data-mask-plain="" />}
-            <WeatherPreview kind={weather} mode={calm ? 'calm' : 'full'} plain={!picture} mask={loaded.alpha} />
+            <MaskedWeather sink={previewSink} kind={weather} mode={calm ? 'calm' : 'full'} plain={!picture} />
             <canvas
               ref={tintRef} width={loaded.width} height={loaded.height}
               className={cn('pointer-events-none absolute inset-0 z-[2] h-full w-full', !showMask && 'invisible')}
@@ -523,6 +540,23 @@ function EditorBody({ pictures, mask, sharedCount, onSave, onClose }: {
     </>
   );
 }
+
+interface PreviewMask { data: string; style: CSSProperties }
+/** The weather preview's mask, handed past the editor's state so a stroke frame re-renders the weather alone. */
+interface PreviewMaskSink { mask?: PreviewMask; show?: (mask: PreviewMask) => void }
+
+const MaskedWeather = memo(function MaskedWeather({ sink, kind, mode, plain }: {
+  sink: PreviewMaskSink; kind: AllowedWeatherKind; mode: 'calm' | 'full'; plain: boolean;
+}) {
+  const [mask, setMask] = useState(sink.mask);
+  useLayoutEffect(() => {
+    sink.show = setMask;
+    // A mask handed over between this render and now still shows.
+    if (sink.mask) setMask(sink.mask);
+    return () => { sink.show = undefined; };
+  }, [sink]);
+  return mask ? <WeatherPreview kind={kind} mode={mode} plain={plain} mask={mask.data} maskStyle={mask.style} /> : null;
+});
 
 /** A floating control group over the picture. */
 function Group({ name, painting, className, children }: { name: string; painting: boolean; className: string; children: ReactNode }) {

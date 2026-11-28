@@ -93,3 +93,23 @@ export const MASK_TINTS: Record<Exclude<MaskShade, 'blackWhite'>, readonly [numb
   cyan: [56, 189, 248],
 };
 export const MASK_TINT_ALPHA = 0.45;
+
+/** A luminance mask stretched over the whole box, for a preview that sits exactly over the picture. */
+export const boxMaskStyle = (mask: string): CSSProperties => ({
+  maskImage: `url("${mask}")`,
+  maskMode: 'luminance',
+  maskRepeat: 'no-repeat',
+  maskSize: '100% 100%',
+});
+
+/**
+ * A luminance mask covering only `place` of the box, in fractions of its size; the rest shows no weather. Lengths
+ * are `cq` units, so the preview's layer must be a size container.
+ */
+export const placedMaskStyle = (mask: string, place: { left: number; top: number; width: number; height: number }): CSSProperties => ({
+  maskImage: `url("${mask}")`,
+  maskMode: 'luminance',
+  maskRepeat: 'no-repeat',
+  maskPosition: `${place.left * 100}cqw ${place.top * 100}cqh`,
+  maskSize: `${place.width * 100}cqw ${place.height * 100}cqh`,
+});

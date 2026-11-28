@@ -45,10 +45,8 @@ export function useNaturalRatio(src: string | undefined): number | undefined {
   return ART_RATIOS.get(src) ?? (loaded?.src === src ? loaded.ratio : undefined);
 }
 
-function WeatherCanvas({ kind, mode, plain, maskStyle, mask, maskCanvas, layer = '-z-[9]' }: {
+function WeatherCanvas({ kind, mode, plain, maskStyle, mask, layer = '-z-[9]' }: {
   kind: AllowedWeatherKind; mode: DrawMode; plain: boolean; maskStyle: CSSProperties | undefined; mask: string | undefined;
-  /** A canvas whose alpha the weather draws through each frame, stretched over the layer. */
-  maskCanvas?: HTMLCanvasElement;
   /** The layer's stacking class: under the panels in play, over the picture in the brush editor. */
   layer?: string;
 }) {
@@ -80,11 +78,6 @@ function WeatherCanvas({ kind, mode, plain, maskStyle, mask, maskCanvas, layer =
       last = now;
       ctx.clearRect(0, 0, width, height);
       effect?.frame(ctx, dt, colors);
-      if (maskCanvas) {
-        ctx.globalCompositeOperation = 'destination-in';
-        ctx.drawImage(maskCanvas, 0, 0, width, height);
-        ctx.globalCompositeOperation = 'source-over';
-      }
       if (import.meta.env.DEV) stats.frames += 1;
       raf = requestAnimationFrame(draw);
     };
@@ -104,7 +97,7 @@ function WeatherCanvas({ kind, mode, plain, maskStyle, mask, maskCanvas, layer =
       resize.disconnect();
       theme.disconnect();
     };
-  }, [kind, mode, plain, maskCanvas]);
+  }, [kind, mode, plain]);
   // The size container lets the mask box read the layer's size in `cq` units.
   return (
     <div aria-hidden="true" className={`pointer-events-none absolute inset-0 ${layer} [container-type:size]`}>
@@ -144,8 +137,10 @@ export function WeatherBackground({ kind, mode, plain, mask, art }: {
 
 /**
  * The brush editor's weather: the Weather Background drawn through the mask in progress over the picture's own box.
- * `mask` is a full-size alpha canvas the editor paints into, so every frame shows the mask as it stands.
+ * The canvas outlives every mask change, so strokes only swap the mask image. `maskStyle` places `mask` in the box.
  */
-export function WeatherPreview({ kind, mode, mask, plain }: { kind: AllowedWeatherKind; mode: DrawMode; mask: HTMLCanvasElement; plain: boolean }) {
-  return <WeatherCanvas kind={kind} mode={mode} plain={plain} mask={undefined} maskCanvas={mask} maskStyle={undefined} layer="z-[1]" />;
+export function WeatherPreview({ kind, mode, mask, maskStyle, plain }: {
+  kind: AllowedWeatherKind; mode: DrawMode; mask: string; maskStyle: CSSProperties; plain: boolean;
+}) {
+  return <WeatherCanvas kind={kind} mode={mode} plain={plain} mask={mask} maskStyle={maskStyle} layer="z-[1]" />;
 }
