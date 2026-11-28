@@ -46,6 +46,7 @@ The Daily Send carries two more values: the **Device Language** and the **AI Lan
 - `aiLanguage` maps the current AI Language setting through one module beside `COMMON_LANGUAGES`, case-insensitive and trimmed. Each suggestion has an ISO 639-1 code. Blank and English send `en`. Any other value sends `other`.
 - The sender reads both values at each attempt, as it reads the switch.
 - The request still carries no credential and no account.
+- Ticket 03 ruling (2026-11-27): ticket 03 also updates the Daily Check-In info text (`dailySendEnabled.info` in `settingsCopy.ts`) so its list names the device language and the AI Language choice, as a listed language or "other", never the typed text.
 
 **Server**
 
