@@ -7,6 +7,30 @@ export const COMMON_LANGUAGES = [
   'Hindi', 'Turkish', 'Vietnamese', 'Indonesian',
 ];
 
+/** The ISO 639-1 code of each suggestion, keyed in lowercase. The server keeps a copy of these codes. */
+const LANGUAGE_CODES = new Map([
+  ['english', 'en'], ['spanish', 'es'], ['french', 'fr'], ['german', 'de'], ['italian', 'it'],
+  ['portuguese', 'pt'], ['dutch', 'nl'], ['russian', 'ru'], ['polish', 'pl'], ['ukrainian', 'uk'],
+  ['chinese', 'zh'], ['japanese', 'ja'], ['korean', 'ko'], ['arabic', 'ar'], ['hindi', 'hi'],
+  ['turkish', 'tr'], ['vietnamese', 'vi'], ['indonesian', 'id'],
+]);
+
+/** The AI Language as the Daily Send reports it: a suggestion's code, or `other`. The typed text never passes through. */
+export const aiLanguageCode = (language: string): string =>
+  isEnglishLanguage(language) ? 'en' : LANGUAGE_CODES.get(language.trim().toLowerCase()) ?? 'other';
+
+/** The Device Language of a browser language tag: language plus region without the script, or `unknown`. */
+export const deviceLanguageCode = (tag: string): string => {
+  try {
+    const { language, region } = new Intl.Locale(tag);
+    // `und` parses but has no language.
+    if (!language) return 'unknown';
+    return region ? `${language}-${region}` : language;
+  } catch {
+    return 'unknown';
+  }
+};
+
 /**
  * Whether a language value means "just write English", and so fires no language directive at all.
  *

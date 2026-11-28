@@ -817,6 +817,8 @@ Each chip adds its own clause and is left out when it has no value. Any mix of c
     description: 'Sends a daily count that helps decide where development time goes',
     info: `Daily counts show how many players come back each day and month, and on which platforms and app versions. They show which platforms need the most support and whether an update keeps players or loses them.
 - Sends a random ID for this copy of the app, plus the app version and platform
+- Sends your device language
+- Sends your **AI Language** setting as a language from its list or "other," never the text you type
 - The server stores a scrambled form of the ID and keeps only totals after each month
 - Sends no play data, worlds, or account details
 - Starts after you accept the adult-content warning`,

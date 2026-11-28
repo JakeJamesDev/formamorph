@@ -1,6 +1,7 @@
 import { API_BASE_URL } from '@/lib/apiBase';
 import { INSTALL_HEADER_NAME, keptReaderInstallId } from '@/lib/anonymousLikes';
 import { HOSTED_AI_AVAILABLE } from '@/lib/hostedAi/hostedUrls';
+import { aiLanguageCode, deviceLanguageCode } from '@/lib/languages';
 
 /** The one UTC day this install last counted on. Only the latest day is kept. */
 export const DAILY_SEND_DAY_KEY = 'FORMAMORPH_dailySendDay';
@@ -16,6 +17,8 @@ export interface DailySendState {
   enabled: boolean;
   /** Whether the player has passed the age gate. */
   attested: boolean;
+  /** The AI Language setting as typed. Only its code is sent. */
+  aiLanguage: string;
 }
 
 /** The UTC day of a moment, as `YYYY-MM-DD`. */
@@ -40,7 +43,7 @@ function markSent(day: string): void {
  *
  * A failed send is dropped. The day is marked only after a 2xx, so the next attempt that day tries again.
  *
- * @param read - The current switch and age-gate state, read at each attempt
+ * @param read - The current switch, age-gate and AI Language state, read at each attempt
  * @param now - The device clock
  * @returns The attempt, which resolves once its send settles or it decides not to send
  */
@@ -53,20 +56,25 @@ export function createDailySender(
   return () => {
     if (inFlight) return inFlight;
     if (!dailySendAvailable()) return Promise.resolve();
-    const { enabled, attested } = read();
+    const { enabled, attested, aiLanguage } = read();
     if (!enabled || !attested) return Promise.resolve();
     const day = utcDay(now());
     if (sentDay() === day) return Promise.resolve();
     // Last: this makes the id on first need, so nothing is made before every other gate passes.
     const install = keptReaderInstallId();
     if (!install) return Promise.resolve();
+    const body = JSON.stringify({
+      deviceLanguage: deviceLanguageCode(navigator.language),
+      aiLanguage: aiLanguageCode(aiLanguage),
+    });
 
     inFlight = (async () => {
       try {
         const response = await fetch(`${API_BASE_URL}/active-installs`, {
           method: 'POST',
           credentials: 'omit',
-          headers: { [INSTALL_HEADER_NAME]: install },
+          headers: { [INSTALL_HEADER_NAME]: install, 'Content-Type': 'application/json' },
+          body,
         });
         if (response.ok) markSent(day);
       } catch { /* Dropped on purpose. */ } finally {

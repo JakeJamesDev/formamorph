@@ -20,6 +20,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **Weather Masks:**
     - **A location image in the World Editor can get its own copy of a shared Weather Mask.** **Copy for This Image** in the Weather Mask menu keeps the original on the other images and opens the brush editor on the copy.
     - **The Weather Mask brush editor shows the mask in magenta, cyan, or black and white.** Magenta is the new default, and Show Mask in the Weather Mask menu also tints in magenta. An eye button hides or shows the mask.
+  - **Daily Check-In now sends your device language and AI Language choice.** The AI Language goes as a listed language or "other," never your typed words. Turning the switch off stops the whole send.
 
 #### 🔧 Fixed
 

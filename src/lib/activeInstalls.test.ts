@@ -22,7 +22,9 @@ describe('createDailySender', () => {
   let likes: Likes;
   let restoreFetch: () => void;
   let clock: Date;
-  let state: { enabled: boolean; attested: boolean };
+  let state: { enabled: boolean; attested: boolean; aiLanguage: string };
+  const deviceIs = (tag: string) => vi.spyOn(navigator, 'language', 'get').mockReturnValue(tag);
+  const sentBody = (n = 0): unknown => JSON.parse(String(sends()[n][1]?.body));
 
   const sender = () => lib.createDailySender(() => state, () => clock);
   const sends = () => fetchMock.mock.calls.filter(([input]) => String(input) === URL_SENT);
@@ -32,7 +34,7 @@ describe('createDailySender', () => {
     localStorage.clear();
     flags.available = true;
     clock = DAY_ONE;
-    state = { enabled: true, attested: true };
+    state = { enabled: true, attested: true, aiLanguage: 'English' };
     fetchMock.mockReset().mockResolvedValue(new Response(null, { status: 204 }));
     vi.stubGlobal('fetch', fetchMock);
     lib = await import('@/lib/activeInstalls');
@@ -72,16 +74,44 @@ describe('createDailySender', () => {
     expect(sends()).toHaveLength(1);
   });
 
-  it('carries the Install id and client headers, and no credential or body', async () => {
+  it('carries the Install id and client headers, and no credential', async () => {
     await sender()();
     const [, init] = sends()[0];
     const headers = new Headers(init?.headers);
     expect(init?.method).toBe('POST');
     expect(init?.credentials).toBe('omit');
-    expect(init?.body).toBeUndefined();
+    expect(headers.get('Content-Type')).toBe('application/json');
     expect(headers.get('X-Formamorph-Install')).toBe(localStorage.getItem(likes.INSTALL_STORAGE_KEY));
     expect(headers.get('X-Formamorph-Client')).toMatch(/^\S+ web$/);
     expect(headers.has('Authorization')).toBe(false);
+  });
+
+  it('sends a body with the two languages and nothing else', async () => {
+    deviceIs('de-AT');
+    state.aiLanguage = 'German';
+    await sender()();
+    expect(sentBody()).toStrictEqual({ deviceLanguage: 'de-AT', aiLanguage: 'de' });
+  });
+
+  it('keeps typed AI Language text out of the whole request', async () => {
+    state.aiLanguage = 'pirate speak';
+    await sender()();
+    const [input, init] = sends()[0];
+    expect(sentBody()).toMatchObject({ aiLanguage: 'other' });
+    const request = JSON.stringify([String(input), { ...init, headers: [...new Headers(init?.headers)] }]);
+    expect(request.toLowerCase()).not.toContain('pirate');
+  });
+
+  it('reads both languages at each attempt', async () => {
+    const device = deviceIs('fr-CA');
+    const attempt = sender();
+    await attempt();
+    clock = DAY_TWO;
+    device.mockReturnValue('ja');
+    state.aiLanguage = 'Japanese';
+    await attempt();
+    expect(sentBody(0)).toStrictEqual({ deviceLanguage: 'fr-CA', aiLanguage: 'en' });
+    expect(sentBody(1)).toStrictEqual({ deviceLanguage: 'ja', aiLanguage: 'ja' });
   });
 
   it('drops a failed send silently and tries again on the next attempt that day', async () => {

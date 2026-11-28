@@ -21,8 +21,11 @@ const URL_SENT = 'https://api.test/api/active-installs';
 const DAY_KEY = 'FORMAMORPH_dailySendDay';
 
 let setSwitch: (on: boolean) => void = () => {};
+let setAiLanguage: (language: string) => void = () => {};
 function SwitchHandle() {
-  setSwitch = useSettings().setDailySendEnabled;
+  const settings = useSettings();
+  setSwitch = settings.setDailySendEnabled;
+  setAiLanguage = settings.setLanguage;
   return null;
 }
 
@@ -80,6 +83,18 @@ describe('DailyInstallSender', () => {
     await flush();
     expect(sends()).toHaveLength(2);
     expect(localStorage.getItem(DAY_KEY)).not.toBeNull();
+    unmount();
+  });
+
+  it('sends the AI Language setting as it is at each attempt', async () => {
+    fetchMock.mockImplementationOnce(async () => { throw new TypeError('offline'); });
+    const { unmount } = render(tree(<DailyInstallSender />));
+    await flush();
+
+    act(() => setAiLanguage('French'));
+    await act(async () => { window.dispatchEvent(new Event('focus')); });
+    await flush();
+    expect(sends().map(([, init]) => JSON.parse(String(init?.body)).aiLanguage)).toEqual(['en', 'fr']);
     unmount();
   });
 

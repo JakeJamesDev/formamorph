@@ -74,6 +74,13 @@ describe('settings copy', () => {
     expect(bad).toEqual([]);
   });
 
+  it('names both language values in the Daily Check-In list, and says typed text stays unsent', () => {
+    const info = SETTINGS_COPY.dailySendEnabled.info;
+    expect(info).toContain('device language');
+    expect(info).toContain(`**${SETTINGS_COPY.aiLanguage.label}**`);
+    expect(info).toContain('never the text you type');
+  });
+
   it('quotes the Enable Image Generation label exactly in its off note', () => {
     expect(SETTINGS_NOTES.imageGenerationOff).toContain(`“${SETTINGS_COPY.enableImageGeneration.label}”`);
   });

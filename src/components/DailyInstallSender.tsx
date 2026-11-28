@@ -5,10 +5,11 @@ import { createDailySender, type DailySendState } from '@/lib/activeInstalls';
 
 /** Makes the Daily Send on start, when the age gate is passed, and when the app regains focus or becomes visible. */
 export function DailyInstallSender() {
-  const { dailySendEnabled } = useSettings();
+  const { dailySendEnabled, language } = useSettings();
   const { attested } = useAgeGate();
-  const state = useRef<DailySendState>({ enabled: dailySendEnabled, attested });
-  state.current = { enabled: dailySendEnabled, attested };
+  const current: DailySendState = { enabled: dailySendEnabled, attested, aiLanguage: language };
+  const state = useRef(current);
+  state.current = current;
   // A send in flight at unmount still finishes: it writes no React state, only the sent day.
   const [attempt] = useState(() => createDailySender(() => state.current));
 
