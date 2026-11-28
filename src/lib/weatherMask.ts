@@ -81,14 +81,15 @@ export const fitMaskStyle = (mask: string, ratio: number, fit: 'cover' | 'contai
   };
 };
 
-/** The tint the brush editor and Show Mask draw a mask in: white shows it at `MASK_TINT_ALPHA`. */
-export const MASK_TINT = [56, 189, 248] as const;
-export const MASK_TINT_ALPHA = 0.45;
+/** How the brush editor shows a mask: a tint color over the picture, or the mask itself in opaque gray. */
+export type MaskShade = 'magenta' | 'cyan' | 'blackWhite';
+export const MASK_SHADES: readonly MaskShade[] = ['magenta', 'cyan', 'blackWhite'];
+export const MASK_SHADE_LABELS: Record<MaskShade, string> = { magenta: 'Magenta', cyan: 'Cyan', blackWhite: 'Black and White' };
+export const DEFAULT_MASK_SHADE = 'magenta' satisfies MaskShade;
 
-/** A luminance mask stretched over the whole box, for a preview that sits exactly over the picture. */
-export const boxMaskStyle = (mask: string): CSSProperties => ({
-  maskImage: `url("${mask}")`,
-  maskMode: 'luminance',
-  maskRepeat: 'no-repeat',
-  maskSize: '100% 100%',
-});
+/** Each tint's color; white in the mask shows it at `MASK_TINT_ALPHA`. Show Mask uses the default. */
+export const MASK_TINTS: Record<Exclude<MaskShade, 'blackWhite'>, readonly [number, number, number]> = {
+  magenta: [255, 0, 255],
+  cyan: [56, 189, 248],
+};
+export const MASK_TINT_ALPHA = 0.45;

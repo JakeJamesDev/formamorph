@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils';
 import { toastError } from '@/lib/linkToast';
 import { trackWork } from '@/lib/pendingWork';
 import { useMountedRef } from '@/lib/useMountedRef';
-import { MASK_TINT, MASK_TINT_ALPHA, copySlotMask, fitMaskStyle, encodeMaskPng, maskEntry, maskUseCount, newMaskEntry, withSlotMask } from '@/lib/weatherMask';
+import { DEFAULT_MASK_SHADE, MASK_TINTS, MASK_TINT_ALPHA, copySlotMask, fitMaskStyle, encodeMaskPng, maskEntry, maskUseCount, newMaskEntry, withSlotMask } from '@/lib/weatherMask';
 import type { LayeredPicture } from '@/lib/layeredImages';
 import type { GalleryImage } from '@/types';
 import { MediaChooseButton } from './MediaPicker';
@@ -27,7 +27,7 @@ import { WeatherMaskEditor } from './weatherMaskEditor/WeatherMaskEditor';
 /** Choose dims nothing: a mask may be linked again on purpose. */
 const NONE_LINKED: ReadonlySet<string> = new Set();
 
-const TINT_COLOR = `rgba(${MASK_TINT.join(', ')}, ${MASK_TINT_ALPHA})`;
+const TINT_COLOR = `rgba(${MASK_TINTS[DEFAULT_MASK_SHADE].join(', ')}, ${MASK_TINT_ALPHA})`;
 
 /**
  * One location image slot's Weather Mask button, drawn on the frame. Its menu offers Paint, Upload and Choose with

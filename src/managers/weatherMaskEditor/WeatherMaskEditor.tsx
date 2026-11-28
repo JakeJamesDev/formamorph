@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react';
-import { Brush, Contrast, Eraser, PaintBucket, Redo2, Trash2, Undo2 } from 'lucide-react';
+import { Brush, Contrast, Eraser, Eye, EyeOff, PaintBucket, Redo2, Trash2, Undo2 } from 'lucide-react';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { PictureImg } from '@/components/PictureImg';
 import { Button } from '@/components/ui/button';
@@ -23,8 +23,8 @@ import { useIsMobile } from '@/lib/useIsMobile';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { useMountedRef } from '@/lib/useMountedRef';
 import { cn } from '@/lib/utils';
-import { MASK_CAP } from '@/lib/weatherMask';
-import { STROKE_PREVIEW_EDGE, drawTint, encodeMaskRaster, previewMaskPng, readMaskRaster } from './maskCanvas';
+import { DEFAULT_MASK_SHADE, MASK_CAP, MASK_SHADES, MASK_SHADE_LABELS, type MaskShade } from '@/lib/weatherMask';
+import { drawMaskAlpha, drawTint, encodeMaskRaster, readMaskRaster } from './maskCanvas';
 import {
   FIT_VIEW, MAX_SIZE, MIN_SIZE, boxToMask, panBy, screenSize, stepSize, viewTransform, wheelDelta, wheelZoom, zoomAt, type MaskView,
 } from './maskView';
@@ -74,7 +74,8 @@ export function WeatherMaskEditor({ open, pictures, mask, sharedCount, onSave, o
   );
 }
 
-interface Loaded { width: number; height: number; base: Uint8ClampedArray }
+/** `alpha` is the weather preview's mask: a canvas the raster's size, kept in step with every stroke. */
+interface Loaded { width: number; height: number; base: Uint8ClampedArray; alpha: HTMLCanvasElement }
 
 function EditorBody({ pictures, mask, sharedCount, onSave, onClose }: {
   pictures: readonly PictureChoice[]; mask?: string; sharedCount: number; onSave: (data: string) => void; onClose: () => void;
@@ -96,10 +97,10 @@ function EditorBody({ pictures, mask, sharedCount, onSave, onClose }: {
   const [valueTip, setValueTip] = useState<{ slider: SliderName; count: number } | null>(null);
   const valueTipTimer = useRef(0);
   const [showMask, setShowMask] = useState(true);
+  const [shade, setShade] = useState<MaskShade>(DEFAULT_MASK_SHADE);
   const [painting, setPainting] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [weather, setWeather] = useState<AllowedWeatherKind>('rain');
-  const [previewMask, setPreviewMask] = useState<string | undefined>();
   const calm = useMediaQuery('(prefers-reduced-motion: reduce)');
   const raster = useRef<Uint8ClampedArray | null>(null);
   const tint = useRef<HTMLCanvasElement | null>(null);
@@ -141,8 +142,11 @@ function EditorBody({ pictures, mask, sharedCount, onSave, onClose }: {
       const base = mask ? await readMaskRaster(mask, w, h) : new Uint8ClampedArray(w * h);
       if (!mounted.current) return;
       raster.current = base.slice();
-      setPreviewMask(previewMaskPng(base, w, h, Math.max(w, h)));
-      setLoaded({ width: w, height: h, base });
+      const alpha = document.createElement('canvas');
+      alpha.width = w;
+      alpha.height = h;
+      drawMaskAlpha(alpha, base);
+      setLoaded({ width: w, height: h, base, alpha });
       setDoc(newMaskDocument(w, h));
     } catch (e: unknown) {
       toastError(e, { headline: "Couldn't open the Weather Mask" });
@@ -150,22 +154,16 @@ function EditorBody({ pictures, mask, sharedCount, onSave, onClose }: {
     }
   };
 
-  // The tint canvas mounts with the loaded size; draw the whole raster once it does.
-  const tintRef = useCallback((canvas: HTMLCanvasElement | null) => {
-    tint.current = canvas;
-    if (canvas && raster.current) drawTint(canvas, raster.current);
-  }, []);
+  // The tint canvas mounts with the loaded size; draw the whole raster once it does, and again in a new shade.
+  const tintRef = useCallback((canvas: HTMLCanvasElement | null) => { tint.current = canvas; }, []);
+  useEffect(() => {
+    if (tint.current && raster.current) drawTint(tint.current, raster.current, shade);
+  }, [loaded, shade]);
 
-  /** Hands the weather preview the mask as it stands: full size, or small while a stroke paints. */
-  const updatePreview = () => {
-    if (!raster.current || !loaded) return;
-    const edge = painter.current ? STROKE_PREVIEW_EDGE : Math.max(loaded.width, loaded.height);
-    setPreviewMask(previewMaskPng(raster.current, loaded.width, loaded.height, edge));
-  };
   const redraw = (rect?: MaskRect | null) => {
     if (!raster.current) return;
-    if (tint.current) drawTint(tint.current, raster.current, rect);
-    updatePreview();
+    if (tint.current) drawTint(tint.current, raster.current, shade, rect);
+    if (loaded) drawMaskAlpha(loaded.alpha, raster.current, rect);
   };
 
   /** Moves the document to `next` and redraws the replay over the base. */
@@ -247,11 +245,11 @@ function EditorBody({ pictures, mask, sharedCount, onSave, onClose }: {
     painter.current = null;
     strokePointer.current = null;
     setPainting(false);
-    // Flush the stroke's last frame now, so the preview turns sharp once.
+    // Flush the stroke's last frame now, so the tint and preview never miss its end.
     if (frame.current) {
       cancelAnimationFrame(frame.current);
       paintFrame();
-    } else updatePreview();
+    }
     // The raster already holds the stroke; the document records it for undo.
     setDoc((d) => (d ? applyMaskOp(d, stroke.op()) : d));
   };
@@ -386,9 +384,19 @@ function EditorBody({ pictures, mask, sharedCount, onSave, onClose }: {
   );
   const card = (
     <div className="flex w-full max-w-60 flex-col items-start gap-2">
-      <Button type="button" size="sm" variant="outline" onClick={() => setShowMask((s) => !s)} aria-pressed={!showMask}>
-        {showMask ? 'Hide Mask' : 'Show Mask'}
-      </Button>
+      <div className="flex w-full items-center gap-1">
+        <ToolButton label={showMask ? 'Hide Mask' : 'Show Mask'} disabled={!ready} onClick={() => setShowMask((s) => !s)}>
+          {showMask ? <Eye /> : <EyeOff />}
+        </ToolButton>
+        <Select value={shade} onValueChange={(v) => setShade(MASK_SHADES.find((s) => s === v) ?? shade)}>
+          <SelectTrigger aria-label="Mask Color" className="h-8 min-w-0 flex-1" data-mask-shade="">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {MASK_SHADES.map((s) => <SelectItem key={s} value={s}>{MASK_SHADE_LABELS[s]}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
       {switcher}
       {weatherPicker}
       {sharedCount >= 2 && <Meta data-mask-shared={sharedCount}>Shared by {sharedCount} images. Saving changes all of them.</Meta>}
@@ -419,7 +427,7 @@ function EditorBody({ pictures, mask, sharedCount, onSave, onClose }: {
             {picture
               ? <PictureImg src={picture} alt="" crop center contain className="absolute inset-0 h-full w-full select-none object-fill" draggable={false} />
               : <div className="absolute inset-0 bg-muted" data-mask-plain="" />}
-            {previewMask && <WeatherPreview kind={weather} mode={calm ? 'calm' : 'full'} plain={!picture} mask={previewMask} />}
+            <WeatherPreview kind={weather} mode={calm ? 'calm' : 'full'} plain={!picture} mask={loaded.alpha} />
             <canvas
               ref={tintRef} width={loaded.width} height={loaded.height}
               className={cn('pointer-events-none absolute inset-0 z-[2] h-full w-full', !showMask && 'invisible')}

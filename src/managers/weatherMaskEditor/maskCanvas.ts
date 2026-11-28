@@ -1,9 +1,10 @@
-/** The brush editor's canvas side: reads a stored mask into a raster, draws a raster as a tint, and saves one as a PNG. */
+/** The brush editor's canvas side: reads a stored mask into a raster, draws a raster as a tint or an alpha mask, and saves one as a PNG. */
 import { grayFromRgba, rgbaFromGray, type MaskRect } from '@/lib/maskDocument';
-import { MASK_TINT, MASK_TINT_ALPHA } from '@/lib/weatherMask';
+import { MASK_TINTS, MASK_TINT_ALPHA, type MaskShade } from '@/lib/weatherMask';
 
-function context2d(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
-  const context = canvas.getContext('2d', { willReadFrequently: true });
+/** `read` marks a canvas whose pixels the editor reads back; drawn-only canvases stay on the GPU. */
+function context2d(canvas: HTMLCanvasElement, read = false): CanvasRenderingContext2D {
+  const context = canvas.getContext('2d', read ? { willReadFrequently: true } : undefined);
   if (!context) throw new Error("This browser can't draw the Weather Mask");
   return context;
 }
@@ -15,7 +16,7 @@ export async function readMaskRaster(data: string, width: number, height: number
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
-    const context = context2d(canvas);
+    const context = context2d(canvas, true);
     context.drawImage(bitmap, 0, 0, width, height);
     return grayFromRgba(context.getImageData(0, 0, width, height).data);
   } finally {
@@ -23,8 +24,11 @@ export async function readMaskRaster(data: string, width: number, height: number
   }
 }
 
-/** Draws `raster`'s `rect` onto the tint canvas, which is the raster's size. */
-export function drawTint(canvas: HTMLCanvasElement, raster: Uint8ClampedArray, rect?: MaskRect | null): void {
+/** Writes `raster`'s `rect` onto `canvas`, the raster's size, one RGBA pixel per mask value. */
+function drawPixels(
+  canvas: HTMLCanvasElement, raster: Uint8ClampedArray, rect: MaskRect | null | undefined,
+  pixel: (value: number, out: Uint8ClampedArray, j: number) => void,
+): void {
   const { width } = canvas;
   const r = rect ?? { x0: 0, y0: 0, x1: width, y1: canvas.height };
   const w = r.x1 - r.x0;
@@ -34,30 +38,29 @@ export function drawTint(canvas: HTMLCanvasElement, raster: Uint8ClampedArray, r
   const image = context.createImageData(w, h);
   const out = image.data;
   for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      const j = (y * w + x) * 4;
-      out[j] = MASK_TINT[0];
-      out[j + 1] = MASK_TINT[1];
-      out[j + 2] = MASK_TINT[2];
-      out[j + 3] = raster[(r.y0 + y) * width + r.x0 + x] * MASK_TINT_ALPHA;
-    }
+    for (let x = 0; x < w; x++) pixel(raster[(r.y0 + y) * width + r.x0 + x], out, (y * w + x) * 4);
   }
   context.putImageData(image, r.x0, r.y0);
 }
 
-/** The longest edge of the preview's mask while a stroke paints, so each frame's re-encode stays cheap. */
-export const STROKE_PREVIEW_EDGE = 256;
-
-/** `raster` as a grayscale PNG for the weather preview, sampled down to fit `edge`. */
-export function previewMaskPng(raster: Uint8ClampedArray, width: number, height: number, edge: number): string {
-  const step = Math.max(1, Math.ceil(Math.max(width, height) / edge));
-  const w = Math.max(1, Math.floor(width / step));
-  const h = Math.max(1, Math.floor(height / step));
-  const small = new Uint8ClampedArray(w * h);
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) small[y * w + x] = raster[y * step * width + x * step];
+/** Draws `raster`'s `rect` onto the tint canvas in `shade`: a see-through tint, or opaque black and white. */
+export function drawTint(canvas: HTMLCanvasElement, raster: Uint8ClampedArray, shade: MaskShade, rect?: MaskRect | null): void {
+  if (shade === 'blackWhite') {
+    drawPixels(canvas, raster, rect, (v, out, j) => { out[j] = out[j + 1] = out[j + 2] = v; out[j + 3] = 255; });
+    return;
   }
-  return encodeMaskRaster(small, w, h);
+  const [red, green, blue] = MASK_TINTS[shade];
+  drawPixels(canvas, raster, rect, (v, out, j) => {
+    out[j] = red;
+    out[j + 1] = green;
+    out[j + 2] = blue;
+    out[j + 3] = v * MASK_TINT_ALPHA;
+  });
+}
+
+/** Draws `raster`'s `rect` onto the weather preview's mask canvas: the mask value as alpha. */
+export function drawMaskAlpha(canvas: HTMLCanvasElement, raster: Uint8ClampedArray, rect?: MaskRect | null): void {
+  drawPixels(canvas, raster, rect, (v, out, j) => { out[j + 3] = v; });
 }
 
 /** `raster` as an opaque grayscale PNG data URL. */

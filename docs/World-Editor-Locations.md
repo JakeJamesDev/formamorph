@@ -243,7 +243,7 @@ Each background image has a ◐ **Weather Mask** button at its bottom right. Sel
 | **Paint** opens the image to [paint a new mask](#paint-a-weather-mask) | **Edit** opens the image to [paint over this mask](#paint-a-weather-mask) |
 | **Upload** stores a file as a new mask for this image | **Replace** uploads a new file into this mask |
 | **Choose** links a mask the world already has | **Choose** links a different mask the world has |
-| | **Show Mask** tints the image blue where the weather shows, and **Hide Mask** takes the tint off |
+| | **Show Mask** tints the image magenta where the weather shows, and **Hide Mask** takes the tint off |
 | | **Remove** takes the mask off this image and keeps it in the world |
 
 - 👁️ **Show Mask** stays on as you select other images, so you can check each one's mask. It changes nothing in the world.
@@ -254,7 +254,7 @@ Each background image has a ◐ **Weather Mask** button at its bottom right. Sel
 #### Paint a Weather Mask
 <!-- keywords: paint mask, brush, eraser, draw where rain shows, mask editor, soft edge, invert mask -->
 
-**Paint** or **Edit** opens the background image full screen. What you paint shows as a blue tint: blue is where the weather shows. **Hide Mask** hides the tint so you can see the image.
+**Paint** or **Edit** opens the background image full screen. What you paint shows as a magenta tint: magenta is where the weather shows. The eye button in the top-left card hides the mask so you can see the image. The **Mask Color** list next to it shows the mask in **Magenta**, **Cyan**, or **Black and White**. Black and White shows the mask itself: white is where the weather shows, and the image is hidden.
 
 Weather plays over the image through the mask as you paint, so you can judge the result before you save. Pick any weather from the **Weather Preview** list in the top-left card to check each one against the same mask. With reduced motion on, the weather moves slowly.
 

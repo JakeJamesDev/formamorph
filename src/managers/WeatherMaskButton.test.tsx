@@ -8,6 +8,7 @@ import type { EditorMode } from '@/lib/editorMode';
 import type { GameLocation, MediaList, World } from '@/types';
 import { LocationImageField } from './LocationImageField';
 import { EntityGalleryField } from './EntityFields';
+import { drawMaskAlpha, drawTint } from './weatherMaskEditor/maskCanvas';
 
 vi.mock('react-toastify', () => ({ toast: { info: vi.fn(), success: vi.fn(), error: vi.fn() }, ToastContainer: () => null }));
 // jsdom has no canvas: an upload stores this PNG.
@@ -23,11 +24,9 @@ vi.mock('@/lib/weatherMask', async (load) => ({ ...(await load<typeof import('@/
 // jsdom has no canvas: the brush editor reads a stored mask as all black and saves a PNG named for its size.
 const canvasFake = vi.hoisted(() => ({ saved: [] as { width: number; height: number; raster: Uint8ClampedArray }[] }));
 vi.mock('./weatherMaskEditor/maskCanvas', () => ({
-  STROKE_PREVIEW_EDGE: 256,
   readMaskRaster: vi.fn(async (_data: string, width: number, height: number) => new Uint8ClampedArray(width * height)),
   drawTint: vi.fn(),
-  // Names the preview mask for its painted pixels and its longest edge, so a test reads what it followed and how sharp.
-  previewMaskPng: vi.fn((raster: Uint8ClampedArray, _w: number, _h: number, edge: number) => `data:image/png;base64,lit${raster.reduce((n, v) => n + (v > 0 ? 1 : 0), 0)}@${edge}`),
+  drawMaskAlpha: vi.fn(),
   encodeMaskRaster: vi.fn((raster: Uint8ClampedArray, width: number, height: number) => {
     canvasFake.saved.push({ width, height, raster: raster.slice() });
     return `data:image/png;base64,${width}x${height}`;
@@ -329,7 +328,7 @@ describe('Weather Mask control', () => {
     expect(shown.getAttribute('data-weather-mask-tint')).toBe('win');
     expect(shown.closest('[data-slot-frame]')).toBe(control().closest('[data-slot-frame]'));
     const layer = shown.firstElementChild as HTMLElement;
-    expect(layer.style.backgroundColor).toBe('rgba(56, 189, 248, 0.45)');
+    expect(layer.style.backgroundColor).toBe('rgba(255, 0, 255, 0.45)');
     expect(layer.style.maskImage).toBe(`url("${WINDOW}")`);
     expect(await openMenu()).toContain('Hide Mask');
     fireEvent.click(screen.getByRole('menuitem', { name: 'Hide Mask' }));
@@ -574,33 +573,72 @@ describe('Weather Mask brush editor preview', () => {
     expect(weather()).toBe(canvas);
   });
 
-  it('follows the mask as strokes land, without rebuilding the canvas', async () => {
+  /** Each draw into the preview's mask canvas: the canvas, how many pixels show any or full weather, and the rect it covered. */
+  const alphaDraws = () => vi.mocked(drawMaskAlpha).mock.calls.map(([canvas, raster, rect]) => ({
+    canvas, rect, lit: raster.reduce((n, v) => n + (v > 0 ? 1 : 0), 0), full: raster.reduce((n, v) => n + (v === 255 ? 1 : 0), 0),
+  }));
+
+  it('draws through a full-size mask canvas that follows every stroke frame, also mid-stroke', async () => {
+    vi.mocked(drawMaskAlpha).mockClear();
     await mount(world([{ mediaId: 'day' }]));
     const paint = await openEditor('Paint', 1280, 720);
     const canvas = weather();
-    expect(canvas.dataset.weatherMask).toBe('data:image/png;base64,lit0@1280');
-    stroke(paint);
-    await waitFor(() => expect(weather().dataset.weatherMask).not.toBe('data:image/png;base64,lit0@1280'));
-    expect(weather()).toBe(canvas);
-    await press('Invert');
-    expect(weather().dataset.weatherMask).toMatch(/lit\d{6,}@1280$/);
-  });
-
-  it('draws a small mask while a stroke paints and the full-size mask once it ends', async () => {
-    await mount(world([{ mediaId: 'day' }]));
-    const paint = await openEditor('Paint', 1280, 720);
+    const [opened] = alphaDraws();
+    expect(opened).toMatchObject({ lit: 0, rect: undefined });
+    expect([opened.canvas.width, opened.canvas.height]).toEqual([1280, 720]);
     fireEvent.pointerDown(paint, { button: 0, pointerId: 1, clientX: 600, clientY: 300 });
     fireEvent.pointerMove(paint, { pointerId: 1, clientX: 700, clientY: 320 });
-    await waitFor(() => expect(weather().dataset.weatherMask).toMatch(/lit[1-9]\d*@256$/));
+    // Mid-stroke the same full-size canvas takes the painted rect: no smaller stand-in mask.
+    await waitFor(() => expect(alphaDraws().at(-1)!.lit).toBeGreaterThan(0));
+    expect(alphaDraws().at(-1)!.canvas).toBe(opened.canvas);
+    expect(alphaDraws().at(-1)!.rect).toBeDefined();
     fireEvent.pointerUp(paint, { pointerId: 1, clientX: 700, clientY: 320 });
-    expect(weather().dataset.weatherMask).toMatch(/lit[1-9]\d*@1280$/);
+    const painted = alphaDraws().at(-1)!.full;
+    await press('Invert');
+    expect(alphaDraws().at(-1)).toMatchObject({ canvas: opened.canvas, lit: 1280 * 720 - painted, rect: undefined });
+    expect(weather()).toBe(canvas);
   });
 
-  it('turns sharp when a stroke ends before its frame draws', async () => {
+  it('draws the stroke into the mask canvas when it ends before its frame draws', async () => {
+    vi.mocked(drawMaskAlpha).mockClear();
+    await mount(world([{ mediaId: 'day' }]));
+    stroke(await openEditor('Paint', 1280, 720));
+    expect(alphaDraws().at(-1)!.lit).toBeGreaterThan(0);
+  });
+});
+
+describe('Weather Mask brush editor mask display', () => {
+  const tintShades = () => vi.mocked(drawTint).mock.calls.map(([, , shade, rect]) => ({ shade, rect }));
+  const tintCanvas = () => document.querySelector<HTMLCanvasElement>('[data-mask-tint]')!;
+  /** Picks a color from the mask color select by keyboard: jsdom has no pointer capture for a click. */
+  const pickShade = async (name: string) => {
+    fireEvent.keyDown(within(editor()).getByRole('combobox', { name: 'Mask Color' }), { key: 'Enter' });
+    await act(async () => { fireEvent.keyDown(screen.getByRole('option', { name }), { key: 'Enter' }); });
+  };
+
+  it('tints in magenta at first, and redraws the whole tint in each picked color', async () => {
+    vi.mocked(drawTint).mockClear();
     await mount(world([{ mediaId: 'day' }]));
     const paint = await openEditor('Paint', 1280, 720);
+    expect(within(editor()).getByRole('combobox', { name: 'Mask Color' })).toHaveTextContent('Magenta');
+    expect(tintShades().at(-1)).toEqual({ shade: 'magenta', rect: undefined });
+    await pickShade('Cyan');
+    expect(tintShades().at(-1)).toEqual({ shade: 'cyan', rect: undefined });
     stroke(paint);
-    expect(weather().dataset.weatherMask).toMatch(/lit[1-9]\d*@1280$/);
+    expect(tintShades().at(-1)!.shade).toBe('cyan');
+    expect(tintShades().at(-1)!.rect).toBeDefined();
+    await pickShade('Black and White');
+    expect(tintShades().at(-1)).toEqual({ shade: 'blackWhite', rect: undefined });
+  });
+
+  it('the eye button hides the mask and shows it again', async () => {
+    await mount(world([{ mediaId: 'day' }]));
+    await openEditor('Paint');
+    expect(tintCanvas().className).not.toContain('invisible');
+    await press('Hide Mask');
+    expect(tintCanvas().className).toContain('invisible');
+    await press('Show Mask');
+    expect(tintCanvas().className).not.toContain('invisible');
   });
 });
 

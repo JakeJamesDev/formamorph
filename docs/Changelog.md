@@ -17,7 +17,9 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
 #### ➕ Added
 
 - **👤 User-facing**
-  - **A location image in the World Editor can get its own copy of a shared Weather Mask.** **Copy for This Image** in the Weather Mask menu keeps the original on the other images and opens the brush editor on the copy.
+  - **Weather Masks:**
+    - **A location image in the World Editor can get its own copy of a shared Weather Mask.** **Copy for This Image** in the Weather Mask menu keeps the original on the other images and opens the brush editor on the copy.
+    - **The Weather Mask brush editor shows the mask in magenta, cyan, or black and white.** Magenta is the new default, and Show Mask in the Weather Mask menu also tints in magenta. An eye button hides or shows the mask.
 
 #### 🔧 Fixed
 
@@ -25,7 +27,7 @@ _Unreleased — new work accumulates here until it earns a version bump. The nex
   - **The desktop, Android and web builds of Formamorph are smaller.** 3.9.0 carried about 130 MB of bundled world art that the game never loads.
   - **macOS no longer says the Mac desktop app is damaged.** On first launch, open it from Privacy & Security in System Settings with Open Anyway.
   - **The main menu no longer crashes on a world whose library card has no usable cover.** The card shows its placeholder art until the world is saved again.
-  - **The weather preview in the Weather Mask brush editor now stops at the mask's edges.** Edges look soft only while a stroke paints, and turn sharp when it ends.
+  - **The weather preview in the Weather Mask brush editor now stops at the mask's edges.** It also stays inside them while a stroke paints.
   - **A world save that fails because the disk is full or blocked now offers Export World.** The message says the disk may be full, or security software blocked the file. Autosaves, world downloads and imports name the same causes.
   - **Copy Error Details on the crash screen now works in the itch.io web build.** When the copy still fails, the details show below the message, ready to select and copy.
   - **A save moved to another device now loads with its world there.** Import or download the world, then import the save. Saves already imported this way find their world the next time Load Game opens. When two of your worlds share the name, the save still asks for its world.

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen } from '@testing-library/react';
-import { WeatherBackground } from './WeatherBackground';
+import { WeatherBackground, WeatherPreview } from './WeatherBackground';
 
 let frames: Map<number, FrameRequestCallback>;
 let nextId: number;
@@ -108,5 +108,31 @@ describe('the masked Weather Background', () => {
     render(<WeatherBackground kind="rain" mode="full" plain={false} art="art-ignored" />);
     expect(screen.getByTestId('weather-background').dataset.weatherMask).toBeUndefined();
     expect(pending).toHaveLength(0);
+  });
+});
+
+describe("the brush editor's Weather Preview", () => {
+  it('cuts every frame to the mask canvas, stretched over the whole layer, then draws normally again', () => {
+    const drawn: { op: string; image: unknown; size: number[] }[] = [];
+    const state = { op: 'source-over' };
+    const ctx = new Proxy(state, {
+      get: (t, name) => {
+        if (name === 'globalCompositeOperation') return t.op;
+        if (name === 'createLinearGradient') return () => ({ addColorStop: () => {} });
+        if (name === 'drawImage') return (image: unknown, ...size: number[]) => { drawn.push({ op: t.op, image, size }); };
+        return () => {};
+      },
+      set: (t, name, value) => { if (name === 'globalCompositeOperation') t.op = value; return true; },
+    });
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(ctx as unknown as CanvasRenderingContext2D);
+    const mask = document.createElement('canvas');
+    render(<WeatherPreview kind="rain" mode="full" plain={false} mask={mask} />);
+    paint();
+    paint();
+    const masked = drawn.filter((d) => d.image === mask);
+    expect(masked).toHaveLength(2);
+    // jsdom lays out nothing: the layer measures 0 by 0.
+    for (const d of masked) expect(d).toMatchObject({ op: 'destination-in', size: [0, 0, 0, 0] });
+    expect(state.op).toBe('source-over');
   });
 });

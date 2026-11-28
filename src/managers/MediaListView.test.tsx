@@ -225,7 +225,7 @@ describe('Media tab Import Media', () => {
 vi.mock('./weatherMaskEditor/maskCanvas', () => ({
   readMaskRaster: vi.fn(async (_data: string, width: number, height: number) => new Uint8ClampedArray(width * height)),
   drawTint: vi.fn(),
-  previewMaskPng: vi.fn(() => 'data:image/png;base64,cHJldmlldw=='),
+  drawMaskAlpha: vi.fn(),
   encodeMaskRaster: vi.fn((_raster: Uint8ClampedArray, width: number, height: number) => `data:image/png;base64,${width}x${height}`),
 }));
 
